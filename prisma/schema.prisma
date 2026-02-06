@@ -7,16 +7,22 @@ datasource db {
   provider = "sqlite"
 }
 
+enum Role {
+  ADMIN
+  CLIENT
+}
+
 model User {
   id            String    @id
   name          String
   email         String
   emailVerified Boolean   @default(false)
-  image         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  role          Role      @default(CLIENT)
+  phoneNumber   Int?
 
   @@unique([email])
   @@map("user")
@@ -68,4 +74,17 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+model Client {
+  id       String  @id
+  waitlist Boolean @default(true)
+  notes    String
+}
+
+model Questions {
+}
+
+model InitalApp {
+  id String @id
 }
