@@ -2,7 +2,7 @@
   const route = useRoute()
   const colorMode = useColorMode()
 
-  const isApplicationPage = computed(() => route.path === '/applicationPage')
+  const isTasksPage = computed(() => route.path === '/taskPage')
   const isDashboardPage = computed(() => route.path === '/')
 
   const isDark = computed({
@@ -37,10 +37,10 @@
               :variant="isDashboardPage ? 'solid' : 'soft'"
             />
             <UButton
-              label="Application"
-              to="/applicationPage"
+              label="Tasks"
+              to="/taskPage"
               color="primary"
-              :variant="isApplicationPage ? 'solid' : 'soft'"
+              :variant="isTasksPage ? 'solid' : 'soft'"
             />
             <UButton
               :icon="isDark ? 'i-heroicons-moon-20-solid' : 'i-heroicons-sun-20-solid'"
