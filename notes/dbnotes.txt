@@ -62,3 +62,78 @@ Notes
     content
     is_locked
     signed_at
+
+3NF Revision (Stricter)
+Forms
+    form_id (PK)
+    form_name
+
+Questions
+    question_id (PK)
+    form_id (FK)
+    question_text
+    question_type (Enum)
+
+QuestionOptions
+    option_id (PK)
+    question_id (FK)
+    option_text
+
+Responses
+    submission_id (PK)
+    patient_id (FK)
+    form_id (FK)
+    submitted_at (Timestamp)
+
+Answers
+    answer_id (PK)
+    submission_id (FK)
+    question_id (FK)
+
+AnswerText
+    answer_id (PK/FK) — Only for text/date/etc.
+    answer_text
+
+AnswerSelections
+    answer_id (FK)
+    option_id (FK)
+    (PK: answer_id, option_id)
+
+Users
+    user_id (PK)
+    email
+    name
+    phone_number
+
+Staff
+    staff_id (PK/FK)
+    title
+
+Patient
+    patient_id (PK/FK)
+    start_date
+    end_date
+    status (waitlist, active, inactive)
+
+Session
+    session_id (PK)
+    patient_id (FK)
+    staff_id (FK)
+    notes_id (FK)
+    attendance (Enum)
+    date_time
+    location (Enum: online/in-person)
+
+SessionRecurrence
+    recurrence_id (PK)
+    session_id (FK, UNIQUE)
+    frequency
+
+
+Notes
+    notes_id (PK)
+    content
+    is_locked
+    signed_at
+
+
