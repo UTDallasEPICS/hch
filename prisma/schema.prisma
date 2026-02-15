@@ -13,16 +13,18 @@ enum Role {
 }
 
 model User {
-  id            String    @id
+  id            String        @id
   name          String
   email         String
-  emailVerified Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  emailVerified Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   sessions      Session[]
   accounts      Account[]
-  role          Role      @default(CLIENT)
+  role          Role          @default(CLIENT)
   phoneNumber   Int?
+  appForms      AppForm[]
+  appQuestions  AppQuestion[]
 
   @@unique([email])
   @@map("user")
@@ -77,94 +79,75 @@ model Verification {
 }
 
 model AppForm {
-  id          Int           @id @default(autoincrement())
+  id          Int          @id @default(autoincrement())
   userId      String
-  status      String
-  submittedAt DateTime      @default(now())
-  questions   AppQuestion[]
-}
+  status      String       @default("IN_PROGRESS")
+  submittedAt DateTime?
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions   AppQuestion?
 
-enum QuestionType {
-  TEXT
-  MULTIPLE_CHOICE
-  CHECKLIST
-  MULTI_PLUS_TEXT
-}
-
-enum AppQuestionKey {
-  EMAIL
-  YOUR_FIRST_NAME
-  YOUR_LAST_NAME
-  YOUR_EMAIL_ADDRESS
-  YOUR_PHONE_NUMBER
-  YOUR_GENDER
-  YOUR_DATE_OF_BIRTH
-  YOUR_ADDRESS
-
-  CHILD_FIRST_NAME
-  CHILD_LAST_NAME
-  CHILD_DATE_OF_BIRTH
-  CHILD_GENDER
-  CHILD_ADDRESS
-
-  MEDICAL_DIAGNOSIS
-  MEDICAL_DIAGNOSIS_DATE
-  HOUSEHOLD_MEMBERS
-
-  BIO_PARENTS_RESIDE
-  CUSTODY_HOLDER
-  PRIMARY_CONTACT_MAIN
-
-  LEGAL_MOTHER_FIRST_NAME
-  LEGAL_MOTHER_LAST_NAME
-  LEGAL_MOTHER_STREET
-  LEGAL_MOTHER_CITY
-  LEGAL_MOTHER_STATE
-  LEGAL_MOTHER_ZIP
-  LEGAL_MOTHER_EMAIL
-  LEGAL_MOTHER_OCCUPATION
-  LEGAL_MOTHER_PRIMARY_CONTACT
-
-  LEGAL_FATHER_FIRST_NAME
-  LEGAL_FATHER_LAST_NAME
-  LEGAL_FATHER_STREET
-  LEGAL_FATHER_CITY
-  LEGAL_FATHER_STATE
-  LEGAL_FATHER_ZIP
-  LEGAL_FATHER_EMAIL
-  LEGAL_FATHER_OCCUPATION
-
-  PRIMARY_CAREGIVER
-
-  SIBLINGS_WITNESS_TRAUMA
-  SIBLINGS_SEPARATED
-
-  MEDICAL_DECISIONS_BY
-  HOSPITAL_PRIMARY_CARE
-  TREATMENT_DURATION
-  ICU_VISITS
-  EXTENDED_ADMISSIONS
-  RELAPSE_OR_SECONDARY
-  HOSPICE_OR_DECEASED
-
-  APPLY_THERAPY_SCHOLARSHIP
-  SUPPORT_GROUP_WAITLIST
-  SCHOLARSHIP_FOR_WHO
-  THERAPIST_OR_REFERRAL
-  MENTAL_HEALTH_INSURANCE
+  @@index([userId])
 }
 
 model AppQuestion {
-  id           Int            @id @default(autoincrement())
-  formId       Int
-  questionKey  AppQuestionKey
-  questionType QuestionType
+  id     Int    @id @default(autoincrement())
+  formId Int    @unique
+  userId String
 
-  answerText   String?
-  answerChoice String?
-  answerList   String?
+  q01 String?
+  q02 String?
+  q03 String?
+  q04 String?
+  q05 String?
+  q06 String?
+  q07 String?
+  q08 String?
+  q09 String?
+  q10 String?
+  q11 String?
+  q12 String?
+  q13 String?
+  q14 String?
+  q15 String?
+  q16 String?
+  q17 String?
+  q18 String?
+  q19 String?
+  q20 String?
+  q21 String?
+  q22 String?
+  q23 String?
+  q24 String?
+  q25 String?
+  q26 String?
+  q27 String?
+  q28 String?
+  q29 String?
+  q30 String?
+  q31 String?
+  q32 String?
+  q33 String?
+  q34 String?
+  q35 String?
+  q36 String?
+  q37 String?
+  q38 String?
+  q39 String?
+  q40 String?
+  q41 String?
+  q42 String?
+  q43 String?
+  q44 String?
+  q45 String?
+  q46 String?
+  q47 String?
+  q48 String?
+  q49 String?
+  q50 String?
+  q51 String?
 
-  form AppForm @relation(fields: [formId], references: [id])
+  form AppForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([formId, questionKey])
+  @@index([userId])
 }

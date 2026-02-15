@@ -1,3 +1,21 @@
+<script setup lang="ts">
+  const answered = ref(0)
+  const total = ref(51)
+
+  onMounted(async () => {
+    try {
+      const progress = await $fetch<{ answered: number; total: number }>(
+        '/api/application/progress'
+      )
+      answered.value = progress.answered
+      total.value = progress.total
+    } catch {
+      answered.value = 0
+      total.value = 51
+    }
+  })
+</script>
+
 <template>
   <UContainer class="py-10">
     <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Tasks to complete:</h1>
@@ -14,7 +32,7 @@
       to="/application"
     >
       <span>Application Form</span>
-      <span>0/51</span>
+      <span>{{ answered }}/{{ total }}</span>
     </UButton>
   </UContainer>
 </template>
