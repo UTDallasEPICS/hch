@@ -9,7 +9,7 @@ datasource db {
 
 enum Role {
   ADMIN
-  CLIENT
+  PATIENT
 }
 
 model User {
@@ -21,7 +21,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
-  role          Role      @default(CLIENT)
+  role          Role      @default(PATIENT)
   phoneNumber   Int?
 
   @@unique([email])
@@ -76,13 +76,39 @@ model Verification {
   @@map("verification")
 }
 
-model Client {
+model Patient {
   id       String  @id
   waitlist Boolean @default(true)
   notes    String
 }
 
-model Questions {
+model Question {
+  id           String       @id
+  Form         Form         @relation(fields: [formId], references: [id])
+  formId       String
+  questionText String
+  questionType QuestionType
+}
+
+enum AnswerType {
+  FRQ
+  MCQ
+  MCQO
+  CHECK
+  CHECKO
+  DROP
+  DATE
+}
+
+enum QuestionType {
+  TEXT
+  QUESTION
+}
+
+model Response {
+  responseId
+  patientId
+  questionId
 }
 
 model InitalApp {
