@@ -115,7 +115,7 @@
           >
             <fieldset>
               <legend class="text-base font-medium text-gray-900 dark:text-white">
-                {{ index + 1 }}. {{ q.text }}
+                {{ Number(index) + 1 }}. {{ q.text }}
               </legend>
               <div v-if="q.type === 'radio'" class="mt-4 flex flex-wrap gap-3">
                 <label
@@ -174,17 +174,5 @@
         </form>
       </template>
     </main>
-
-    <UModal v-model="showIncompleteModal">
-      <UCard>
-        <template #footer>
-          <div class="flex justify-end">
-            <UButton color="primary" @click="showIncompleteModal = false">
-              Continue Filling Form
-            </UButton>
-          </div>
-        </template>
-      </UCard>
-    </UModal>
   </div>
 </template>
