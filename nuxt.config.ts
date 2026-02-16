@@ -5,4 +5,6 @@ export default defineNuxtConfig({
   modules: ['@nuxt/ui'],
   css: ['./assets/css/main.css'],
   srcDir: 'app',
+  // Optional: ensure form routes are handled by the app (no prerender 404)
+  // routeRules: { '/forms/**': { ssr: true } },
 })
