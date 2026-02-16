@@ -36,7 +36,7 @@ const {
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
     <header
-      class="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95"
+      class="sticky top-0 z-50 border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
     >
       <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-14 items-center justify-between">
@@ -50,20 +50,20 @@ const {
       </div>
       <div
         v-if="form"
-        class="border-t border-gray-100 bg-gray-50/80 px-4 py-3 sm:px-6 dark:border-gray-800 dark:bg-gray-900/80"
+        class="border-t border-gray-200 bg-gray-100 px-4 py-4 sm:px-6 dark:border-gray-700 dark:bg-gray-800"
       >
         <div class="mx-auto max-w-3xl">
           <div class="flex items-center justify-between text-sm">
-            <span class="font-medium text-gray-700 dark:text-gray-300"
+            <span class="font-semibold text-gray-900 dark:text-white"
               >{{ progressPercent }}% Complete</span
             >
             <span class="text-gray-500 dark:text-gray-400"
               >{{ completedCount }} of {{ totalCount }} answered</span
             >
           </div>
-          <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+          <div class="mt-3 h-4 w-full overflow-hidden rounded-full border border-gray-300 bg-gray-200 dark:border-gray-600 dark:bg-gray-700">
             <div
-              class="bg-primary-500 h-full rounded-full transition-all duration-300"
+              class="h-full rounded-full bg-primary-600 dark:bg-primary-400 shadow-sm"
               :style="{ width: `${progressPercent}%` }"
             />
           </div>
