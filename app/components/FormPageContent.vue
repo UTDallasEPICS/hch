@@ -1,7 +1,7 @@
 <script setup lang="ts">
-  const props = defineProps<{ slug: string }>()
-  const slugRef = computed(() => props.slug)
-  const {
+const props = defineProps<{ slug: string }>()
+const slugRef = computed(() => props.slug)
+const {
     form,
     formPending,
     formError,
@@ -12,13 +12,26 @@
     totalCount,
     progressPercent,
     setResponse,
-    submitting,
-    submitError,
-    showIncompleteModal,
-    unansweredCount,
-    submit,
-  } = await useFormBySlug(slugRef)
+  submitting,
+  submitError,
+  showIncompleteBanner,
+  unansweredCount,
+  dismissIncompleteBanner,
+  submit,
+} = await useFormBySlug(slugRef)
 </script>
+
+<style scoped>
+.float-enter-active,
+.float-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.float-enter-from,
+.float-leave-to {
+  opacity: 0;
+  transform: translateY(0.5rem);
+}
+</style>
 
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -174,5 +187,34 @@
         </form>
       </template>
     </main>
+
+    <!-- Floating box: incomplete form info after submit attempt -->
+    <Transition name="float">
+      <div
+        v-if="form && showIncompleteBanner && unansweredCount > 0"
+        class="fixed bottom-6 right-6 z-50 flex max-w-sm items-start gap-3 rounded-xl border border-amber-200 bg-white p-4 shadow-lg dark:border-amber-800 dark:bg-gray-900"
+      >
+        <UIcon
+          name="i-heroicons-exclamation-circle-20-solid"
+          class="mt-0.5 h-5 w-5 shrink-0 text-amber-500"
+        />
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-medium text-gray-900 dark:text-white">Form incomplete</p>
+          <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            You have
+            <span class="font-semibold text-amber-600 dark:text-amber-400">{{ unansweredCount }}</span>
+            {{ unansweredCount === 1 ? 'question' : 'questions' }} left ({{ totalCount }} total).
+          </p>
+        </div>
+        <button
+          type="button"
+          aria-label="Dismiss"
+          class="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+          @click="dismissIncompleteBanner"
+        >
+          <UIcon name="i-heroicons-x-mark-20-solid" class="h-4 w-4" />
+        </button>
+      </div>
+    </Transition>
   </div>
 </template>

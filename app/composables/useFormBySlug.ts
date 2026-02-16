@@ -107,6 +107,10 @@ export async function useFormBySlug(slug: Ref<string> | ComputedRef<string>) {
     if (count === 0) showIncompleteBanner.value = false
   })
 
+  function dismissIncompleteBanner() {
+    showIncompleteBanner.value = false
+  }
+
   async function submit() {
     if (!form.value) {
       submitError.value = 'Form not loaded'
@@ -175,6 +179,7 @@ export async function useFormBySlug(slug: Ref<string> | ComputedRef<string>) {
     showIncompleteModal,
     showIncompleteBanner,
     unansweredCount,
+    dismissIncompleteBanner,
     submit,
   }
 }
