@@ -118,114 +118,8 @@
         Add New Form
       </h1>
       <p class="mt-1 text-gray-500 dark:text-gray-400">
-        Create a form by choosing existing questions or adding new ones.
+        Create a form by adding new questions.
       </p>
-
-      <!-- New question inline -->
-      <div
-        class="mt-8 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900"
-      >
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Add a new question</h2>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          It will be added to the master list and can be used in any form.
-        </p>
-        <div class="mt-4 flex flex-wrap gap-3">
-          <input
-            v-model="newQuestionText"
-            type="text"
-            placeholder="Question text"
-            class="focus:border-primary-500 focus:ring-primary-500 min-w-[200px] flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 shadow-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-            @keydown.enter.prevent="addNewQuestion"
-          />
-          <select
-            v-model="newQuestionType"
-            class="focus:border-primary-500 focus:ring-primary-500 w-40 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-          >
-            <option value="radio">Yes/No (radio)</option>
-            <option value="text">Text</option>
-          </select>
-          <UButton
-            :loading="addingQuestion"
-            :disabled="!newQuestionText.trim()"
-            @click="addNewQuestion"
-          >
-            Add Question
-          </UButton>
-        </div>
-      </div>
-
-      <!-- Existing questions -->
-      <div
-        class="mt-8 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900"
-      >
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Existing questions</h2>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Click to include in this form. Order is used as displayed below.
-        </p>
-        <ul class="mt-4 space-y-2">
-          <li
-            v-for="q in existingQuestions"
-            :key="q.id"
-            class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 dark:border-gray-700"
-          >
-            <label class="flex cursor-pointer items-center gap-3">
-              <input
-                type="checkbox"
-                :checked="selectedQuestionIds.includes(q.id)"
-                class="text-primary-600 focus:ring-primary-500 h-4 w-4 rounded border-gray-300"
-                @change="toggleQuestion(q.id)"
-              />
-              <span class="text-sm text-gray-900 dark:text-white">{{ q.text }}</span>
-              <UBadge size="xs" variant="subtle">{{ q.type }}</UBadge>
-            </label>
-          </li>
-          <li v-if="!existingQuestions?.length" class="py-4 text-center text-sm text-gray-500">
-            No questions yet. Add one above.
-          </li>
-        </ul>
-      </div>
-
-      <!-- Selected order -->
-      <div
-        v-if="orderedSelected.length"
-        class="mt-8 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900"
-      >
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-          Order of questions in form
-        </h2>
-        <ul class="mt-4 space-y-2">
-          <li
-            v-for="(q, idx) in orderedSelected"
-            :key="q.id"
-            class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 dark:border-gray-700"
-          >
-            <span class="text-sm text-gray-900 dark:text-white">{{ idx + 1 }}. {{ q.text }}</span>
-            <div class="flex gap-1">
-              <UButton
-                size="xs"
-                variant="ghost"
-                icon="i-heroicons-arrow-up-20-solid"
-                :disabled="idx === 0"
-                @click="moveQuestion(q.id, -1)"
-              />
-              <UButton
-                size="xs"
-                variant="ghost"
-                icon="i-heroicons-arrow-down-20-solid"
-                :disabled="idx === orderedSelected.length - 1"
-                @click="moveQuestion(q.id, 1)"
-              />
-              <UButton
-                size="xs"
-                variant="ghost"
-                color="error"
-                icon="i-heroicons-x-mark-20-solid"
-                @click="toggleQuestion(q.id)"
-              />
-            </div>
-          </li>
-        </ul>
-      </div>
 
       <!-- Form metadata -->
       <div
@@ -282,6 +176,81 @@
             Create form & assign to me
           </UButton>
         </div>
+      </div>
+
+      <!-- New question inline -->
+      <div
+        class="mt-8 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900"
+      >
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Add a new question</h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          It will be added to the master list and can be used in any form.
+        </p>
+        <div class="mt-4 flex flex-wrap gap-3">
+          <input
+            v-model="newQuestionText"
+            type="text"
+            placeholder="Question text"
+            class="focus:border-primary-500 focus:ring-primary-500 min-w-[200px] flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 shadow-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+            @keydown.enter.prevent="addNewQuestion"
+          />
+          <select
+            v-model="newQuestionType"
+            class="focus:border-primary-500 focus:ring-primary-500 w-40 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+          >
+            <option value="radio">Yes/No (radio)</option>
+            <option value="text">Text</option>
+          </select>
+          <UButton
+            :loading="addingQuestion"
+            :disabled="!newQuestionText.trim()"
+            @click="addNewQuestion"
+          >
+            Add Question
+          </UButton>
+        </div>
+      </div>
+
+      <!-- Selected order -->
+      <div
+        v-if="orderedSelected.length"
+        class="mt-8 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900"
+      >
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+          Order of questions in form
+        </h2>
+        <ul class="mt-4 space-y-2">
+          <li
+            v-for="(q, idx) in orderedSelected"
+            :key="q.id"
+            class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 dark:border-gray-700"
+          >
+            <span class="text-sm text-gray-900 dark:text-white">{{ idx + 1 }}. {{ q.text }}</span>
+            <div class="flex gap-1">
+              <UButton
+                size="xs"
+                variant="ghost"
+                icon="i-heroicons-arrow-up-20-solid"
+                :disabled="idx === 0"
+                @click="moveQuestion(q.id, -1)"
+              />
+              <UButton
+                size="xs"
+                variant="ghost"
+                icon="i-heroicons-arrow-down-20-solid"
+                :disabled="idx === orderedSelected.length - 1"
+                @click="moveQuestion(q.id, 1)"
+              />
+              <UButton
+                size="xs"
+                variant="ghost"
+                color="error"
+                icon="i-heroicons-x-mark-20-solid"
+                @click="toggleQuestion(q.id)"
+              />
+            </div>
+          </li>
+        </ul>
       </div>
     </main>
   </div>
