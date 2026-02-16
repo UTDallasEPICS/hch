@@ -1,24 +1,23 @@
 <script setup lang="ts">
-const props = defineProps<{ slug: string }>()
-const slugRef = computed(() => props.slug)
-const {
-  form,
-  formPending,
-  formError,
-  formStatus,
-  slug,
-  responses,
-  completedCount,
-  totalCount,
-  progressPercent,
-  setResponse,
-  submitting,
-  submitError,
-  showIncompleteModal,
-  showIncompleteBanner,
-  unansweredCount,
-  submit,
-} = await useFormBySlug(slugRef)
+  const props = defineProps<{ slug: string }>()
+  const slugRef = computed(() => props.slug)
+  const {
+    form,
+    formPending,
+    formError,
+    formStatus,
+    slug,
+    responses,
+    completedCount,
+    totalCount,
+    progressPercent,
+    setResponse,
+    submitting,
+    submitError,
+    showIncompleteModal,
+    unansweredCount,
+    submit,
+  } = await useFormBySlug(slugRef)
 </script>
 
 <template>
@@ -58,31 +57,6 @@ const {
         </div>
       </div>
     </header>
-
-    <!-- Form Incomplete banner: only after user clicks Submit and not all questions are answered -->
-    <div
-      v-if="form && showIncompleteBanner && unansweredCount > 0"
-      class="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/30 border-b px-4 py-4 sm:px-6"
-      role="alert"
-    >
-      <div class="mx-auto flex max-w-3xl items-start gap-3">
-        <UIcon
-          name="i-heroicons-exclamation-circle-20-solid"
-          class="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400"
-        />
-        <div class="min-w-0 flex-1">
-          <h3 class="text-sm font-semibold text-amber-900 dark:text-amber-200">
-            Form Incomplete
-          </h3>
-          <p class="mt-1 text-sm text-amber-800 dark:text-amber-300">
-            You have
-            <span class="font-semibold">{{ unansweredCount }}</span>
-            {{ unansweredCount === 1 ? 'question' : 'questions' }} remaining. Please answer all
-            {{ totalCount }} questions before submitting the form.
-          </p>
-        </div>
-      </div>
-    </div>
 
     <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       <div v-if="formPending" class="space-y-6">
@@ -203,24 +177,6 @@ const {
 
     <UModal v-model="showIncompleteModal">
       <UCard>
-        <template #header>
-          <div class="flex items-center gap-2">
-            <UIcon name="i-heroicons-exclamation-circle-20-solid" class="h-5 w-5 text-amber-500" />
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Form Incomplete</h3>
-          </div>
-        </template>
-
-        <div class="space-y-4">
-          <p class="text-gray-600 dark:text-gray-400">
-            You have
-            <span class="font-semibold text-gray-900 dark:text-white">{{ unansweredCount }}</span>
-            {{ unansweredCount === 1 ? 'question' : 'questions' }} remaining.
-          </p>
-          <p class="text-sm text-gray-500 dark:text-gray-500">
-            Please answer all {{ totalCount }} questions before submitting the form.
-          </p>
-        </div>
-
         <template #footer>
           <div class="flex justify-end">
             <UButton color="primary" @click="showIncompleteModal = false">
