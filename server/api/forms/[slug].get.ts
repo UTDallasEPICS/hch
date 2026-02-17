@@ -30,7 +30,6 @@ export default defineEventHandler(async (event) => {
       text: fq.question.text,
       type: fq.question.type,
       alias: fq.question.alias,
-      options: fq.question.options ? (JSON.parse(fq.question.options) as string[]) : undefined,
       order: fq.order,
     })),
   }

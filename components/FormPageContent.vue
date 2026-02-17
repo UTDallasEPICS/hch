@@ -1,7 +1,7 @@
 <script setup lang="ts">
-  const props = defineProps<{ slug: string }>()
-  const slugRef = computed(() => props.slug)
-  const {
+const props = defineProps<{ slug: string }>()
+const slugRef = computed(() => props.slug)
+const {
     form,
     formPending,
     formError,
@@ -12,37 +12,25 @@
     totalCount,
     progressPercent,
     setResponse,
-    submitting,
-    submitError,
-    showIncompleteBanner,
-    unansweredCount,
-    dismissIncompleteBanner,
-    submit,
-  } = await useFormBySlug(slugRef)
-
-  function toggleCheckboxOption(alias: string, opt: string, _options: string[], checked: boolean) {
-    const current = (responses[alias] || '').split(',').filter(Boolean)
-    const next = checked
-      ? current.includes(opt)
-        ? current
-        : [...current, opt]
-      : current.filter((o) => o !== opt)
-    setResponse(alias, next.join(','))
-  }
+  submitting,
+  submitError,
+  showIncompleteBanner,
+  unansweredCount,
+  dismissIncompleteBanner,
+  submit,
+} = await useFormBySlug(slugRef)
 </script>
 
 <style scoped>
-  .float-enter-active,
-  .float-leave-active {
-    transition:
-      opacity 0.2s ease,
-      transform 0.2s ease;
-  }
-  .float-enter-from,
-  .float-leave-to {
-    opacity: 0;
-    transform: translateY(0.5rem);
-  }
+.float-enter-active,
+.float-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.float-enter-from,
+.float-leave-to {
+  opacity: 0;
+  transform: translateY(0.5rem);
+}
 </style>
 
 <template>
@@ -73,11 +61,9 @@
               >{{ completedCount }} of {{ totalCount }} answered</span
             >
           </div>
-          <div
-            class="mt-3 h-4 w-full overflow-hidden rounded-full border border-gray-300 bg-gray-200 dark:border-gray-600 dark:bg-gray-700"
-          >
+          <div class="mt-3 h-4 w-full overflow-hidden rounded-full border border-gray-300 bg-gray-200 dark:border-gray-600 dark:bg-gray-700">
             <div
-              class="bg-primary-600 dark:bg-primary-400 h-full rounded-full shadow-sm"
+              class="h-full rounded-full bg-primary-600 dark:bg-primary-400 shadow-sm"
               :style="{ width: `${progressPercent}%` }"
             />
           </div>
@@ -146,7 +132,7 @@
               </legend>
               <div v-if="q.type === 'radio'" class="mt-4 flex flex-wrap gap-3">
                 <label
-                  v-for="opt in q.options && q.options.length ? q.options : ['Yes', 'No']"
+                  v-for="opt in ['Yes', 'No']"
                   :key="opt"
                   class="focus-within:ring-primary-500 relative flex cursor-pointer items-center rounded-lg border px-4 py-3 transition focus-within:ring-2"
                   :class="
@@ -164,47 +150,6 @@
                     @change="setResponse(q.alias, opt)"
                   />
                   <span class="text-sm font-medium text-gray-900 dark:text-white">{{ opt }}</span>
-                </label>
-              </div>
-              <div v-else-if="q.type === 'checkbox'" class="mt-4 space-y-2">
-                <template v-if="q.options && q.options.length > 1">
-                  <label
-                    v-for="opt in q.options"
-                    :key="opt"
-                    class="flex cursor-pointer items-center gap-3"
-                  >
-                    <input
-                      type="checkbox"
-                      :name="`${q.alias}-${opt}`"
-                      :checked="(responses[q.alias] || '').split(',').includes(opt)"
-                      class="text-primary-600 focus:ring-primary-500 h-4 w-4 rounded border-gray-300"
-                      @change="toggleCheckboxOption(q.alias, opt, q.options, $event.target.checked)"
-                    />
-                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ opt }}</span>
-                  </label>
-                </template>
-                <label v-else class="flex cursor-pointer items-center gap-3">
-                  <input
-                    type="checkbox"
-                    :name="q.alias"
-                    :checked="
-                      responses[q.alias] === (q.options && q.options[0] ? q.options[0] : 'Yes')
-                    "
-                    class="text-primary-600 focus:ring-primary-500 h-4 w-4 rounded border-gray-300"
-                    @change="
-                      setResponse(
-                        q.alias,
-                        $event.target.checked
-                          ? q.options && q.options[0]
-                            ? q.options[0]
-                            : 'Yes'
-                          : 'No'
-                      )
-                    "
-                  />
-                  <span class="text-sm font-medium text-gray-900 dark:text-white">{{
-                    (q.options && q.options[0]) || 'Yes'
-                  }}</span>
                 </label>
               </div>
               <div v-else class="mt-4">
@@ -247,7 +192,7 @@
     <Transition name="float">
       <div
         v-if="form && showIncompleteBanner && unansweredCount > 0"
-        class="fixed right-6 bottom-6 z-50 flex max-w-sm items-start gap-3 rounded-xl border border-amber-200 bg-white p-4 shadow-lg dark:border-amber-800 dark:bg-gray-900"
+        class="fixed bottom-6 right-6 z-50 flex max-w-sm items-start gap-3 rounded-xl border border-amber-200 bg-white p-4 shadow-lg dark:border-amber-800 dark:bg-gray-900"
       >
         <UIcon
           name="i-heroicons-exclamation-circle-20-solid"
@@ -257,9 +202,7 @@
           <p class="text-sm font-medium text-gray-900 dark:text-white">Form incomplete</p>
           <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
             You have
-            <span class="font-semibold text-amber-600 dark:text-amber-400">{{
-              unansweredCount
-            }}</span>
+            <span class="font-semibold text-amber-600 dark:text-amber-400">{{ unansweredCount }}</span>
             {{ unansweredCount === 1 ? 'question' : 'questions' }} left ({{ totalCount }} total).
           </p>
         </div>
