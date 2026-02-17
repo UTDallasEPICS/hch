@@ -1,4 +1,4 @@
-import OpenAI from 'openai'
+import { GoogleGenAI, createPartFromBase64, createPartFromText } from '@google/genai'
 
 const VISION_PROMPT = `You are analyzing a PDF form layout for "Hope. Cope. Heal." - a medical/counseling application.
 
@@ -42,37 +42,37 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'At least one base64 image is required' })
   }
 
-  const apiKey = process.env.OPENAI_API_KEY
+  const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
     throw createError({
       statusCode: 500,
       message:
-        'OPENAI_API_KEY is not set. Add it to your .env file for PDF-to-Form conversion.',
+        'GEMINI_API_KEY is not set. Add it to your .env file for PDF-to-Form conversion.',
     })
   }
 
-  const openai = new OpenAI({ apiKey })
-  const content: OpenAI.Chat.ChatCompletionContentPart[] = [
-    { type: 'text', text: VISION_PROMPT },
-  ]
+  const parts = [createPartFromText(VISION_PROMPT)]
 
   for (const img of images) {
     if (typeof img === 'string' && img.startsWith('data:')) {
-      content.push({
-        type: 'image_url',
-        image_url: { url: img },
-      })
+      const match = img.match(/^data:(image\/[a-z]+);base64,(.+)$/)
+      if (match?.[1] && match?.[2]) {
+        parts.push(createPartFromBase64(match[2], match[1]))
+      }
     }
   }
 
+  const ai = new GoogleGenAI({ apiKey })
+
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [{ role: 'user', content }],
-      max_tokens: 4096,
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: [{ role: 'user', parts }],
+      config: { maxOutputTokens: 4096 },
     })
 
-    const raw = response.choices[0]?.message?.content?.trim() || '[]'
+    const text = response.text
+    const raw = (text?.trim() ?? '') || '[]'
     let parsed: unknown[]
     try {
       const jsonStr = raw.replace(/^```json?\s*|\s*```$/g, '').trim()
