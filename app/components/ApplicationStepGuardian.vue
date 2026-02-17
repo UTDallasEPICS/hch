@@ -14,74 +14,74 @@ defineProps<{
       Legal Mother
     </h3>
     <div>
-      <label class="text-sm font-semibold text-gray-200">20. Legal Mother's First Name</label>
+      <label class="text-sm font-semibold text-gray-200">Legal mother's first name.</label>
       <UInput
         v-model="form.q20"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-        placeholder="Not 'Mom.' We need the one on the paperwork."
+        placeholder="First name"
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">21. Legal Mother's Last Name</label>
+      <label class="text-sm font-semibold text-gray-200">And the surname.</label>
       <UInput
         v-model="form.q21"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-        placeholder="The surname situation. We're not here to judge."
+        placeholder="Last name"
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">22. Legal Mother's Street Address</label>
+      <label class="text-sm font-semibold text-gray-200">Street address.</label>
       <UInput
         v-model="form.q22"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-        placeholder="Where she lives. Or gets mail. We're flexible."
+        placeholder="Street address"
       />
     </div>
     <div class="grid gap-4 sm:grid-cols-3">
       <div>
-        <label class="text-sm font-semibold text-gray-200">23. City</label>
+        <label class="text-sm font-semibold text-gray-200">City</label>
         <UInput
           v-model="form.q23"
           class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-          placeholder="The one with good coffee."
+          placeholder="City"
         />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">24. State</label>
+        <label class="text-sm font-semibold text-gray-200">State</label>
         <UInput
           v-model="form.q24"
           class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-          placeholder="Two letters. You've got this."
+          placeholder="State"
         />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">25. Zip Code</label>
+        <label class="text-sm font-semibold text-gray-200">Zip Code</label>
         <UInput
           v-model="form.q25"
           class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-          placeholder="The number that makes mail happen."
+          placeholder="Zip code"
         />
       </div>
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">26. Legal Mother's Email</label>
+      <label class="text-sm font-semibold text-gray-200">Legal mother's email.</label>
       <UInput
         v-model="form.q26"
         type="email"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-        placeholder="We promise not to spam. Unless it's memes."
+        placeholder="email@example.com"
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">27. Occupation</label>
+      <label class="text-sm font-semibold text-gray-200">Occupation.</label>
       <UInput
         v-model="form.q27"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-        placeholder="What she does when she's not being a superhero parent."
+        placeholder="Occupation"
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">28. Is Legal Mother primary contact?</label>
+      <label class="text-sm font-semibold text-gray-200">Is legal mother the primary contact?</label>
       <URadioGroup
         v-model="form.q28"
         class="mt-2"
@@ -91,7 +91,7 @@ defineProps<{
       <UInput
         v-model="form.q28Text"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-        placeholder="The one who gets the 2am calls. You know."
+        placeholder="Additional details (optional)"
       />
     </div>
 
@@ -99,74 +99,74 @@ defineProps<{
       Legal Father
     </h3>
     <div>
-      <label class="text-sm font-semibold text-gray-200">29. Legal Father's First Name</label>
+      <label class="text-sm font-semibold text-gray-200">Legal father's first name.</label>
       <UInput
         v-model="form.q29"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-        placeholder="Again, not 'Dad.' The legal one."
+        placeholder="First name"
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">30. Legal Father's Last Name</label>
+      <label class="text-sm font-semibold text-gray-200">And the surname.</label>
       <UInput
         v-model="form.q30"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-        placeholder="Surname: the sequel."
+        placeholder="Last name"
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">31. Legal Father's Street Address</label>
+      <label class="text-sm font-semibold text-gray-200">Street address.</label>
       <UInput
         v-model="form.q31"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-        placeholder="Where he's at. Or gets mail. Same deal."
+        placeholder="Street address"
       />
     </div>
     <div class="grid gap-4 sm:grid-cols-3">
       <div>
-        <label class="text-sm font-semibold text-gray-200">32. City</label>
+        <label class="text-sm font-semibold text-gray-200">City</label>
         <UInput
           v-model="form.q32"
           class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-          placeholder="City. We're copy-pasting vibes."
+          placeholder="City"
         />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">33. State</label>
+        <label class="text-sm font-semibold text-gray-200">State</label>
         <UInput
           v-model="form.q33"
           class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-          placeholder="Two letters. Round two."
+          placeholder="State"
         />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">34. Zip Code</label>
+        <label class="text-sm font-semibold text-gray-200">Zip Code</label>
         <UInput
           v-model="form.q34"
           class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-          placeholder="Zip. The sequel. (We're tired too.)"
+          placeholder="Zip code"
         />
       </div>
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">35. Legal Father's Email</label>
+      <label class="text-sm font-semibold text-gray-200">Legal father's email.</label>
       <UInput
         v-model="form.q35"
         type="email"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-        placeholder="Still no spam. Our word is good."
+        placeholder="email@example.com"
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">36. Occupation</label>
+      <label class="text-sm font-semibold text-gray-200">Occupation.</label>
       <UInput
         v-model="form.q36"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-        placeholder="What he does. Besides being a legend."
+        placeholder="Occupation"
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">37. Who is the primary caregiver?</label>
+      <label class="text-sm font-semibold text-gray-200">Who's the primary caregiver?</label>
       <URadioGroup
         v-model="form.q37"
         class="mt-2"
@@ -176,7 +176,7 @@ defineProps<{
       <UInput
         v-model="form.q37Other"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-        placeholder="If it's a rotating cast, we've got time."
+        placeholder="Other (please specify)"
       />
     </div>
   </div>

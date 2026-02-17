@@ -10,41 +10,41 @@ defineProps<{
 <template>
   <div class="space-y-5 [&_label]:block">
     <div>
-      <label class="text-sm font-semibold text-gray-200">1. Email</label>
+      <label class="text-sm font-semibold text-gray-200">Where do we send the good stuff?</label>
       <UInput
         v-model="form.q1"
         type="email"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-        placeholder="Your actual email. Not your ex's. We've seen things."
+        placeholder="you@example.com"
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">2. First Name</label>
+      <label class="text-sm font-semibold text-gray-200">His Name</label>
       <UInput
         v-model="form.q2"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-        placeholder="The one on your license. Or the one you actually use. We're chill."
+        placeholder="First name"
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">3. Last Name</label>
+      <label class="text-sm font-semibold text-gray-200">The surname. Don't overthink it.</label>
       <UInput
         v-model="form.q3"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-        placeholder="Same energy as above."
+        placeholder="Last name"
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">4. Phone number</label>
+      <label class="text-sm font-semibold text-gray-200">Digits we can actually reach you at.</label>
       <UInput
         v-model="form.q5"
         type="tel"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-        placeholder="We'll only call for good reasons. And maybe dad jokes."
+        placeholder="(555) 000-0000"
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">6. Gender</label>
+      <label class="text-sm font-semibold text-gray-200">How do you identify?</label>
       <URadioGroup
         v-model="form.q6"
         class="mt-2"
@@ -54,11 +54,11 @@ defineProps<{
       <UInput
         v-model="form.q6Text"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
-        placeholder="Whatever helps us get the pronouns right. No judgment."
+        placeholder="Additional details (optional)"
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">7. Date of Birth</label>
+      <label class="text-sm font-semibold text-gray-200">When did you enter this chaotic masterpiece?</label>
       <UInput
         v-model="form.q7"
         type="date"
@@ -66,14 +66,12 @@ defineProps<{
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">
-        8. Address (Street, Apt, City, State, Zip)
-      </label>
+      <label class="text-sm font-semibold text-gray-200">Where do the snacks get delivered?</label>
       <UTextarea
         v-model="form.q8"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
         :rows="3"
-        placeholder="Where we can send mail that isn't from your past self. Street, Apt, City, State, Zip."
+        placeholder="Street address, Apt/Unit, City, State, Zip Code"
       />
     </div>
   </div>
