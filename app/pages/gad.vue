@@ -89,6 +89,21 @@
   <UContainer class="py-10">
     <h1 class="text-2xl font-semibold">GAD-7 Anxiety Assessment</h1>
 
+    <UCard class="mt-4">
+      <div class="space-y-2">
+        <h2 class="text-base font-semibold text-gray-900 dark:text-white">Instructions</h2>
+
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Over the last <span class="font-medium">two weeks</span>, how often have you been bothered
+          by the following problems?
+        </p>
+
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          Please select the response that best describes your experience for each item.
+        </p>
+      </div>
+    </UCard>
+
     <UCard class="mt-6 space-y-6">
       <div>
         <label>1. Feeling nervous, anxious, or on edge</label>
