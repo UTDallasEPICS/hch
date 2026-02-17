@@ -1,4 +1,6 @@
 <script setup lang="ts">
+  import type { ExtractedQuestion } from '~/types/pdf-form'
+
   const { data: existingQuestions, refresh: refreshQuestions } = await useFetch('/api/questions')
 
   const formTitle = ref('')
@@ -22,6 +24,16 @@
   // Form attachments (PDF files)
   const formAttachments = ref<File[]>([])
   const attachmentInputRef = ref<HTMLInputElement | null>(null)
+
+  // PDF-to-Form conversion
+  const pdfConvertInputRef = ref<HTMLInputElement | null>(null)
+  const {
+    convert: convertPdf,
+    extractedQuestions,
+    isConverting,
+    error: pdfConvertError,
+    reset: resetPdfConverter,
+  } = usePDFConverter()
 
   const slugFromTitle = computed(() =>
     formTitle.value
@@ -177,6 +189,61 @@
     }
   }
 
+  async function createQuestionFromExtracted(q: ExtractedQuestion) {
+    const hasOther = q.type === 'radio_other' || q.type === 'checkbox_other'
+    const body: Record<string, unknown> = {
+      text: q.text.trim(),
+      type: q.type,
+    }
+    if (hasOther) body.hasOther = true
+    if (q.options?.length) body.options = q.options
+    if (q.gridRows?.length) body.gridRows = q.gridRows
+    if (q.gridCols?.length) body.gridCols = q.gridCols
+    const created = await $fetch<{ id: string }>('/api/questions/add', {
+      method: 'POST',
+      body,
+    })
+    await refreshQuestions()
+    if (!selectedQuestionIds.value.includes(created.id))
+      selectedQuestionIds.value = [...selectedQuestionIds.value, created.id]
+  }
+
+  async function approveExtractedQuestion(q: ExtractedQuestion) {
+    addingQuestion.value = true
+    try {
+      await createQuestionFromExtracted(q)
+      extractedQuestions.value = extractedQuestions.value.filter((x) => x.id !== q.id)
+    } finally {
+      addingQuestion.value = false
+    }
+  }
+
+  function skipExtractedQuestion(q: ExtractedQuestion) {
+    extractedQuestions.value = extractedQuestions.value.filter((x) => x.id !== q.id)
+  }
+
+  async function approveAllExtracted() {
+    if (!extractedQuestions.value.length) return
+    addingQuestion.value = true
+    try {
+      for (const q of [...extractedQuestions.value]) {
+        await createQuestionFromExtracted(q)
+      }
+      extractedQuestions.value = []
+    } finally {
+      addingQuestion.value = false
+    }
+  }
+
+  function onPdfConvertInputChange(e: Event) {
+    const input = e.target as HTMLInputElement
+    const file = input.files?.[0]
+    if (file) {
+      convertPdf(file)
+      input.value = ''
+    }
+  }
+
   function toggleQuestion(id: string) {
     const i = selectedQuestionIds.value.indexOf(id)
     if (i === -1) selectedQuestionIds.value = [...selectedQuestionIds.value, id]
@@ -310,6 +377,56 @@
           >
             Create form & assign to me
           </UButton>
+        </div>
+      </div>
+
+      <!-- PDF-to-Form conversion -->
+      <div
+        class="mt-8 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900"
+      >
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+          Convert from PDF
+        </h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Upload a PDF form to extract questions. The AI will detect radio, checkbox, grids, and text fields.
+        </p>
+        <div class="mt-4">
+          <input
+            ref="pdfConvertInputRef"
+            type="file"
+            accept=".pdf,application/pdf"
+            class="hidden"
+            @change="onPdfConvertInputChange"
+          />
+          <UButton
+            :loading="isConverting"
+            :disabled="isConverting"
+            @click="pdfConvertInputRef?.click()"
+          >
+            {{ isConverting ? 'Converting...' : 'Upload & Convert PDF' }}
+          </UButton>
+        </div>
+        <UAlert
+          v-if="pdfConvertError"
+          color="error"
+          variant="subtle"
+          :title="pdfConvertError"
+          class="mt-4"
+        />
+        <div
+          v-if="extractedQuestions.length"
+          class="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50"
+        >
+          <p class="mb-4 text-sm font-medium text-gray-700 dark:text-gray-300">
+            Review detected questions. Approve to add them to your form.
+          </p>
+          <PDFConverterReviewList
+            :questions="extractedQuestions"
+            :disabled="addingQuestion"
+            @approve="approveExtractedQuestion"
+            @reject="skipExtractedQuestion"
+            @approve-all="approveAllExtracted"
+          />
         </div>
       </div>
 
