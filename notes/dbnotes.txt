@@ -1,0 +1,64 @@
+Forms
+    form_id (PK)
+    form_name
+
+Questions
+    question_id (PK)
+    form_id (FK) — Links to Forms
+    question_text
+    question_type (Enum: Text, Multiple Choice, etc.)
+
+QuestionOptions (New table for 3NF)
+Why: For Multiple Choice/Dropdowns, you need a place to store the "choices." Storing them in an array in Questions violates 1NF.
+    option_id (PK)
+    question_id (FK)
+    option_text
+
+Responses
+    submission_id (PK) — Groups all answers from one form submission
+    patient_id (FK)
+    form_id (FK)
+    submitted_at (Timestamp)
+
+Answers
+    answer_id (PK)
+    submission_id (FK) — Links to the specific response event
+    question_id (FK)
+    answer_text — Used for 'Text' and 'Date' types
+    option_id (FK) — Optional: Links to QuestionOptions for 'Multiple Choice/Checkbox'
+
+Users
+    user_id (PK)
+    email
+    name
+    phone_number
+    role
+
+Staff
+    staff_id (PK/FK) — Points back to User_id
+    title
+
+Patient
+    patient_id (PK/FK) — Points back to User_id
+    start_date
+    end_date
+    status (waitlist, active, inactive)
+
+Note: I removed current_week_count because it is derived from start_date and violates 3NF.
+
+Session
+    session_id (PK) — Every table needs its own unique key
+    patient_id (FK)
+    staff_id (FK)
+    notes_id (FK)
+    attendance (Enum)
+    date_time
+    location (Enum: online/in-person)
+    is_recurring (Bool)
+    frequency
+
+Notes
+    notes_id (PK)
+    content
+    is_locked
+    signed_at
