@@ -44,6 +44,7 @@ model Question {
   text          String
   type          String // 'radio', 'text', 'checkbox', etc.
   alias         String         @unique // e.g. 'parent_insult', 'physical_harm'
+  options       String? // JSON array of option labels e.g. ["Yes","No"]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   formQuestions FormQuestion[]
