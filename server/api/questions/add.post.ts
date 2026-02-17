@@ -18,7 +18,21 @@ function generateAlias(text: string, existingAliases: string[]): string {
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-  const { text, type } = body as { text?: string; type?: string }
+  const {
+    text,
+    type,
+    hasOther,
+    options,
+    gridRows,
+    gridCols,
+  } = body as {
+    text?: string
+    type?: string
+    hasOther?: boolean
+    options?: string[]
+    gridRows?: string[]
+    gridCols?: string[]
+  }
 
   if (!text || typeof text !== 'string') {
     throw createError({ statusCode: 400, message: 'Question text is required' })
@@ -28,11 +42,20 @@ export default defineEventHandler(async (event) => {
   const existingAliases = existing.map((q) => q.alias)
   const alias = generateAlias(text, existingAliases)
 
+  const metadata: Record<string, unknown> = {}
+  if (hasOther === true) metadata.hasOther = true
+  if (Array.isArray(options) && options.length > 0) metadata.options = options
+  if (Array.isArray(gridRows) && gridRows.length > 0) metadata.gridRows = gridRows
+  if (Array.isArray(gridCols) && gridCols.length > 0) metadata.gridCols = gridCols
+  const metadataValue =
+    Object.keys(metadata).length > 0 ? metadata : undefined
+
   const question = await prisma.question.create({
     data: {
       text: text.trim(),
       type: type || 'radio',
       alias,
+      metadata: metadataValue,
     },
   })
 

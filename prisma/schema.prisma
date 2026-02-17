@@ -40,12 +40,13 @@ model Form {
 
 // Master list of all possible questions (reusable across forms)
 model Question {
-  id            String         @id @default(cuid())
-  text          String
-  type          String // 'radio', 'text', 'checkbox', etc.
-  alias         String         @unique // e.g. 'parent_insult', 'physical_harm'
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id        String         @id @default(cuid())
+  text      String
+  type      String // 'radio', 'radio_other', 'checkbox', 'checkbox_other', 'short_answer', 'long_paragraph', 'multiple_choice_grid', 'checkbox_grid'
+  alias     String         @unique // e.g. 'parent_insult', 'physical_harm'
+  metadata  Json?          // { options?, hasOther?, gridRows?, gridCols? }
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
   formQuestions FormQuestion[]
 
   @@map("question")
