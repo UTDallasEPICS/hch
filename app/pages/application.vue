@@ -35,9 +35,9 @@
       'q16',
       ['q17', 'q17Text'],
       ['q18', 'q18Other'],
-      ['q19', 'q19Text'],
     ],
     [
+      'q19',
       'q20',
       'q21',
       'q22',
@@ -46,7 +46,7 @@
       'q25',
       'q26',
       'q27',
-      ['q28', 'q28Text'],
+      'q28',
       'q29',
       'q30',
       'q31',
@@ -55,20 +55,20 @@
       'q34',
       'q35',
       'q36',
-      ['q37', 'q37Other'],
     ],
     [
-      ['q38', 'q38Text'],
-      ['q39', 'q39Text'],
+      ['q37', 'q37Other'],
+      'q38',
+      'q39',
       'q40',
       'q41',
       'q42',
-      ['q43', 'q43Text'],
+      'q43',
       'q44',
-      ['q45', 'q45Text'],
+      'q45',
       ['q46', 'q46Other'],
     ],
-    [['q47', 'q47Text'], ['q48', 'q48Text'], 'q49', ['q50', 'q50Text'], ['q51', 'q51Text']],
+    ['q47', 'q48', 'q49', 'q50', 'q51'],
   ]
 
   function hasAnswer(value: ApplicationFormState[FormQuestionKey]) {
@@ -124,35 +124,58 @@
     })
   })
 
+  async function persistProgress(showError = true) {
+    try {
+      const payload = toPayload()
+      await $fetch('/api/application/save', { method: 'POST', body: payload })
+      return true
+    } catch (error: any) {
+      if (showError) {
+        const description =
+          error?.data?.statusMessage ||
+          error?.statusMessage ||
+          'Your answers could not be saved. Please try again.'
+
+        toast.add({
+          title: 'Save failed',
+          description,
+          color: 'error',
+        })
+      }
+
+      return false
+    }
+  }
+
   async function saveAndExit() {
     try {
       isSaving.value = true
-      const payload = toPayload()
-      await $fetch('/api/application/save', { method: 'POST', body: payload })
-      await navigateTo('/taskPage')
-    } catch (error: any) {
-      const description =
-        error?.data?.statusMessage ||
-        error?.statusMessage ||
-        'Your answers could not be saved. Please try again.'
-
-      toast.add({
-        title: 'Save failed',
-        description,
-        color: 'error',
-      })
+      const saved = await persistProgress(true)
+      if (saved) {
+        await navigateTo('/taskPage')
+      }
     } finally {
       isSaving.value = false
     }
   }
 
-  function goNext() {
-    if (currentStep.value < TOTAL_STEPS) currentStep.value += 1
+  async function goNext() {
+    if (currentStep.value >= TOTAL_STEPS) return
+
+    await persistProgress(true)
+    currentStep.value += 1
   }
 
-  function goPrev() {
-    if (currentStep.value > 1) currentStep.value -= 1
+  async function goPrev() {
+    if (currentStep.value <= 1) return
+
+    await persistProgress(true)
+    currentStep.value -= 1
   }
+
+  onBeforeRouteLeave(async () => {
+    await persistProgress(false)
+  })
 
   onMounted(async () => {
     const response = await $fetch<{ answers?: AppAnswerPayload | null }>('/api/application/start', {

@@ -12,12 +12,94 @@
 
   const { form, first_name } = useFormStore()
 
+  const phoneNumber = computed({
+    get: () => form.value.q5,
+    set: (value: string) => {
+      form.value.q5 = value.replace(/\D+/g, '')
+    },
+  })
+
+  const legalMotherZipCode = computed({
+    get: () => form.value.q25,
+    set: (value: string) => {
+      form.value.q25 = value.replace(/\D+/g, '')
+    },
+  })
+
+  const legalFatherZipCode = computed({
+    get: () => form.value.q34,
+    set: (value: string) => {
+      form.value.q34 = value.replace(/\D+/g, '')
+    },
+  })
+
+  function blockNonNumericInput(event: KeyboardEvent) {
+    if (event.ctrlKey || event.metaKey || event.altKey) return
+
+    const allowedKeys = new Set([
+      'Backspace',
+      'Delete',
+      'Tab',
+      'Enter',
+      'Escape',
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowUp',
+      'ArrowDown',
+      'Home',
+      'End',
+    ])
+
+    if (allowedKeys.has(event.key)) return
+
+    if (!/^\d$/.test(event.key)) {
+      event.preventDefault()
+    }
+  }
+
+  watch(
+    () => form.value.q17,
+    (value) => {
+      if (value !== 'other') {
+        form.value.q17Text = ''
+      }
+    }
+  )
+
+  watch(
+    () => form.value.q18,
+    (values) => {
+      if (!values.includes('other')) {
+        form.value.q18Other = ''
+      }
+    },
+    { deep: true }
+  )
+
+  watch(
+    () => form.value.q37,
+    (value) => {
+      if (value !== 'Other') {
+        form.value.q37Other = ''
+      }
+    }
+  )
+
+  watch(
+    () => form.value.q46,
+    (value) => {
+      if (value !== 'other') {
+        form.value.q46Other = ''
+      }
+    }
+  )
+
   // PDF-exact multiple-choice options
   const GENDER_OPTIONS = [
-    { label: 'Male', value: 'male' },
-    { label: 'Female', value: 'female' },
-    { label: 'Prefer not to say', value: 'prefer_not_to_say' },
-    { label: 'Other', value: 'other' },
+    { label: 'Male', value: 'Male' },
+    { label: 'Female', value: 'Female' },
+    { label: 'Other', value: 'Other' },
+    { label: 'Prefer not to say', value: 'Prefer not to say' },
   ]
 
   const YES_NO_OPTIONS = [
@@ -42,9 +124,9 @@
 
   // Q37: Primary caregiver
   const CAREGIVER_OPTIONS = [
-    { label: 'Mom', value: 'mom' },
-    { label: 'Dad', value: 'dad' },
-    { label: 'Other', value: 'other' },
+    { label: 'Mom', value: 'Mom' },
+    { label: 'Dad', value: 'Dad' },
+    { label: 'Other', value: 'Other' },
   ]
 
   // Q38–39: Sibling trauma / separation
@@ -54,19 +136,16 @@
     { label: 'Not Applicable', value: 'not_applicable' },
   ]
 
-  // Q46: Hospice / passing away — Yes, No, Other
-  const HOSPICE_OPTIONS = [
-    { label: 'Yes', value: 'yes' },
-    { label: 'No', value: 'no' },
-    { label: 'Other', value: 'other' },
-  ]
-
   // Q48: Support Group — PDF grid/list options
   const SUPPORT_GROUP_OPTIONS = [
     { label: 'Parent', value: 'parent' },
-    { label: 'Adolescent (Diagnosed)', value: 'adolescent_diagnosed' },
-    { label: 'Adolescent (Sibling)', value: 'adolescent_sibling' },
+    {
+      label: 'Adolescent - Child Diagnosed with Cancer',
+      value: 'adolescent_child_diagnosed_with_cancer',
+    },
+    { label: 'Adolescent - Sibling', value: 'adolescent_sibling' },
     { label: 'Grandparent', value: 'grandparent' },
+    { label: 'Other', value: 'other' },
   ]
 
   // Q50: Therapy needs — exact PDF copy
@@ -75,9 +154,11 @@
     { label: 'I DO NOT have a therapist and would like a referral', value: 'need_referral' },
   ]
 
-  // Q51: Insurance — exact PDF copy
   const INSURANCE_OPTIONS = [
-    { label: 'Yes, I have insurance with mental health benefits', value: 'yes' },
+    {
+      label: 'Yes, I have insurance with mental health benefits.',
+      value: 'yes_with_mental_health_benefits',
+    },
     { label: 'No', value: 'no' },
   ]
 
@@ -107,17 +188,19 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">4. Phone number</label>
-        <UInput v-model="form.q5" type="tel" :class="inputClass" placeholder="(555) 000-0000" />
+        <UInput
+          v-model="phoneNumber"
+          type="text"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          :class="inputClass"
+          placeholder="Phone number"
+          @keydown="blockNonNumericInput"
+        />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">5. Gender</label>
-        <URadioGroup v-model="form.q6" :class="groupClass" :options="GENDER_OPTIONS" />
-        <UInput
-          v-model="form.q6Text"
-          :class="inputClass"
-          class="mt-2"
-          placeholder="Additional details (optional)"
-        />
+        <URadioGroup v-model="form.q6" :class="groupClass" :items="GENDER_OPTIONS" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">6. Date of Birth</label>
@@ -143,15 +226,15 @@
     <!-- Step 2: Child (Q9–19) -->
     <template v-else-if="step === 2">
       <div>
-        <label class="text-sm font-semibold text-gray-200">9. Child's First Name</label>
+        <label class="text-sm font-semibold text-gray-200">8. Child's First Name</label>
         <UInput v-model="form.q9" :class="inputClass" placeholder="Child's first name" />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">10. Child's Last Name</label>
+        <label class="text-sm font-semibold text-gray-200">9. Child's Last Name</label>
         <UInput v-model="form.q10" :class="inputClass" placeholder="Child's last name" />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">11. Child's Date of Birth</label>
+        <label class="text-sm font-semibold text-gray-200">10. Child's Date of Birth</label>
         <UInput
           v-model="form.q11"
           type="date"
@@ -159,17 +242,11 @@
         />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">12. Gender (Child)</label>
-        <URadioGroup v-model="form.q12" :class="groupClass" :options="GENDER_OPTIONS" />
-        <UInput
-          v-model="form.q12Text"
-          :class="inputClass"
-          class="mt-2"
-          placeholder="Additional details (optional)"
-        />
+        <label class="text-sm font-semibold text-gray-200">11. Gender (Child)</label>
+        <URadioGroup v-model="form.q12" :class="groupClass" :items="GENDER_OPTIONS" />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">13. Child's address</label>
+        <label class="text-sm font-semibold text-gray-200">12. Child's address</label>
         <UTextarea
           v-model="form.q13"
           :class="inputClass"
@@ -178,7 +255,7 @@
         />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">14. Medical Diagnosis</label>
+        <label class="text-sm font-semibold text-gray-200">13. Medical Diagnosis</label>
         <UInput
           v-model="form.q14"
           :class="inputClass"
@@ -186,7 +263,7 @@
         />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">15. Date of Medical Diagnosis</label>
+        <label class="text-sm font-semibold text-gray-200">14. Date of Medical Diagnosis</label>
         <UInput
           v-model="form.q15"
           type="date"
@@ -195,7 +272,7 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >16. Please list all members who live in the home (first name, last name, and age)</label
+          >15. Please list all members who live in the home (first name, last name, and age)</label
         >
         <UTextarea
           v-model="form.q16"
@@ -206,71 +283,75 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >17. Does child reside with both biological parents?</label
+          >16. Does child reside with both biological parents?</label
         >
-        <URadioGroup v-model="form.q17" :class="groupClass" :options="YES_NO_OTHER_OPTIONS" />
+        <URadioGroup v-model="form.q17" :class="groupClass" :items="YES_NO_OTHER_OPTIONS" />
         <UInput
+          v-if="form.q17 === 'other'"
           v-model="form.q17Text"
           :class="inputClass"
           class="mt-2"
-          placeholder="Additional details (optional)"
+          placeholder="(please specify)"
         />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">18. Who has custody of the child?</label>
-        <UCheckboxGroup v-model="form.q18" :class="groupClass" :options="CUSTODY_OPTIONS" />
+        <label class="text-sm font-semibold text-gray-200">17. Who has custody of the child?</label>
+        <UCheckboxGroup v-model="form.q18" :class="groupClass" :items="CUSTODY_OPTIONS" />
         <UInput
+          v-if="form.q18.includes('other')"
           v-model="form.q18Other"
           :class="inputClass"
           class="mt-2"
-          placeholder="Other (please specify)"
-        />
-      </div>
-      <div>
-        <label class="text-sm font-semibold text-gray-200">19. Are you the primary contact?</label>
-        <URadioGroup v-model="form.q19" :class="groupClass" :options="YES_NO_OPTIONS" />
-        <UInput
-          v-model="form.q19Text"
-          :class="inputClass"
-          class="mt-2"
-          placeholder="Additional details (optional)"
+          placeholder="(please specify)"
         />
       </div>
     </template>
 
-    <!-- Step 3: Guardian (Q20–37) -->
+    <!-- Step 3: Guardian (Q19–36) -->
     <template v-else-if="step === 3">
+      <div>
+        <label class="text-sm font-semibold text-gray-200">18. Are you the primary contact?</label>
+        <URadioGroup v-model="form.q19" :class="groupClass" :items="YES_NO_OPTIONS" />
+      </div>
       <h3 class="mb-2 border-b border-gray-600 pb-2 text-base font-semibold text-gray-100">
         Legal Mother
       </h3>
       <div>
-        <label class="text-sm font-semibold text-gray-200">20. Legal Mother's First Name</label
+        <label class="text-sm font-semibold text-gray-200">19. Legal Mother's First Name</label
         ><UInput v-model="form.q20" :class="inputClass" placeholder="First name" />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">21. Legal Mother's Last Name</label
+        <label class="text-sm font-semibold text-gray-200">20. Legal Mother's Last Name</label
         ><UInput v-model="form.q21" :class="inputClass" placeholder="Last name" />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">22. Legal Mother's Street Address</label
+        <label class="text-sm font-semibold text-gray-200">21. Legal Mother's Street Address</label
         ><UInput v-model="form.q22" :class="inputClass" placeholder="Street address" />
       </div>
       <div class="grid gap-4 sm:grid-cols-3">
         <div>
-          <label class="text-sm font-semibold text-gray-200">23. City</label
+          <label class="text-sm font-semibold text-gray-200">22. City</label
           ><UInput v-model="form.q23" :class="inputClass" placeholder="City" />
         </div>
         <div>
-          <label class="text-sm font-semibold text-gray-200">24. State</label
+          <label class="text-sm font-semibold text-gray-200">23. State</label
           ><UInput v-model="form.q24" :class="inputClass" placeholder="State" />
         </div>
         <div>
-          <label class="text-sm font-semibold text-gray-200">25. Zip Code</label
-          ><UInput v-model="form.q25" :class="inputClass" placeholder="Zip code" />
+          <label class="text-sm font-semibold text-gray-200">24. Zip Code</label
+          ><UInput
+            v-model="legalMotherZipCode"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            :class="inputClass"
+            placeholder="Zip code"
+            @keydown="blockNonNumericInput"
+          />
         </div>
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">26. Legal Mother's Email</label
+        <label class="text-sm font-semibold text-gray-200">25. Legal Mother's Email</label
         ><UInput
           v-model="form.q26"
           type="email"
@@ -279,52 +360,54 @@
         />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">27. Occupation</label
+        <label class="text-sm font-semibold text-gray-200">26. Occupation</label
         ><UInput v-model="form.q27" :class="inputClass" placeholder="Occupation" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >28. Is Legal Mother primary contact?</label
+          >27. Is Legal Mother primary contact?</label
         >
-        <URadioGroup v-model="form.q28" :class="groupClass" :options="YES_NO_OPTIONS" />
-        <UInput
-          v-model="form.q28Text"
-          :class="inputClass"
-          class="mt-2"
-          placeholder="Additional details (optional)"
-        />
+        <URadioGroup v-model="form.q28" :class="groupClass" :items="YES_NO_OPTIONS" />
       </div>
       <h3 class="mt-6 mb-2 border-b border-gray-600 pb-2 text-base font-semibold text-gray-100">
         Legal Father
       </h3>
       <div>
-        <label class="text-sm font-semibold text-gray-200">29. Legal Father's First Name</label
+        <label class="text-sm font-semibold text-gray-200">28. Legal Father's First Name</label
         ><UInput v-model="form.q29" :class="inputClass" placeholder="First name" />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">30. Legal Father's Last Name</label
+        <label class="text-sm font-semibold text-gray-200">29. Legal Father's Last Name</label
         ><UInput v-model="form.q30" :class="inputClass" placeholder="Last name" />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">31. Legal Father's Street Address</label
+        <label class="text-sm font-semibold text-gray-200">30. Legal Father's Street Address</label
         ><UInput v-model="form.q31" :class="inputClass" placeholder="Street address" />
       </div>
       <div class="grid gap-4 sm:grid-cols-3">
         <div>
-          <label class="text-sm font-semibold text-gray-200">32. City</label
+          <label class="text-sm font-semibold text-gray-200">31. City</label
           ><UInput v-model="form.q32" :class="inputClass" placeholder="City" />
         </div>
         <div>
-          <label class="text-sm font-semibold text-gray-200">33. State</label
+          <label class="text-sm font-semibold text-gray-200">32. State</label
           ><UInput v-model="form.q33" :class="inputClass" placeholder="State" />
         </div>
         <div>
-          <label class="text-sm font-semibold text-gray-200">34. Zip Code</label
-          ><UInput v-model="form.q34" :class="inputClass" placeholder="Zip code" />
+          <label class="text-sm font-semibold text-gray-200">33. Zip Code</label
+          ><UInput
+            v-model="legalFatherZipCode"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            :class="inputClass"
+            placeholder="Zip code"
+            @keydown="blockNonNumericInput"
+          />
         </div>
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">35. Legal Father's Email</label
+        <label class="text-sm font-semibold text-gray-200">34. Legal Father's Email</label
         ><UInput
           v-model="form.q35"
           type="email"
@@ -333,152 +416,104 @@
         />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">36. Occupation</label
+        <label class="text-sm font-semibold text-gray-200">35. Occupation</label
         ><UInput v-model="form.q36" :class="inputClass" placeholder="Occupation" />
-      </div>
-      <div>
-        <label class="text-sm font-semibold text-gray-200">37. Who is the primary caregiver?</label>
-        <URadioGroup v-model="form.q37" :class="groupClass" :options="CAREGIVER_OPTIONS" />
-        <UInput
-          v-model="form.q37Other"
-          :class="inputClass"
-          class="mt-2"
-          placeholder="Other (please specify)"
-        />
       </div>
     </template>
 
-    <!-- Step 4: Treatment (Q38–46) -->
+    <!-- Step 4: Treatment (Q36–45) -->
     <template v-else-if="step === 4">
       <div>
+        <label class="text-sm font-semibold text-gray-200">36. Who is the primary caregiver?</label>
+        <URadioGroup v-model="form.q37" :class="groupClass" :items="CAREGIVER_OPTIONS" />
+        <UInput
+          v-if="form.q37 === 'Other'"
+          v-model="form.q37Other"
+          :class="inputClass"
+          class="mt-2"
+          placeholder="(please specify)"
+        />
+      </div>
+      <div>
         <label class="text-sm font-semibold text-gray-200"
-          >38. If child has/had siblings, did any witness a scary or traumatic event (e.g. seizures,
+          >37. If child has/had siblings, did any witness a scary or traumatic event (e.g. seizures,
           unresponsiveness, death or other medical emergencies)?</label
         >
-        <URadioGroup v-model="form.q38" :class="groupClass" :options="SIBLING_OPTIONS" />
-        <UInput
-          v-model="form.q38Text"
-          :class="inputClass"
-          class="mt-2"
-          placeholder="Additional details (optional)"
-        />
+        <URadioGroup v-model="form.q38" :class="groupClass" :items="SIBLING_OPTIONS" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >39. Were siblings separated for a prolonged period from a parent and their sibling with
+          >38. Were siblings separated for a prolonged period from a parent and their sibling with
           cancer?</label
         >
-        <URadioGroup v-model="form.q39" :class="groupClass" :options="SIBLING_OPTIONS" />
-        <UInput
-          v-model="form.q39Text"
-          :class="inputClass"
-          class="mt-2"
-          placeholder="Additional details (optional)"
-        />
+        <URadioGroup v-model="form.q39" :class="groupClass" :items="SIBLING_OPTIONS" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >40. Who was responsible for medical decisions?</label
+          >39. Who was responsible for medical decisions?</label
         >
         <UInput v-model="form.q40" :class="inputClass" placeholder="Name or relationship" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >41. Who was primarily at the hospital during treatment?</label
+          >40. Who was primarily at the hospital during treatment?</label
         >
         <UInput v-model="form.q41" :class="inputClass" placeholder="Name or relationship" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >42. How long was the child in treatment?</label
+          >41. How long was the child in treatment?</label
         >
         <UInput v-model="form.q42" :class="inputClass" placeholder="e.g. 6 months, 1 year" />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">43. Were there any ICU visits?</label>
-        <URadioGroup v-model="form.q43" :class="groupClass" :options="YES_NO_OPTIONS" />
-        <UInput
-          v-model="form.q43Text"
-          :class="inputClass"
-          class="mt-2"
-          placeholder="Additional details (optional)"
-        />
+        <label class="text-sm font-semibold text-gray-200">42. Were there any ICU visits?</label>
+        <URadioGroup v-model="form.q43" :class="groupClass" :items="YES_NO_OPTIONS" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >44. Were there any extended hospital admissions? If so, how long?</label
+          >43. Were there any extended hospital admissions? If so, how long?</label
         >
         <UInput v-model="form.q44" :class="inputClass" placeholder="e.g. 2 weeks, 1 month" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >45. Did the child have a relapse or secondary cancer?</label
+          >44. Did the child have a relapse or secondary cancer?</label
         >
-        <URadioGroup v-model="form.q45" :class="groupClass" :options="YES_NO_OPTIONS" />
-        <UInput
-          v-model="form.q45Text"
-          :class="inputClass"
-          class="mt-2"
-          placeholder="Additional details (optional)"
-        />
+        <URadioGroup v-model="form.q45" :class="groupClass" :items="YES_NO_OPTIONS" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >46. Did the child with cancer require hospice care and/or pass away?</label
+          >45. Did the child with cancer require hospice care and/or pass away?</label
         >
-        <URadioGroup v-model="form.q46" :class="groupClass" :options="HOSPICE_OPTIONS" />
+        <URadioGroup v-model="form.q46" :class="groupClass" :items="YES_NO_OTHER_OPTIONS" />
         <UInput
+          v-if="form.q46 === 'other'"
           v-model="form.q46Other"
           :class="inputClass"
           class="mt-2"
-          placeholder="Other (please specify)"
+          placeholder="(please specify)"
         />
       </div>
     </template>
 
-    <!-- Step 5: Therapy (Q47–51) -->
+    <!-- Step 5: Therapy (Q46–50) -->
     <template v-else-if="step === 5">
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >47. Are you applying for the Individual Therapy Scholarship?</label
+          >46. Are you applying for the Individual Therapy Scholarship?</label
         >
-        <URadioGroup v-model="form.q47" :class="groupClass" :options="YES_NO_OPTIONS" />
-        <UInput
-          v-model="form.q47Text"
-          :class="inputClass"
-          class="mt-2"
-          placeholder="Additional details (optional)"
-        />
+        <URadioGroup v-model="form.q47" :class="groupClass" :items="YES_NO_OPTIONS" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >48. Would you like to join a Support Group waitlist? If so, please select one.</label
+          >47. Would you like to join a Support Group waitlist? If so, please select all that apply:</label
         >
-        <div class="mt-2 grid gap-3 sm:grid-cols-2">
-          <label
-            v-for="opt in SUPPORT_GROUP_OPTIONS"
-            :key="opt.value"
-            class="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white p-3 text-gray-900 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700/80"
-          >
-            <input
-              v-model="form.q48"
-              type="radio"
-              :value="opt.value"
-              class="text-primary-500 focus:ring-primary-500 h-4 w-4 border-gray-400 dark:border-gray-500"
-            />
-            <span class="text-sm">{{ opt.label }}</span>
-          </label>
-        </div>
-        <UInput
-          v-model="form.q48Text"
-          :class="inputClass"
-          class="mt-2"
-          placeholder="Additional details (optional)"
-        />
+        <UCheckboxGroup v-model="form.q48" :class="groupClass" :items="SUPPORT_GROUP_OPTIONS" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >49. If seeking scholarship for individual therapy, who are you seeking therapy
+          >48. If seeking scholarship for individual therapy, who are you seeking therapy
           scholarship for?</label
         >
         <UInput
@@ -489,28 +524,16 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >50. If seeking scholarship for individual therapy, do you have a therapist or need a
+          >49. If seeking scholarship for individual therapy, do you have a therapist or need a
           referral?</label
         >
-        <URadioGroup v-model="form.q50" :class="groupClass" :options="REFERRAL_OPTIONS" />
-        <UInput
-          v-model="form.q50Text"
-          :class="inputClass"
-          class="mt-2"
-          placeholder="Additional details (optional)"
-        />
+        <URadioGroup v-model="form.q50" :class="groupClass" :items="REFERRAL_OPTIONS" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >51. Do you currently have medical insurance that provides mental health coverage?</label
+          >50. Do you currently have medical insurance that provides mental health coverage?</label
         >
-        <URadioGroup v-model="form.q51" :class="groupClass" :options="INSURANCE_OPTIONS" />
-        <UInput
-          v-model="form.q51Text"
-          :class="inputClass"
-          class="mt-2"
-          placeholder="Additional details (optional)"
-        />
+        <URadioGroup v-model="form.q51" :class="groupClass" :items="INSURANCE_OPTIONS" />
       </div>
     </template>
   </div>

@@ -6,33 +6,29 @@
 
 const TOTAL_PAYLOAD_QUESTIONS = 50
 
-function toFormQuestionNumber(payloadQuestionNumber: number) {
-  if (payloadQuestionNumber <= 3) return payloadQuestionNumber
-  return payloadQuestionNumber + 1
+function toFormQuestionNumber(payloadQuestionNumber: number): number | null {
+  if (payloadQuestionNumber >= 4 && payloadQuestionNumber <= 49) {
+    return payloadQuestionNumber + 1
+  }
+
+  if (payloadQuestionNumber === 50) {
+    return 51
+  }
+
+  return payloadQuestionNumber
 }
 
 const QUESTION_DETAIL_FIELDS: Record<number, string> = {
-  6: 'q6Text',
-  12: 'q12Text',
   17: 'q17Text',
-  19: 'q19Text',
-  28: 'q28Text',
   37: 'q37Other',
-  38: 'q38Text',
-  39: 'q39Text',
-  43: 'q43Text',
-  45: 'q45Text',
   46: 'q46Other',
-  47: 'q47Text',
-  48: 'q48Text',
-  50: 'q50Text',
-  51: 'q51Text',
 }
 
 export interface ApplicationFormState {
   q1: string
   q2: string
   q3: string
+  q4: string
   q5: string
   q6: string
   q6Text: string
@@ -89,13 +85,11 @@ export interface ApplicationFormState {
   q46Other: string
   q47: string
   q47Text: string
-  q48: string
-  q48Text: string
+  q48: string[]
   q49: string
   q50: string
   q50Text: string
   q51: string
-  q51Text: string
 }
 
 function createInitialState(): ApplicationFormState {
@@ -103,6 +97,7 @@ function createInitialState(): ApplicationFormState {
     q1: '',
     q2: '',
     q3: '',
+    q4: '',
     q5: '',
     q6: '',
     q6Text: '',
@@ -159,13 +154,11 @@ function createInitialState(): ApplicationFormState {
     q46Other: '',
     q47: '',
     q47Text: '',
-    q48: '',
-    q48Text: '',
+    q48: [],
     q49: '',
     q50: '',
     q50Text: '',
     q51: '',
-    q51Text: '',
   }
 }
 
@@ -188,16 +181,40 @@ export function useFormStore() {
 
   /**
    * Build API payload q1–q50 from current state.
-   * Backend stores q01–q50; internal form keys map after removed q4.
+   * Backend stores q01–q50.
+    * Legacy internal keys are offset by +1 from q4 onward (q5 -> payload q4, ..., q50 -> payload q49).
    */
   function toPayload(): Record<string, string> {
     const payload: Record<string, string> = {}
     for (let payloadIndex = 1; payloadIndex <= TOTAL_PAYLOAD_QUESTIONS; payloadIndex += 1) {
       const formIndex = toFormQuestionNumber(payloadIndex)
-      if (formIndex === 18) {
-        payload[`q${payloadIndex}`] = JSON.stringify(form.value.q18 ?? [])
+
+      if (formIndex === null) {
+        payload[`q${payloadIndex}`] = ''
         continue
       }
+
+      if (formIndex === 18) {
+        const selections = form.value.q18 ?? []
+        const other = form.value.q18Other ?? ''
+
+        if (selections.length === 0 && other.trim() === '') {
+          payload[`q${payloadIndex}`] = ''
+        } else {
+          payload[`q${payloadIndex}`] = JSON.stringify({
+            values: selections,
+            other,
+          })
+        }
+        continue
+      }
+
+      if (formIndex === 48) {
+        const selections = form.value.q48 ?? []
+        payload[`q${payloadIndex}`] = JSON.stringify(Array.isArray(selections) ? selections : [])
+        continue
+      }
+
       const detailKey = QUESTION_DETAIL_FIELDS[formIndex as keyof typeof QUESTION_DETAIL_FIELDS]
       if (detailKey) {
         const mainKey = `q${formIndex}` as keyof ApplicationFormState
@@ -213,7 +230,11 @@ export function useFormStore() {
         continue
       }
       const value = form.value[`q${formIndex}` as keyof ApplicationFormState]
-      payload[`q${payloadIndex}`] = typeof value === 'string' ? value : ''
+      if (formIndex === 5 || formIndex === 25 || formIndex === 34) {
+        payload[`q${payloadIndex}`] = typeof value === 'string' ? value.replace(/\D+/g, '') : ''
+      } else {
+        payload[`q${payloadIndex}`] = typeof value === 'string' ? value : ''
+      }
     }
     return payload
   }
@@ -225,21 +246,59 @@ export function useFormStore() {
   function applySavedAnswers(answers?: AppAnswerPayload | null) {
     Object.assign(form.value, createInitialState())
     if (!answers) return
+    const mutable = form.value as unknown as Record<string, string | string[]>
     for (let payloadIndex = 1; payloadIndex <= TOTAL_PAYLOAD_QUESTIONS; payloadIndex += 1) {
       const key = `q${String(payloadIndex).padStart(2, '0')}`
       const value = answers[key]
       const formIndex = toFormQuestionNumber(payloadIndex)
 
+      if (formIndex === null) {
+        continue
+      }
+
       if (formIndex === 18) {
         if (typeof value === 'string' && value.length > 0) {
           try {
             const parsed = JSON.parse(value)
-            form.value.q18 = Array.isArray(parsed) ? parsed : []
+
+            if (Array.isArray(parsed)) {
+              form.value.q18 = parsed
+              form.value.q18Other = ''
+            } else if (parsed && typeof parsed === 'object') {
+              const values = Array.isArray((parsed as { values?: unknown }).values)
+                ? ((parsed as { values: string[] }).values ?? [])
+                : []
+              const other = typeof (parsed as { other?: unknown }).other === 'string'
+                ? ((parsed as { other: string }).other ?? '')
+                : ''
+
+              form.value.q18 = values
+              form.value.q18Other = other
+            } else {
+              form.value.q18 = []
+              form.value.q18Other = ''
+            }
           } catch {
             form.value.q18 = []
+            form.value.q18Other = ''
           }
         } else {
           form.value.q18 = []
+          form.value.q18Other = ''
+        }
+        continue
+      }
+
+      if (formIndex === 48) {
+        if (typeof value === 'string' && value.length > 0) {
+          try {
+            const parsed = JSON.parse(value)
+            form.value.q48 = Array.isArray(parsed) ? parsed : []
+          } catch {
+            form.value.q48 = []
+          }
+        } else {
+          form.value.q48 = []
         }
         continue
       }
@@ -249,24 +308,20 @@ export function useFormStore() {
         if (typeof value === 'string' && value.length > 0) {
           try {
             const parsed = JSON.parse(value) as { value?: string; text?: string }
-            form.value[mainKey] = (parsed.value ??
-              '') as ApplicationFormState[keyof ApplicationFormState]
-            form.value[detailKey as keyof ApplicationFormState] = (parsed.text ??
-              '') as ApplicationFormState[keyof ApplicationFormState]
+            mutable[String(mainKey)] = parsed.value ?? ''
+            mutable[String(detailKey)] = parsed.text ?? ''
           } catch {
-            form.value[mainKey] = (value ?? '') as ApplicationFormState[keyof ApplicationFormState]
-            form.value[detailKey as keyof ApplicationFormState] =
-              '' as ApplicationFormState[keyof ApplicationFormState]
+            mutable[String(mainKey)] = value ?? ''
+            mutable[String(detailKey)] = ''
           }
         } else {
-          form.value[mainKey] = '' as ApplicationFormState[keyof ApplicationFormState]
-          form.value[detailKey as keyof ApplicationFormState] =
-            '' as ApplicationFormState[keyof ApplicationFormState]
+          mutable[String(mainKey)] = ''
+          mutable[String(detailKey)] = ''
         }
         continue
       }
       const formKey = `q${formIndex}` as keyof ApplicationFormState
-      form.value[formKey] = (value ?? '') as ApplicationFormState[keyof ApplicationFormState]
+      mutable[String(formKey)] = value ?? ''
     }
   }
 
