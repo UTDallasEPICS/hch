@@ -60,6 +60,7 @@ async function uploadFile() {
       originalName: res.originalName,
       mimeType: res.mimeType,
       sourceUrl: res.sourceUrl,
+      status: 'review',
       fields: res.fields,
     }))
     router.push(`/admin/convert/${res.documentId}`)
@@ -92,6 +93,7 @@ async function uploadGdoc() {
       originalName: res.originalName,
       mimeType: res.mimeType,
       sourceUrl: res.sourceUrl,
+      status: 'review',
       fields: res.fields,
     }))
     router.push(`/admin/convert/${res.documentId}`)

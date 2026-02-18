@@ -1,37 +1,33 @@
 import { createReadStream, existsSync } from 'node:fs'
-import { prisma } from '../../../utils/prisma'
+import { resolve, join } from 'node:path'
+
+const UPLOADS_DIR = resolve(process.cwd(), 'server', 'uploads')
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
   if (!id) throw createError({ statusCode: 400, message: 'Missing document id.' })
 
-  const doc = await prisma.documentUpload.findUnique({
-    where: { id },
-    select: { storagePath: true, mimeType: true, originalName: true },
-  })
+  // Try PDF first, then DOCX
+  const pdfPath  = join(UPLOADS_DIR, `${id}.pdf`)
+  const docxPath = join(UPLOADS_DIR, `${id}.docx`)
 
-  if (!doc) throw createError({ statusCode: 404, message: 'Document not found.' })
-
-  if (doc.mimeType === 'application/vnd.google-apps.document') {
-    throw createError({ statusCode: 404, message: 'No local file for Google Doc sources.' })
-  }
-
-  if (!doc.storagePath || !existsSync(doc.storagePath)) {
-    throw createError({
-      statusCode: 404,
-      message: 'File not found on disk. It may have been uploaded before file-saving was enabled.',
+  if (existsSync(pdfPath)) {
+    setResponseHeaders(event, {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="${id}.pdf"`,
+      'Cache-Control': 'private, max-age=3600',
     })
+    return sendStream(event, createReadStream(pdfPath))
   }
 
-  const contentType = doc.mimeType.includes('pdf')
-    ? 'application/pdf'
-    : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  if (existsSync(docxPath)) {
+    setResponseHeaders(event, {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'Content-Disposition': `inline; filename="${id}.docx"`,
+      'Cache-Control': 'private, max-age=3600',
+    })
+    return sendStream(event, createReadStream(docxPath))
+  }
 
-  setResponseHeaders(event, {
-    'Content-Type': contentType,
-    'Content-Disposition': `inline; filename="${doc.originalName}"`,
-    'Cache-Control': 'private, max-age=3600',
-  })
-
-  return sendStream(event, createReadStream(doc.storagePath))
+  throw createError({ statusCode: 404, message: 'File not found on disk.' })
 })

@@ -18,9 +18,6 @@ interface SaveBody {
 }
 
 export default defineEventHandler(async (event) => {
-  const id = getRouterParam(event, 'id')
-  if (!id) throw createError({ statusCode: 400, message: 'Missing document id.' })
-
   const body = await readBody<SaveBody>(event)
   if (!body?.title || !body?.slug) {
     throw createError({ statusCode: 400, message: '`title` and `slug` are required.' })
@@ -30,12 +27,6 @@ export default defineEventHandler(async (event) => {
   }
 
   const slug = body.slug.trim().toLowerCase().replace(/\s+/g, '-')
-
-  const doc = await prisma.documentUpload.findUnique({ where: { id } })
-  if (!doc) throw createError({ statusCode: 404, message: 'Document not found.' })
-  if (doc.status === 'saved') {
-    throw createError({ statusCode: 409, message: 'This document has already been saved as a form.' })
-  }
 
   const activeFields = body.fields.filter((f) => !f.isDeleted && f.label.trim())
 
@@ -66,14 +57,6 @@ export default defineEventHandler(async (event) => {
         })),
       },
     },
-    include: {
-      formQuestions: { orderBy: { order: 'asc' }, include: { question: true } },
-    },
-  })
-
-  await prisma.documentUpload.update({
-    where: { id },
-    data: { status: 'saved', savedFormId: form.id },
   })
 
   return { formId: form.id, slug: form.slug }

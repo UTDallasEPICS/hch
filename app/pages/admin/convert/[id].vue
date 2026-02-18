@@ -14,19 +14,11 @@ interface ExtractedField {
   isDeleted: boolean
 }
 
-interface DocumentMeta {
-  id: string
-  originalName: string
-  mimeType: string
-  sourceUrl: string | null
-  status: string
-  errorMessage: string | null
-}
-
 interface LocalSession {
   originalName: string
   mimeType: string
   sourceUrl: string | null
+  status: 'review' | 'saved'
   fields: ExtractedField[]
 }
 
@@ -35,12 +27,10 @@ interface LocalSession {
 const route = useRoute()
 const router = useRouter()
 const id = route.params.id as string
-
-const { data: doc, error: fetchError } = await useFetch<DocumentMeta>(`/api/convert/${id}`)
-
-// Load fields from localStorage (set during upload)
 const storageKey = `convert:${id}`
+
 const sessionMissing = ref(false)
+const session = ref<LocalSession | null>(null)
 const fields = ref<ExtractedField[]>([])
 
 onMounted(() => {
@@ -50,8 +40,9 @@ onMounted(() => {
     return
   }
   try {
-    const session = JSON.parse(raw) as LocalSession
-    fields.value = session.fields.map((f) => ({ ...f }))
+    const parsed = JSON.parse(raw) as LocalSession
+    session.value = parsed
+    fields.value = parsed.fields.map((f) => ({ ...f }))
   } catch {
     sessionMissing.value = true
   }
@@ -73,8 +64,8 @@ let autosaveTimer: ReturnType<typeof setTimeout> | null = null
 
 // ── Derived helpers ────────────────────────────────────────────────────────
 
-const isPdf = computed(() => doc.value?.mimeType === 'application/pdf')
-const isGdoc = computed(() => doc.value?.mimeType === 'application/vnd.google-apps.document')
+const isPdf = computed(() => session.value?.mimeType === 'application/pdf')
+const isGdoc = computed(() => session.value?.mimeType === 'application/vnd.google-apps.document')
 const activeFields = computed(() => fields.value.filter((f) => !f.isDeleted))
 const lowConfidenceCount = computed(() => activeFields.value.filter((f) => f.confidence === 'low').length)
 const emptyLabelCount = computed(() => activeFields.value.filter((f) => !f.label.trim()).length)
@@ -140,7 +131,7 @@ function restoreField(field: ExtractedField) {
 // ── Save as Form ──────────────────────────────────────────────────────────
 
 function openSaveModal() {
-  formTitle.value = doc.value?.originalName.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ') ?? ''
+  formTitle.value = session.value?.originalName.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ') ?? ''
   formSlug.value = formTitle.value.toLowerCase().replace(/\s+/g, '-')
   formDescription.value = ''
   saveError.value = ''
@@ -176,8 +167,11 @@ async function saveAsForm() {
         })),
       },
     })
-    // Clean up localStorage now that the form is saved in the backend
-    localStorage.removeItem(storageKey)
+    // Mark as saved in localStorage so the button disables on revisit
+    if (session.value) {
+      session.value.status = 'saved'
+      localStorage.setItem(storageKey, JSON.stringify(session.value))
+    }
     showSaveModal.value = false
     router.push(`/forms/${res.slug}`)
   } catch (e: unknown) {
@@ -200,12 +194,8 @@ const typeIcons: Record<string, string> = {
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
 
-    <!-- Loading / error states -->
-    <div v-if="fetchError" class="flex items-center justify-center min-h-screen">
-      <p class="text-red-600 dark:text-red-400">Failed to load document: {{ fetchError.message }}</p>
-    </div>
-
-    <div v-else-if="sessionMissing" class="flex flex-col items-center justify-center min-h-screen gap-4 text-center px-6">
+    <!-- Session missing -->
+    <div v-if="sessionMissing" class="flex flex-col items-center justify-center min-h-screen gap-4 text-center px-6">
       <UIcon name="i-lucide-file-x" class="h-12 w-12 text-gray-400 dark:text-gray-500" />
       <p class="text-gray-700 dark:text-gray-300 font-medium">Session data not found</p>
       <p class="text-sm text-gray-500 dark:text-gray-400">The extracted fields are only stored in your browser. Please re-upload the document to continue.</p>
@@ -214,7 +204,8 @@ const typeIcons: Record<string, string> = {
       </NuxtLink>
     </div>
 
-    <div v-else-if="!doc" class="flex items-center justify-center min-h-screen">
+    <!-- Loading (waiting for onMounted) -->
+    <div v-else-if="!session" class="flex items-center justify-center min-h-screen">
       <UIcon name="i-lucide-loader-2" class="animate-spin h-8 w-8 text-primary-500" />
     </div>
 
@@ -227,7 +218,7 @@ const typeIcons: Record<string, string> = {
             <UIcon name="i-lucide-arrow-left" class="h-5 w-5" />
           </NuxtLink>
           <div class="min-w-0">
-            <h1 class="text-base font-semibold text-gray-900 dark:text-white truncate">{{ doc.originalName }}</h1>
+            <h1 class="text-base font-semibold text-gray-900 dark:text-white truncate">{{ session.originalName }}</h1>
             <p class="text-xs text-gray-400 dark:text-gray-500">
               {{ activeFields.length }} fields
               <span v-if="lowConfidenceCount > 0" class="text-amber-600 dark:text-amber-400 ml-2">
@@ -251,10 +242,10 @@ const typeIcons: Record<string, string> = {
           <UButton
             size="sm"
             icon="i-lucide-save"
-            :disabled="doc.status === 'saved'"
+            :disabled="session.status === 'saved'"
             @click="openSaveModal"
           >
-            {{ doc.status === 'saved' ? 'Already Saved' : 'Save as Form' }}
+            {{ session.status === 'saved' ? 'Already Saved' : 'Save as Form' }}
           </UButton>
         </div>
       </header>
@@ -279,8 +270,8 @@ const typeIcons: Record<string, string> = {
 
             <!-- Google Doc: iframe to the doc URL -->
             <iframe
-              v-else-if="isGdoc && doc.sourceUrl"
-              :src="`${doc.sourceUrl}?embedded=true`"
+              v-else-if="isGdoc && session.sourceUrl"
+              :src="`${session.sourceUrl}?embedded=true`"
               class="w-full min-h-[70vh] rounded-lg border border-gray-200 dark:border-gray-700"
             />
 
