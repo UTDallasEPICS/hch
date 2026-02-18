@@ -1,21 +1,3 @@
-"""
-Google Docs Adapter
---------------------
-Strategy:
-  Uses the Google Docs REST API (read-only scope) to retrieve a document's
-  `body.content` (structuralElements). Each structural element is either:
-    - a Paragraph  → inspect for label-like text (colon/question-mark endings,
-                     short phrases) and for HORIZONTAL_RULE inline objects.
-    - a Table      → treat first-column cells as labels, second-column as input.
-
-  No file is downloaded; only the document ID (from the URL) is required,
-  and the service account / OAuth credentials must be in GOOGLE_CREDS_PATH.
-
-Environment variables required:
-  GOOGLE_CREDS_PATH  path to a service-account JSON key file
-                     (or leave unset to use Application Default Credentials)
-"""
-
 from __future__ import annotations
 
 import os
@@ -79,7 +61,6 @@ def _process_table_element(
         cells = row.get("tableCells", [])
         if len(cells) < 2:
             continue
-        # First cell → label; second cell → answer area
         label_parts: list[str] = []
         for content in cells[0].get("content", []):
             para = content.get("paragraph")
@@ -116,10 +97,6 @@ def _process_table_element(
 
 
 def extract(doc_id: str) -> ExtractionResult:
-    """
-    doc_id: the ID portion of a Google Docs URL
-            https://docs.google.com/document/d/<DOC_ID>/edit
-    """
     service = _build_service()
     doc = service.documents().get(documentId=doc_id).execute()
     source_name = doc.get("title", doc_id)
@@ -133,7 +110,6 @@ def extract(doc_id: str) -> ExtractionResult:
             para = element["paragraph"]
             text = _paragraph_text(para)
 
-            # Detect HORIZONTAL_RULE inline objects — indicates an input line
             has_rule = any(
                 "horizontalRule" in pe
                 for pe in para.get("elements", [])
@@ -142,7 +118,6 @@ def extract(doc_id: str) -> ExtractionResult:
             if not _is_label(text) or not text:
                 continue
 
-            # Check the next element: blank paragraph means there's space to fill in
             next_elem = content[elem_idx + 1] if elem_idx + 1 < len(content) else {}
             next_text = ""
             if "paragraph" in next_elem:
@@ -154,7 +129,6 @@ def extract(doc_id: str) -> ExtractionResult:
                 else Confidence.low
             )
 
-            # Detect bullet list → accumulate into radio (simplified: single-pass)
             style = para.get("paragraphStyle", {}).get("namedStyleType", "")
             field_type = _infer_type(text)
             if "LIST" in style.upper():
