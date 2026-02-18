@@ -106,7 +106,7 @@ Login requires an email address that already exists in the database.
 
 ## Document → Form Converter
 
-The converter lets an admin upload a **PDF**, **Word (.docx)**, or **Google Doc** and turn it into a live form inside the app — without any generative AI. Everything runs through deterministic extraction rules.
+The converter lets an admin upload a **PDF**, **Word (.docx)**, or **Google Doc** and turn it into a live form inside the app — without any generative AI. Everything runs through extraction rules.
 
 ---
 
@@ -160,6 +160,7 @@ The Nuxt server calls the Python service via `EXTRACT_SERVICE_URL` (defaults to 
 Navigate to **`/admin/convert`**. You must be logged in.
 
 #### PDF or Word (.docx)
+
 1. Click the **PDF / Word** tab.
 2. Drag and drop a file (or click to browse). Supported: `.pdf`, `.docx`, up to 20 MB.
 3. Click **Extract Form Fields**.
@@ -167,6 +168,7 @@ Navigate to **`/admin/convert`**. You must be logged in.
 The file is saved to `server/uploads/<documentId>.pdf` (or `.docx`) so it can be previewed later.
 
 #### Google Doc
+
 1. Click the **Google Doc** tab.
 2. Paste the full Google Docs URL or just the document ID.
 3. Click **Fetch & Extract**.
@@ -183,26 +185,27 @@ The Python service (`backend/`) uses **deterministic rules only** — no AI.
 
 Two passes run on every page:
 
-| Pass | Strategy | Confidence |
-|------|-----------|------------|
-| **Pass 1** — Line proximity | Finds text clusters that sit above a thin horizontal rectangle (an input underline) within 60 pt. Classic form layouts. | `high` |
-| **Pass 2** — Column detection | Splits words into X-position buckets. Treats the leftmost column (up to 50 % of page width) as the label column. Each Y-row = one field. Handles table-style forms like the GAD-7. | `low` |
+| Pass                          | Strategy                                                                                                                                                                           | Confidence |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| **Pass 1** — Line proximity   | Finds text clusters that sit above a thin horizontal rectangle (an input underline) within 60 pt. Classic form layouts.                                                            | `high`     |
+| **Pass 2** — Column detection | Splits words into X-position buckets. Treats the leftmost column (up to 50 % of page width) as the label column. Each Y-row = one field. Handles table-style forms like the GAD-7. | `low`      |
 
 Results from both passes are **merged** — Pass 1 wins on duplicates. Fields with non-printable-only labels are discarded.
 
 **Type inference** from label text:
 
-| Keyword pattern | Inferred type |
-|-----------------|--------------|
-| date, dob, born, birthday | `date` |
-| age, number, amount, score | `number` |
-| check, tick, agree, confirm | `checkbox` |
-| select, choose, option, pick | `dropdown` |
-| *(anything else)* | `text` |
+| Keyword pattern              | Inferred type |
+| ---------------------------- | ------------- |
+| date, dob, born, birthday    | `date`        |
+| age, number, amount, score   | `number`      |
+| check, tick, agree, confirm  | `checkbox`    |
+| select, choose, option, pick | `dropdown`    |
+| _(anything else)_            | `text`        |
 
 #### Word adapter (`adapters/word_adapter.py`)
 
 Iterates paragraphs and tables in document order:
+
 - **Paragraphs** ending with `:` or `?`, or followed by a blank paragraph → label field.
 - **Bullet/list paragraphs** that follow a label paragraph → accumulated into a single `radio` field with options.
 - **Table rows** → first column = label, second column = answer area. If the answer cell contains `/`-separated values (e.g. `Yes / No`), they become radio options.
@@ -210,6 +213,7 @@ Iterates paragraphs and tables in document order:
 #### Google Docs adapter (`adapters/gdocs_adapter.py`)
 
 Calls the Google Docs REST API (`documents.readonly` scope) and walks `body.content`:
+
 - **Paragraph elements** with trailing `:` or `?`, or followed by a blank paragraph, or containing a `HORIZONTAL_RULE` → label field.
 - **Table elements** → same first-column/second-column logic as the Word adapter.
 
@@ -226,7 +230,7 @@ The UI is split into two panels:
 │   Source Document       │   Form Builder                   │
 │   (PDF iframe /         │                                  │
 │    Google Doc embed)    │   ┌──────────────────────────┐   │
-│                         │   │ 1 [high]           p.1 🗑 │   │
+│                         │   │ 1 [high]           p.1 t │   │
 │                         │   │ Label                    │   │
 │                         │   │ [__________________]     │   │
 │                         │   │ Type: text number date…  │   │
@@ -239,17 +243,17 @@ The UI is split into two panels:
 
 **What each element means:**
 
-| Element | Description |
-|---------|-------------|
-| `[high]` badge | Extraction found direct evidence of an input area below the label |
-| `[low]` badge | No input area detected — verify against the source document |
-| Red border / red input | Label is empty — must be filled in manually |
-| Amber border | Low-confidence field |
-| Page hint (`p.1`) | PDF page the label was found on |
-| Type buttons | Click to change the field type (`text`, `number`, `date`, `checkbox`, `dropdown`, `radio`) |
-| Options row | Appears for `checkbox`, `dropdown`, `radio` — enter comma-separated option values |
-| 🗑 trash icon | Soft-deletes the field (it is hidden but recoverable with **Restore**) |
-| **+ Add Field** | Inserts a blank field you can fill in manually |
+| Element                | Description                                                                                |
+| ---------------------- | ------------------------------------------------------------------------------------------ |
+| `[high]` badge         | Extraction found direct evidence of an input area below the label                          |
+| `[low]` badge          | No input area detected — verify against the source document                                |
+| Red border / red input | Label is empty — must be filled in manually                                                |
+| Amber border           | Low-confidence field                                                                       |
+| Page hint (`p.1`)      | PDF page the label was found on                                                            |
+| Type buttons           | Click to change the field type (`text`, `number`, `date`, `checkbox`, `dropdown`, `radio`) |
+| Options row            | Appears for `checkbox`, `dropdown`, `radio` — enter comma-separated option values          |
+| 🗑 trash icon          | Soft-deletes the field (it is hidden but recoverable with **Restore**)                     |
+| **+ Add Field**        | Inserts a blank field you can fill in manually                                             |
 
 **Autosave:** Every edit is debounced and persisted automatically (800 ms after the last keystroke). A status indicator in the top bar shows `Saving…` → `Saved`.
 
@@ -260,6 +264,7 @@ The UI is split into two panels:
 Once all labels are filled and types are correct, click **Save as Form** (top-right).
 
 Fill in:
+
 - **Form Title** — displayed to users (e.g. `GAD-7 Anxiety Scale`).
 - **Slug** — the URL key, auto-generated from the title (e.g. `gad-7-anxiety-scale`). Must be unique.
 - **Description** — optional subtitle.
@@ -304,21 +309,21 @@ sourceDocuments[] ──────────► DocumentUpload[]
 
 ### API reference
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/convert/upload` | Upload a PDF/DOCX (`file` field) or provide a Google Doc ID (`docId` field). Returns `{ documentId }`. |
-| `GET` | `/api/convert/:id` | Returns the `DocumentUpload` with all non-deleted `ExtractedField` rows. |
-| `PATCH` | `/api/convert/:id` | Body: `{ fields: FieldPatch[] }`. Autosave endpoint — updates `label`, `type`, `options`, `isDeleted` per field. |
-| `POST` | `/api/convert/:id/save` | Body: `{ title, slug, description? }`. Promotes fields into `Form` + `Question` rows. Returns `{ formId, slug }`. |
-| `GET` | `/api/convert/:id/preview` | Streams the original uploaded file as `application/pdf` for the iframe viewer. |
+| Method  | Path                       | Description                                                                                                       |
+| ------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `POST`  | `/api/convert/upload`      | Upload a PDF/DOCX (`file` field) or provide a Google Doc ID (`docId` field). Returns `{ documentId }`.            |
+| `GET`   | `/api/convert/:id`         | Returns the `DocumentUpload` with all non-deleted `ExtractedField` rows.                                          |
+| `PATCH` | `/api/convert/:id`         | Body: `{ fields: FieldPatch[] }`. Autosave endpoint — updates `label`, `type`, `options`, `isDeleted` per field.  |
+| `POST`  | `/api/convert/:id/save`    | Body: `{ title, slug, description? }`. Promotes fields into `Form` + `Question` rows. Returns `{ formId, slug }`. |
+| `GET`   | `/api/convert/:id/preview` | Streams the original uploaded file as `application/pdf` for the iframe viewer.                                    |
 
 ---
 
 ### Python extraction service API
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/health` | Liveness check — returns `{ "status": "ok" }`. |
+| Method | Path            | Description                                                       |
+| ------ | --------------- | ----------------------------------------------------------------- |
+| `GET`  | `/health`       | Liveness check — returns `{ "status": "ok" }`.                    |
 | `POST` | `/extract/file` | Multipart upload (`file` field). Returns `ExtractionResult` JSON. |
 | `POST` | `/extract/gdoc` | JSON body `{ "doc_id": "..." }`. Returns `ExtractionResult` JSON. |
 
@@ -360,15 +365,15 @@ sourceDocuments[] ──────────► DocumentUpload[]
 
 ### Environment variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `DATABASE_URL` | ✓ | `file:./dev.db` | SQLite connection string |
-| `BETTER_AUTH_SECRET` | ✓ | — | Random secret for auth encryption |
-| `BETTER_AUTH_URL` | ✓ | `http://localhost:3000` | App base URL |
-| `EMAIL_USER` | ✓ | — | Gmail address for OTP delivery |
-| `EMAIL_PASS` | ✓ | — | Gmail App Password |
-| `EXTRACT_SERVICE_URL` | | `http://localhost:8000` | Python extraction service base URL |
-| `GOOGLE_CREDS_PATH` | | — | Path to Google service-account JSON (Google Docs only) |
+| Variable              | Required | Default                 | Description                                            |
+| --------------------- | -------- | ----------------------- | ------------------------------------------------------ |
+| `DATABASE_URL`        | ✓        | `file:./dev.db`         | SQLite connection string                               |
+| `BETTER_AUTH_SECRET`  | ✓        | —                       | Random secret for auth encryption                      |
+| `BETTER_AUTH_URL`     | ✓        | `http://localhost:3000` | App base URL                                           |
+| `EMAIL_USER`          | ✓        | —                       | Gmail address for OTP delivery                         |
+| `EMAIL_PASS`          | ✓        | —                       | Gmail App Password                                     |
+| `EXTRACT_SERVICE_URL` |          | `http://localhost:8000` | Python extraction service base URL                     |
+| `GOOGLE_CREDS_PATH`   |          | —                       | Path to Google service-account JSON (Google Docs only) |
 
 ---
 
@@ -384,13 +389,13 @@ Defines the **unified JSON schema** that every adapter must produce. All three a
 
 **Key types:**
 
-| Class | Purpose |
-|-------|---------|
-| `FieldType` | Enum of valid input types: `text`, `number`, `date`, `checkbox`, `dropdown`, `radio` |
-| `Confidence` | `high` — an input area was detected; `low` — no input area found, admin must verify |
-| `BoundingBox` | Pixel/point coordinates `(x0, y0, x1, y1, page)` from a PDF page |
-| `ExtractedField` | One form field: `field_id`, `label`, `type`, `options`, `bounding_box` or `element_index`, `confidence`, `raw_metadata` |
-| `ExtractionResult` | Container: `source_type`, `source_name`, `fields[]`, `warnings[]` |
+| Class              | Purpose                                                                                                                 |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `FieldType`        | Enum of valid input types: `text`, `number`, `date`, `checkbox`, `dropdown`, `radio`                                    |
+| `Confidence`       | `high` — an input area was detected; `low` — no input area found, admin must verify                                     |
+| `BoundingBox`      | Pixel/point coordinates `(x0, y0, x1, y1, page)` from a PDF page                                                        |
+| `ExtractedField`   | One form field: `field_id`, `label`, `type`, `options`, `bounding_box` or `element_index`, `confidence`, `raw_metadata` |
+| `ExtractionResult` | Container: `source_type`, `source_name`, `fields[]`, `warnings[]`                                                       |
 
 `bounding_box` and `element_index` are mutually exclusive — PDF extraction fills `bounding_box`; Word/Google Docs fill `element_index`.
 
@@ -402,22 +407,22 @@ The **router** that detects the file type from the MIME type and delegates to th
 
 **Routing table:**
 
-| MIME type | Adapter called |
-|-----------|---------------|
-| `application/pdf` | `pdf_adapter.extract(file_path, source_name)` |
+| MIME type                                                                 | Adapter called                                 |
+| ------------------------------------------------------------------------- | ---------------------------------------------- |
+| `application/pdf`                                                         | `pdf_adapter.extract(file_path, source_name)`  |
 | `application/vnd.openxmlformats-officedocument.wordprocessingml.document` | `word_adapter.extract(file_path, source_name)` |
-| `application/vnd.google-apps.document` | `gdocs_adapter.extract(gdoc_id)` |
+| `application/vnd.google-apps.document`                                    | `gdocs_adapter.extract(gdoc_id)`               |
 
 Google Docs are passed as a `doc_id` string — no file is downloaded.
 
 `route()` parameters:
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `mime_type` | `str` | MIME type of the uploaded document |
-| `file_path` | `Path \| str \| None` | Path to the uploaded file (PDF or DOCX) |
-| `source_name` | `str` | Original filename to embed in the result |
-| `gdoc_id` | `str \| None` | Google Docs document ID (only when `mime_type == MIME_GDOC`) |
+| Parameter     | Type                  | Description                                                  |
+| ------------- | --------------------- | ------------------------------------------------------------ |
+| `mime_type`   | `str`                 | MIME type of the uploaded document                           |
+| `file_path`   | `Path \| str \| None` | Path to the uploaded file (PDF or DOCX)                      |
+| `source_name` | `str`                 | Original filename to embed in the result                     |
+| `gdoc_id`     | `str \| None`         | Google Docs document ID (only when `mime_type == MIME_GDOC`) |
 
 ---
 
@@ -427,11 +432,11 @@ Google Docs are passed as a `doc_id` string — no file is downloaded.
 
 **Endpoints:**
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/health` | Liveness probe — returns `{ "status": "ok" }` |
+| Method | Path            | Description                                                                                                                                                            |
+| ------ | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/health`       | Liveness probe — returns `{ "status": "ok" }`                                                                                                                          |
 | `POST` | `/extract/file` | Multipart upload (`file` field). Accepts PDF or DOCX. Writes bytes to a temp file, calls `normalizer.route()`, deletes the temp file, returns `ExtractionResult` JSON. |
-| `POST` | `/extract/gdoc` | JSON body `{ "doc_id": "..." }`. Calls `normalizer.route()` for Google Docs, returns `ExtractionResult` JSON. |
+| `POST` | `/extract/gdoc` | JSON body `{ "doc_id": "..." }`. Calls `normalizer.route()` for Google Docs, returns `ExtractionResult` JSON.                                                          |
 
 MIME type detection (`_detect_mime`): prefers the browser-supplied `content_type`; falls back to file-extension mapping so Windows/Mac discrepancies don't break routing.
 
@@ -444,30 +449,33 @@ CORS is configured via the `ALLOWED_ORIGINS` environment variable (comma-separat
 **Two-pass strategy** that handles both classic and table-style PDF form layouts.
 
 **Pass 1 — Line-proximity detection** (`_pass1`)
+
 - Collects thin horizontal rectangles (`height ≤ 3 pt`, `width ≥ 30 pt`) that represent input underlines.
 - Clusters words into visual rows using a `ROW_MERGE_GAP = 4 pt` bucket.
 - For each label-like text cluster, checks if an underline exists within `LABEL_TO_INPUT_GAP = 60 pt` below it.
 - Match found → `confidence: high`. No match → `confidence: low`.
 
 **Pass 2 — Column detection** (`_pass2`)
+
 - Buckets words by their left-edge X position (`COL_BUCKET_SIZE = 20 pt`).
 - Treats all columns whose left edge is within the left 50 % of the page as the label column.
 - Each distinct Y-row in that column becomes one field. Always `confidence: low` — the admin must verify.
 
 **Merge** (`_merge`)
+
 - Pass 1 results are preferred. Pass 2 results are added only when their label doesn't already appear in Pass 1 (case-insensitive deduplication).
 - Final list is sorted by page number then top-of-bounding-box Y coordinate.
 
 **Tunable constants:**
 
-| Constant | Value | Meaning |
-|----------|-------|---------|
-| `LINE_MIN_WIDTH` | 30 pt | Minimum width for a rect to be treated as an input underline |
-| `LINE_MAX_HEIGHT` | 3 pt | Maximum height for a rect to be treated as an input underline |
-| `LABEL_TO_INPUT_GAP` | 60 pt | Max vertical gap from label bottom to an underline |
-| `MIN_LABEL_CHARS` | 3 | Minimum characters for text to be considered a label |
-| `COL_BUCKET_SIZE` | 20 pt | X-position bucket size for column detection |
-| `ROW_MERGE_GAP` | 4 pt | Word-top bucket size for row grouping |
+| Constant             | Value | Meaning                                                       |
+| -------------------- | ----- | ------------------------------------------------------------- |
+| `LINE_MIN_WIDTH`     | 30 pt | Minimum width for a rect to be treated as an input underline  |
+| `LINE_MAX_HEIGHT`    | 3 pt  | Maximum height for a rect to be treated as an input underline |
+| `LABEL_TO_INPUT_GAP` | 60 pt | Max vertical gap from label bottom to an underline            |
+| `MIN_LABEL_CHARS`    | 3     | Minimum characters for text to be considered a label          |
+| `COL_BUCKET_SIZE`    | 20 pt | X-position bucket size for column detection                   |
+| `ROW_MERGE_GAP`      | 4 pt  | Word-top bucket size for row grouping                         |
 
 `_clean()` removes invisible Unicode control and zero-width characters (categories `Cf`, `Cc`) before any label comparison.
 
@@ -478,11 +486,13 @@ CORS is configured via the `ALLOWED_ORIGINS` environment variable (comma-separat
 Iterates all top-level document elements (paragraphs and tables) in document order using `_iter_block_items()`, which yields them in their actual sequence from the XML body.
 
 **Paragraph rules:**
+
 - A paragraph is treated as a label if its text ends with `:` or `?`, or if it is a short phrase (3–10 words).
 - Confidence is `high` if the label ends with `:` / `?`, or if the next paragraph is blank (the answer line).
 - Bullet-style paragraphs (`List Bullet`, `List Number`, `List Paragraph`) are accumulated into a single `radio` field with options. The group is flushed when a non-bullet element is encountered.
 
 **Table rules:**
+
 - First cell of each row → label text.
 - Second cell of each row → answer area. If the answer cell contains `/`-separated values (e.g. `Yes / No`), those become radio options.
 
@@ -495,6 +505,7 @@ Uses the **Google Docs REST API** (`documents.readonly` scope) to retrieve a doc
 **Authentication:** reads `GOOGLE_CREDS_PATH` env var. If set, loads a service-account JSON key file. If unset, falls back to Application Default Credentials.
 
 **Paragraph rules:**
+
 - A `HORIZONTAL_RULE` inline object within a paragraph indicates an input line → `confidence: high`.
 - A blank paragraph immediately following the label → `confidence: high`.
 - Label ending with `:` or `?` → `confidence: high`.
@@ -509,6 +520,7 @@ Uses the **Google Docs REST API** (`documents.readonly` scope) to retrieve a doc
 **`POST /api/convert/upload`** — accepts a multipart form with either a `file` field (PDF/DOCX binary) or a `docId` field (Google Docs document ID).
 
 **File upload workflow:**
+
 1. Creates a `DocumentUpload` row with `status: "extracting"`.
 2. Saves the raw bytes to `server/uploads/<documentId>.<ext>` so the preview endpoint can serve it later.
 3. Forwards the bytes to the Python extraction service (`EXTRACT_SERVICE_URL`).
@@ -551,6 +563,7 @@ Body: `{ fields: FieldPatch[] }` where each `FieldPatch` must include `fieldId` 
 Body: `{ title: string, slug: string, description?: string }`
 
 **Workflow:**
+
 1. Loads all non-deleted `ExtractedField` rows for the document.
 2. Creates one `Question` row per field. The `alias` is derived as `<slug>_<fieldIndex>_<sanitised_label_30chars>` to ensure global uniqueness.
 3. Creates a `Form` row and links all questions via `FormQuestion` junction rows (order preserved).

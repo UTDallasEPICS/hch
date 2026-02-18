@@ -100,7 +100,7 @@
             Your assigned forms. Complete them to track your progress.
           </p>
         </div>
-        <NuxtLink to="/forms/new">
+        <NuxtLink to="/admin/convert">
           <UButton icon="i-heroicons-plus-20-solid" size="lg"> Add New Form </UButton>
         </NuxtLink>
       </div>
@@ -193,7 +193,7 @@
           <p class="mt-1 text-sm text-gray-400 dark:text-gray-500">
             Use "Add New Form" to create a form, then assign it to yourself.
           </p>
-          <NuxtLink to="/forms/new" class="mt-4 inline-block">
+          <NuxtLink to="/admin/convert" class="mt-4 inline-block">
             <UButton variant="outline">Add New Form</UButton>
           </NuxtLink>
         </div>
