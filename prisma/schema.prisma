@@ -26,14 +26,15 @@ model User {
 
 // Form metadata (e.g. ACE Questionnaire)
 model Form {
-  id            String           @id @default(cuid())
-  title         String
-  description   String?
-  slug          String           @unique // e.g. 'ace-form'
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  formQuestions FormQuestion[]
-  assignments   FormAssignment[]
+  id              String           @id @default(cuid())
+  title           String
+  description     String?
+  slug            String           @unique // e.g. 'ace-form'
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  formQuestions   FormQuestion[]
+  assignments     FormAssignment[]
+  sourceDocuments DocumentUpload[] // forms created via the converter
 
   @@map("form")
 }
@@ -141,3 +142,52 @@ model Verification {
   @@index([identifier])
   @@map("verification")
 }
+
+// ------------------------------------------------------------------
+// PDF / Word / Google-Docs converter pipeline
+// ------------------------------------------------------------------
+
+// Tracks an uploaded source document and its extraction status
+model DocumentUpload {
+  id              String           @id @default(cuid())
+  originalName    String           // e.g. "intake-form.pdf"
+  mimeType        String           // "application/pdf" | "application/vnd.openxmlformats…" | "application/vnd.google-apps.document"
+  storagePath     String           // server-side path or gdoc ID
+  status          String           @default("pending") // "pending" | "extracting" | "review" | "saved" | "error"
+  errorMessage    String?
+  sourceUrl       String?          // for Google Docs: the public/shared URL
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  extractedFields ExtractedField[]
+  savedFormId     String?          // set once the admin saves it as a Form
+  savedForm       Form?            @relation(fields: [savedFormId], references: [id])
+
+  @@index([status])
+  @@map("document_upload")
+}
+
+// One row per field (question) extracted from a document; admin edits these before saving
+model ExtractedField {
+  id           String         @id @default(cuid())
+  documentId   String
+  document     DocumentUpload @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  fieldIndex   Int            // zero-based position in the extraction result
+  label        String         // question text as extracted
+  type         String         // "text" | "number" | "date" | "checkbox" | "dropdown" | "radio"
+  options      String?        // JSON array of strings, only for checkbox/dropdown/radio
+  // metadata from the source document
+  pageNumber   Int?           // PDF: page where label was found
+  boundingBox  String?        // JSON: {x0, y0, x1, y1} for PDF bounding box
+  elementIndex Int?           // Word/GDocs: paragraph or structural-element index
+  // extraction quality
+  confidence   String         @default("high") // "high" | "low"
+  isDeleted    Boolean        @default(false)  // soft-delete; admin can remove bad fields
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([documentId])
+  @@map("extracted_field")
+}
+
+// Allow Form to reference a DocumentUpload (back-relation for savedForm)
+// (No extra model needed — the relation is declared on DocumentUpload above)

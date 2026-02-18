@@ -1,0 +1,20 @@
+fastapi==0.115.5
+uvicorn>=0.32.1
+python-multipart==0.0.18
+
+# PDF extraction
+pdfplumber==0.11.4
+pytesseract==0.3.13
+Pillow>=12.1.1
+
+# Word (.docx) extraction
+python-docx==1.1.2
+
+# Google Docs API
+google-api-python-client==2.154.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.1
+
+# Utilities — pydantic>=2.11 resolves pydantic-core with a cp314 pre-built wheel
+pydantic>=2.11.0
+aiofiles==24.1.0
