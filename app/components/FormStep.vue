@@ -89,7 +89,7 @@
 
 <template>
   <div
-    class="space-y-5 [&_h3]:border-gray-300 [&_h3]:text-gray-900 [&_label]:block [&_label]:text-gray-700 dark:[&_h3]:border-gray-600 dark:[&_h3]:text-gray-100 dark:[&_label]:text-gray-200"
+    class="space-y-5 [&_h3]:border-gray-300 [&_h3]:text-gray-900 dark:[&_h3]:border-gray-600 dark:[&_h3]:text-gray-100 [&_label]:block [&_label]:text-gray-700 dark:[&_label]:text-gray-200"
   >
     <!-- Step 1: Profile (Q1–8; Q4 removed in app) -->
     <template v-if="step === 1">
@@ -111,11 +111,7 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">5. Gender</label>
-        <URadioGroup
-          v-model="form.q6"
-          :class="groupClass"
-          :options="GENDER_OPTIONS"
-        />
+        <URadioGroup v-model="form.q6" :class="groupClass" :options="GENDER_OPTIONS" />
         <UInput
           v-model="form.q6Text"
           :class="inputClass"
@@ -164,11 +160,7 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">12. Gender (Child)</label>
-        <URadioGroup
-          v-model="form.q12"
-          :class="groupClass"
-          :options="GENDER_OPTIONS"
-        />
+        <URadioGroup v-model="form.q12" :class="groupClass" :options="GENDER_OPTIONS" />
         <UInput
           v-model="form.q12Text"
           :class="inputClass"
@@ -216,11 +208,7 @@
         <label class="text-sm font-semibold text-gray-200"
           >17. Does child reside with both biological parents?</label
         >
-        <URadioGroup
-          v-model="form.q17"
-          :class="groupClass"
-          :options="YES_NO_OTHER_OPTIONS"
-        />
+        <URadioGroup v-model="form.q17" :class="groupClass" :options="YES_NO_OTHER_OPTIONS" />
         <UInput
           v-model="form.q17Text"
           :class="inputClass"
@@ -230,11 +218,7 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">18. Who has custody of the child?</label>
-        <UCheckboxGroup
-          v-model="form.q18"
-          :class="groupClass"
-          :options="CUSTODY_OPTIONS"
-        />
+        <UCheckboxGroup v-model="form.q18" :class="groupClass" :options="CUSTODY_OPTIONS" />
         <UInput
           v-model="form.q18Other"
           :class="inputClass"
@@ -244,11 +228,7 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">19. Are you the primary contact?</label>
-        <URadioGroup
-          v-model="form.q19"
-          :class="groupClass"
-          :options="YES_NO_OPTIONS"
-        />
+        <URadioGroup v-model="form.q19" :class="groupClass" :options="YES_NO_OPTIONS" />
         <UInput
           v-model="form.q19Text"
           :class="inputClass"
@@ -306,11 +286,7 @@
         <label class="text-sm font-semibold text-gray-200"
           >28. Is Legal Mother primary contact?</label
         >
-        <URadioGroup
-          v-model="form.q28"
-          :class="groupClass"
-          :options="YES_NO_OPTIONS"
-        />
+        <URadioGroup v-model="form.q28" :class="groupClass" :options="YES_NO_OPTIONS" />
         <UInput
           v-model="form.q28Text"
           :class="inputClass"
@@ -362,11 +338,7 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">37. Who is the primary caregiver?</label>
-        <URadioGroup
-          v-model="form.q37"
-          :class="groupClass"
-          :options="CAREGIVER_OPTIONS"
-        />
+        <URadioGroup v-model="form.q37" :class="groupClass" :options="CAREGIVER_OPTIONS" />
         <UInput
           v-model="form.q37Other"
           :class="inputClass"
@@ -383,11 +355,7 @@
           >38. If child has/had siblings, did any witness a scary or traumatic event (e.g. seizures,
           unresponsiveness, death or other medical emergencies)?</label
         >
-        <URadioGroup
-          v-model="form.q38"
-          :class="groupClass"
-          :options="SIBLING_OPTIONS"
-        />
+        <URadioGroup v-model="form.q38" :class="groupClass" :options="SIBLING_OPTIONS" />
         <UInput
           v-model="form.q38Text"
           :class="inputClass"
@@ -400,11 +368,7 @@
           >39. Were siblings separated for a prolonged period from a parent and their sibling with
           cancer?</label
         >
-        <URadioGroup
-          v-model="form.q39"
-          :class="groupClass"
-          :options="SIBLING_OPTIONS"
-        />
+        <URadioGroup v-model="form.q39" :class="groupClass" :options="SIBLING_OPTIONS" />
         <UInput
           v-model="form.q39Text"
           :class="inputClass"
@@ -432,11 +396,7 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">43. Were there any ICU visits?</label>
-        <URadioGroup
-          v-model="form.q43"
-          :class="groupClass"
-          :options="YES_NO_OPTIONS"
-        />
+        <URadioGroup v-model="form.q43" :class="groupClass" :options="YES_NO_OPTIONS" />
         <UInput
           v-model="form.q43Text"
           :class="inputClass"
@@ -454,11 +414,7 @@
         <label class="text-sm font-semibold text-gray-200"
           >45. Did the child have a relapse or secondary cancer?</label
         >
-        <URadioGroup
-          v-model="form.q45"
-          :class="groupClass"
-          :options="YES_NO_OPTIONS"
-        />
+        <URadioGroup v-model="form.q45" :class="groupClass" :options="YES_NO_OPTIONS" />
         <UInput
           v-model="form.q45Text"
           :class="inputClass"
@@ -470,11 +426,7 @@
         <label class="text-sm font-semibold text-gray-200"
           >46. Did the child with cancer require hospice care and/or pass away?</label
         >
-        <URadioGroup
-          v-model="form.q46"
-          :class="groupClass"
-          :options="HOSPICE_OPTIONS"
-        />
+        <URadioGroup v-model="form.q46" :class="groupClass" :options="HOSPICE_OPTIONS" />
         <UInput
           v-model="form.q46Other"
           :class="inputClass"
@@ -490,11 +442,7 @@
         <label class="text-sm font-semibold text-gray-200"
           >47. Are you applying for the Individual Therapy Scholarship?</label
         >
-        <URadioGroup
-          v-model="form.q47"
-          :class="groupClass"
-          :options="YES_NO_OPTIONS"
-        />
+        <URadioGroup v-model="form.q47" :class="groupClass" :options="YES_NO_OPTIONS" />
         <UInput
           v-model="form.q47Text"
           :class="inputClass"
@@ -544,11 +492,7 @@
           >50. If seeking scholarship for individual therapy, do you have a therapist or need a
           referral?</label
         >
-        <URadioGroup
-          v-model="form.q50"
-          :class="groupClass"
-          :options="REFERRAL_OPTIONS"
-        />
+        <URadioGroup v-model="form.q50" :class="groupClass" :options="REFERRAL_OPTIONS" />
         <UInput
           v-model="form.q50Text"
           :class="inputClass"
@@ -560,11 +504,7 @@
         <label class="text-sm font-semibold text-gray-200"
           >51. Do you currently have medical insurance that provides mental health coverage?</label
         >
-        <URadioGroup
-          v-model="form.q51"
-          :class="groupClass"
-          :options="INSURANCE_OPTIONS"
-        />
+        <URadioGroup v-model="form.q51" :class="groupClass" :options="INSURANCE_OPTIONS" />
         <UInput
           v-model="form.q51Text"
           :class="inputClass"

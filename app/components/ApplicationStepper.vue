@@ -9,7 +9,7 @@
 <template>
   <nav aria-label="Application progress" class="w-full">
     <ol
-        class="grid w-full grid-cols-5 items-center rounded-xl border border-gray-200 bg-white/80 p-3 sm:p-4 dark:border-gray-700/60 dark:bg-gray-800/50"
+      class="grid w-full grid-cols-5 items-center rounded-xl border border-gray-200 bg-white/80 p-3 sm:p-4 dark:border-gray-700/60 dark:bg-gray-800/50"
       role="list"
     >
       <li v-for="(step, index) in steps" :key="index" class="relative min-w-0" role="listitem">
@@ -37,11 +37,11 @@
               </span>
               <span
                 class="hidden text-xs font-medium sm:inline"
-                  :class="
-                    stepStates[index] === 'upcoming'
-                      ? 'text-gray-500 dark:text-gray-500'
-                      : 'text-gray-700 dark:text-gray-200'
-                  "
+                :class="
+                  stepStates[index] === 'upcoming'
+                    ? 'text-gray-500 dark:text-gray-500'
+                    : 'text-gray-700 dark:text-gray-200'
+                "
               >
                 {{ step.shortLabel ?? step.label }}
               </span>
@@ -70,11 +70,11 @@
               </span>
               <span
                 class="hidden text-xs font-medium sm:inline"
-                  :class="
-                    index + 1 <= currentStep
-                      ? 'text-gray-700 dark:text-gray-200'
-                      : 'text-gray-500 dark:text-gray-500'
-                  "
+                :class="
+                  index + 1 <= currentStep
+                    ? 'text-gray-700 dark:text-gray-200'
+                    : 'text-gray-500 dark:text-gray-500'
+                "
               >
                 {{ step.shortLabel ?? step.label }}
               </span>
