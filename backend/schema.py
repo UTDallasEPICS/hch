@@ -1,11 +1,3 @@
-"""
-Unified JSON schema for extracted form fields.
-
-Every adapter (PDF, Word, Google Docs) must produce a list of
-ExtractedField objects. The Normalizer validates and returns an
-ExtractionResult.
-"""
-
 from __future__ import annotations
 
 from enum import Enum
@@ -29,7 +21,6 @@ class Confidence(str, Enum):
 
 
 class BoundingBox(BaseModel):
-    """Pixel / point coordinates from a PDF page."""
     x0: float
     y0: float
     x1: float
@@ -39,22 +30,17 @@ class BoundingBox(BaseModel):
 
 class ExtractedField(BaseModel):
     field_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    label: str                          # The question / label text
-    type: FieldType = FieldType.text    # Best-guess input type
-    options: list[str] | None = None    # For checkbox / dropdown / radio only
-
-    # Source location — mutually exclusive depending on adapter used
-    bounding_box: BoundingBox | None = None   # PDF
-    element_index: int | None = None          # Word / Google Docs paragraph index
-
-    confidence: Confidence = Confidence.high  # "low" when no input area was found
-
-    # Raw adapter-specific extras (stored as JSON, not shown to end user)
+    label: str
+    type: FieldType = FieldType.text
+    options: list[str] | None = None
+    bounding_box: BoundingBox | None = None
+    element_index: int | None = None
+    confidence: Confidence = Confidence.high
     raw_metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class ExtractionResult(BaseModel):
-    source_type: str          # "pdf" | "docx" | "gdoc"
-    source_name: str          # original filename or doc title
+    source_type: str
+    source_name: str
     fields: list[ExtractedField]
     warnings: list[str] = Field(default_factory=list)
