@@ -1,42 +1,57 @@
 import { prisma } from '../../../utils/prisma'
 
+interface FieldBody {
+  fieldIndex: number
+  label: string
+  type: string
+  options?: string[] | null
+  pageNumber?: number | null
+  confidence?: string
+  isDeleted?: boolean
+}
+
+interface SaveBody {
+  title: string
+  slug: string
+  description?: string
+  fields: FieldBody[]
+}
+
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
   if (!id) throw createError({ statusCode: 400, message: 'Missing document id.' })
 
-  const body = await readBody<{ title: string; description?: string; slug: string }>(event)
+  const body = await readBody<SaveBody>(event)
   if (!body?.title || !body?.slug) {
     throw createError({ statusCode: 400, message: '`title` and `slug` are required.' })
+  }
+  if (!Array.isArray(body.fields) || body.fields.length === 0) {
+    throw createError({ statusCode: 400, message: '`fields` array is required and must not be empty.' })
   }
 
   const slug = body.slug.trim().toLowerCase().replace(/\s+/g, '-')
 
-  const doc = await prisma.documentUpload.findUnique({
-    where: { id },
-    include: {
-      extractedFields: {
-        where: { isDeleted: false },
-        orderBy: { fieldIndex: 'asc' },
-      },
-    },
-  })
-
+  const doc = await prisma.documentUpload.findUnique({ where: { id } })
   if (!doc) throw createError({ statusCode: 404, message: 'Document not found.' })
   if (doc.status === 'saved') {
     throw createError({ statusCode: 409, message: 'This document has already been saved as a form.' })
   }
 
-  const questionData = doc.extractedFields.map((f) => ({
-    text: f.label,
-    type: f.type,
-    alias: `${slug}_${f.fieldIndex}_${f.label
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '_')
-      .slice(0, 30)}`,
-  }))
+  const activeFields = body.fields.filter((f) => !f.isDeleted && f.label.trim())
 
   const createdQuestions = await Promise.all(
-    questionData.map((q) => prisma.question.create({ data: q }))
+    activeFields.map((f) =>
+      prisma.question.create({
+        data: {
+          text: f.label.trim(),
+          type: f.type,
+          alias: `${slug}_${f.fieldIndex}_${f.label
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '_')
+            .slice(0, 30)}`,
+        },
+      })
+    )
   )
 
   const form = await prisma.form.create({

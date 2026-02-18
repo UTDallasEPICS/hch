@@ -6,11 +6,13 @@ export default defineEventHandler(async (event) => {
 
   const doc = await prisma.documentUpload.findUnique({
     where: { id },
-    include: {
-      extractedFields: {
-        where: { isDeleted: false },
-        orderBy: { fieldIndex: 'asc' },
-      },
+    select: {
+      id: true,
+      originalName: true,
+      mimeType: true,
+      sourceUrl: true,
+      status: true,
+      errorMessage: true,
     },
   })
 

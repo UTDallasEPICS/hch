@@ -6,23 +6,28 @@ interface ExtractedField {
   fieldIndex: number
   label: string
   type: string
-  options: string | null        // JSON string
+  options: string | null
   pageNumber: number | null
-  boundingBox: string | null    // JSON string
+  boundingBox: string | null
   elementIndex: number | null
-  confidence: 'high' | 'low'
+  confidence: string
   isDeleted: boolean
 }
 
-interface DocumentUpload {
+interface DocumentMeta {
   id: string
   originalName: string
   mimeType: string
-  storagePath: string
   sourceUrl: string | null
   status: string
   errorMessage: string | null
-  extractedFields: ExtractedField[]
+}
+
+interface LocalSession {
+  originalName: string
+  mimeType: string
+  sourceUrl: string | null
+  fields: ExtractedField[]
 }
 
 // ── State ─────────────────────────────────────────────────────────────────
@@ -31,13 +36,24 @@ const route = useRoute()
 const router = useRouter()
 const id = route.params.id as string
 
-const { data: doc, error: fetchError, refresh } = await useFetch<DocumentUpload>(`/api/convert/${id}`)
+const { data: doc, error: fetchError } = await useFetch<DocumentMeta>(`/api/convert/${id}`)
 
-// Local editable copy of the fields
+// Load fields from localStorage (set during upload)
+const storageKey = `convert:${id}`
+const sessionMissing = ref(false)
 const fields = ref<ExtractedField[]>([])
-watchEffect(() => {
-  if (doc.value?.extractedFields) {
-    fields.value = doc.value.extractedFields.map((f) => ({ ...f }))
+
+onMounted(() => {
+  const raw = localStorage.getItem(storageKey)
+  if (!raw) {
+    sessionMissing.value = true
+    return
+  }
+  try {
+    const session = JSON.parse(raw) as LocalSession
+    fields.value = session.fields.map((f) => ({ ...f }))
+  } catch {
+    sessionMissing.value = true
   }
 })
 
@@ -51,9 +67,9 @@ const formDescription = ref('')
 const saving = ref(false)
 const saveError = ref('')
 
-// Autosave debounce
+// Local save indicator (replaces backend autosave)
+const autosaveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null
-const autosaveStatus = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
 // ── Derived helpers ────────────────────────────────────────────────────────
 
@@ -63,7 +79,6 @@ const activeFields = computed(() => fields.value.filter((f) => !f.isDeleted))
 const lowConfidenceCount = computed(() => activeFields.value.filter((f) => f.confidence === 'low').length)
 const emptyLabelCount = computed(() => activeFields.value.filter((f) => !f.label.trim()).length)
 
-// Preview URL is always the Nuxt API route (works for both old and new uploads)
 const previewUrl = computed(() => `/api/convert/${id}/preview`)
 
 function parsedOptions(field: ExtractedField): string[] {
@@ -74,35 +89,23 @@ function parsedOptions(field: ExtractedField): string[] {
 function setOptions(field: ExtractedField, raw: string) {
   const arr = raw.split(',').map((s) => s.trim()).filter(Boolean)
   field.options = arr.length ? JSON.stringify(arr) : null
-  scheduleAutosave()
+  scheduleLocalSave()
 }
 
-// ── Autosave ────────────────────────────────────────────────────────────────
+// ── Local save (localStorage only) ─────────────────────────────────────────
 
-function scheduleAutosave() {
-  if (autosaveTimer) clearTimeout(autosaveTimer)
-  autosaveTimer = setTimeout(doAutosave, 800)
-}
-
-async function doAutosave() {
+function scheduleLocalSave() {
   autosaveStatus.value = 'saving'
-  try {
-    await $fetch(`/api/convert/${id}`, {
-      method: 'PATCH',
-      body: {
-        fields: fields.value.map((f) => ({
-          fieldId: f.id,
-          label: f.label,
-          type: f.type,
-          options: f.options ? JSON.parse(f.options) : null,
-          isDeleted: f.isDeleted,
-        })),
-      },
-    })
+  if (autosaveTimer) clearTimeout(autosaveTimer)
+  autosaveTimer = setTimeout(() => {
+    const raw = localStorage.getItem(storageKey)
+    if (raw) {
+      const session = JSON.parse(raw) as LocalSession
+      session.fields = fields.value
+      localStorage.setItem(storageKey, JSON.stringify(session))
+    }
     autosaveStatus.value = 'saved'
-  } catch {
-    autosaveStatus.value = 'error'
-  }
+  }, 400)
 }
 
 // ── Field actions ─────────────────────────────────────────────────────────
@@ -121,17 +124,17 @@ function addField() {
     confidence: 'high',
     isDeleted: false,
   })
-  scheduleAutosave()
+  scheduleLocalSave()
 }
 
 function deleteField(field: ExtractedField) {
   field.isDeleted = true
-  scheduleAutosave()
+  scheduleLocalSave()
 }
 
 function restoreField(field: ExtractedField) {
   field.isDeleted = false
-  scheduleAutosave()
+  scheduleLocalSave()
 }
 
 // ── Save as Form ──────────────────────────────────────────────────────────
@@ -155,13 +158,26 @@ async function saveAsForm() {
   }
   saving.value = true
   saveError.value = ''
-  // Flush current edits first
-  await doAutosave()
   try {
     const res = await $fetch<{ slug: string }>(`/api/convert/${id}/save`, {
       method: 'POST',
-      body: { title: formTitle.value, slug: formSlug.value, description: formDescription.value },
+      body: {
+        title: formTitle.value,
+        slug: formSlug.value,
+        description: formDescription.value,
+        fields: fields.value.map((f) => ({
+          fieldIndex: f.fieldIndex,
+          label: f.label,
+          type: f.type,
+          options: f.options ? JSON.parse(f.options) : null,
+          pageNumber: f.pageNumber,
+          confidence: f.confidence,
+          isDeleted: f.isDeleted,
+        })),
+      },
     })
+    // Clean up localStorage now that the form is saved in the backend
+    localStorage.removeItem(storageKey)
     showSaveModal.value = false
     router.push(`/forms/${res.slug}`)
   } catch (e: unknown) {
@@ -189,6 +205,15 @@ const typeIcons: Record<string, string> = {
       <p class="text-red-600 dark:text-red-400">Failed to load document: {{ fetchError.message }}</p>
     </div>
 
+    <div v-else-if="sessionMissing" class="flex flex-col items-center justify-center min-h-screen gap-4 text-center px-6">
+      <UIcon name="i-lucide-file-x" class="h-12 w-12 text-gray-400 dark:text-gray-500" />
+      <p class="text-gray-700 dark:text-gray-300 font-medium">Session data not found</p>
+      <p class="text-sm text-gray-500 dark:text-gray-400">The extracted fields are only stored in your browser. Please re-upload the document to continue.</p>
+      <NuxtLink to="/admin/convert">
+        <UButton icon="i-lucide-upload">Re-upload Document</UButton>
+      </NuxtLink>
+    </div>
+
     <div v-else-if="!doc" class="flex items-center justify-center min-h-screen">
       <UIcon name="i-lucide-loader-2" class="animate-spin h-8 w-8 text-primary-500" />
     </div>
@@ -213,12 +238,11 @@ const typeIcons: Record<string, string> = {
         </div>
 
         <div class="flex items-center gap-3 shrink-0">
-          <!-- Autosave indicator -->
+          <!-- Local save indicator -->
           <span class="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
             <UIcon v-if="autosaveStatus === 'saving'" name="i-lucide-loader-2" class="animate-spin h-3 w-3" />
             <UIcon v-else-if="autosaveStatus === 'saved'" name="i-lucide-check" class="h-3 w-3 text-green-500" />
-            <UIcon v-else-if="autosaveStatus === 'error'" name="i-lucide-x" class="h-3 w-3 text-red-500" />
-            {{ autosaveStatus === 'saving' ? 'Saving…' : autosaveStatus === 'saved' ? 'Saved' : autosaveStatus === 'error' ? 'Save failed' : '' }}
+            {{ autosaveStatus === 'saving' ? 'Saving…' : autosaveStatus === 'saved' ? 'Saved locally' : '' }}
           </span>
 
           <UButton size="sm" variant="outline" icon="i-lucide-plus" @click="addField">
@@ -362,7 +386,7 @@ const typeIcons: Record<string, string> = {
                       :class="field.label.trim()
                         ? 'border-gray-200 dark:border-gray-600 focus:ring-primary-400'
                         : 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-950/30 focus:ring-red-400'"
-                      @input="scheduleAutosave"
+                      @input="scheduleLocalSave"
                     />
                   </div>
 
@@ -377,7 +401,7 @@ const typeIcons: Record<string, string> = {
                         :class="field.type === t
                           ? 'bg-primary-600 text-white border-primary-600'
                           : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-primary-400'"
-                        @click="field.type = t; scheduleAutosave()"
+                        @click="field.type = t; scheduleLocalSave()"
                       >
                         <UIcon :name="typeIcons[t] ?? 'i-lucide-text'" class="h-3 w-3" />
                         {{ t }}

@@ -1,4 +1,25 @@
 <script setup lang="ts">
+interface FrontendField {
+  id: string
+  fieldIndex: number
+  label: string
+  type: string
+  options: string | null
+  pageNumber: number | null
+  boundingBox: string | null
+  elementIndex: number | null
+  confidence: string
+  isDeleted: boolean
+}
+
+interface UploadResponse {
+  documentId: string
+  originalName: string
+  mimeType: string
+  sourceUrl: string | null
+  fields: FrontendField[]
+}
+
 const tab = ref<'file' | 'gdoc'>('file')
 const file = ref<File | null>(null)
 const docId = ref('')
@@ -31,10 +52,16 @@ async function uploadFile() {
   fd.append('file', file.value)
 
   try {
-    const res = await $fetch<{ documentId: string }>('/api/convert/upload', {
+    const res = await $fetch<UploadResponse>('/api/convert/upload', {
       method: 'POST',
       body: fd,
     })
+    localStorage.setItem(`convert:${res.documentId}`, JSON.stringify({
+      originalName: res.originalName,
+      mimeType: res.mimeType,
+      sourceUrl: res.sourceUrl,
+      fields: res.fields,
+    }))
     router.push(`/admin/convert/${res.documentId}`)
   } catch (e: unknown) {
     error.value = (e as { data?: { message?: string } })?.data?.message ?? 'Upload failed.'
@@ -57,10 +84,16 @@ async function uploadGdoc() {
   fd.append('docId', id)
 
   try {
-    const res = await $fetch<{ documentId: string }>('/api/convert/upload', {
+    const res = await $fetch<UploadResponse>('/api/convert/upload', {
       method: 'POST',
       body: fd,
     })
+    localStorage.setItem(`convert:${res.documentId}`, JSON.stringify({
+      originalName: res.originalName,
+      mimeType: res.mimeType,
+      sourceUrl: res.sourceUrl,
+      fields: res.fields,
+    }))
     router.push(`/admin/convert/${res.documentId}`)
   } catch (e: unknown) {
     error.value = (e as { data?: { message?: string } })?.data?.message ?? 'Could not reach extraction service.'
