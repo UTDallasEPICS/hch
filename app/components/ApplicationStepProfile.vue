@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { ApplicationForm } from '~/types/application'
+  import type { ApplicationForm } from '~/types/application'
 
-defineProps<{
-  form: ApplicationForm
-  genderOptions: { label: string; value: string }[]
-}>()
+  defineProps<{
+    form: ApplicationForm
+    genderOptions: { label: string; value: string }[]
+  }>()
 </script>
 
 <template>
@@ -19,7 +19,7 @@ defineProps<{
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">His Name</label>
+      <label class="text-sm font-semibold text-gray-200">First Name</label>
       <UInput
         v-model="form.q2"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
@@ -35,7 +35,9 @@ defineProps<{
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">Digits we can actually reach you at.</label>
+      <label class="text-sm font-semibold text-gray-200"
+        >Digits we can actually reach you at.</label
+      >
       <UInput
         v-model="form.q5"
         type="tel"
@@ -58,7 +60,9 @@ defineProps<{
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">When did you enter this chaotic masterpiece?</label>
+      <label class="text-sm font-semibold text-gray-200"
+        >When did you enter this chaotic masterpiece?</label
+      >
       <UInput
         v-model="form.q7"
         type="date"

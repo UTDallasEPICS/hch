@@ -144,7 +144,6 @@ model AppQuestion {
   q48 String?
   q49 String?
   q50 String?
-  q51 String?
 
   form AppForm @relation(fields: [formId], references: [id], onDelete: Cascade)
   user User    @relation(fields: [userId], references: [id], onDelete: Cascade)

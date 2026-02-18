@@ -1,6 +1,6 @@
 <script setup lang="ts">
   const answered = ref(0)
-  const total = ref(51)
+  const total = ref(50)
 
   onMounted(async () => {
     try {
@@ -11,7 +11,7 @@
       total.value = progress.total
     } catch {
       answered.value = 0
-      total.value = 51
+      total.value = 50
     }
   })
 </script>

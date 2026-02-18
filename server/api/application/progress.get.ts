@@ -2,14 +2,15 @@ import { createError, defineEventHandler, getHeaders } from 'h3'
 import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
 
-const TOTAL_QUESTIONS = 51
+const TOTAL_QUESTIONS = 50
+const MULTI_SELECT_QUESTION = 17
 
 function hasAnswer(value: string | null | undefined, questionNumber: number) {
   if (!value) {
     return false
   }
 
-  if (questionNumber === 18) {
+  if (questionNumber === MULTI_SELECT_QUESTION) {
     try {
       const parsed = JSON.parse(value)
       if (Array.isArray(parsed)) {
