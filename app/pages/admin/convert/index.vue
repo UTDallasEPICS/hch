@@ -71,30 +71,34 @@ async function uploadGdoc() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-    <div class="w-full max-w-xl bg-white rounded-2xl shadow-sm border border-gray-200 p-8 space-y-6">
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-6">
+    <div class="w-full max-w-xl bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-8 space-y-6">
 
       <!-- Header -->
       <div>
-        <h1 class="text-2xl font-bold text-gray-900">Document → Form Converter</h1>
-        <p class="mt-1 text-sm text-gray-500">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Document → Form Converter</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Upload a PDF, Word doc, or paste a Google Docs link.
           We'll extract the form fields — you review and save.
         </p>
       </div>
 
       <!-- Tab switcher -->
-      <div class="flex rounded-lg border border-gray-200 overflow-hidden text-sm font-medium">
+      <div class="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-sm font-medium">
         <button
           class="flex-1 py-2 transition-colors"
-          :class="tab === 'file' ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'"
+          :class="tab === 'file'
+            ? 'bg-primary-600 text-white'
+            : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
           @click="tab = 'file'; error = ''"
         >
           PDF / Word
         </button>
         <button
-          class="flex-1 py-2 transition-colors border-l border-gray-200"
-          :class="tab === 'gdoc' ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'"
+          class="flex-1 py-2 transition-colors border-l border-gray-200 dark:border-gray-700"
+          :class="tab === 'gdoc'
+            ? 'bg-primary-600 text-white'
+            : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
           @click="tab = 'gdoc'; error = ''"
         >
           Google Doc
@@ -104,17 +108,19 @@ async function uploadGdoc() {
       <!-- File upload -->
       <div v-if="tab === 'file'" class="space-y-4">
         <label
-          class="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-primary-400 hover:bg-primary-50 transition-colors"
-          :class="{ 'border-primary-500 bg-primary-50': file }"
+          class="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-xl cursor-pointer transition-colors"
+          :class="file
+            ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/30'
+            : 'border-gray-300 dark:border-gray-600 hover:border-primary-400 hover:bg-primary-50 dark:hover:bg-primary-950/20'"
         >
-          <div class="flex flex-col items-center gap-2 text-gray-500">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div class="flex flex-col items-center gap-2 text-gray-500 dark:text-gray-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
             <span v-if="!file" class="text-sm">Click to select or drag &amp; drop</span>
-            <span v-else class="text-sm font-medium text-primary-700">{{ file.name }}</span>
-            <span class="text-xs text-gray-400">PDF or .docx, up to 20 MB</span>
+            <span v-else class="text-sm font-medium text-primary-600 dark:text-primary-400">{{ file.name }}</span>
+            <span class="text-xs text-gray-400 dark:text-gray-500">PDF or .docx, up to 20 MB</span>
           </div>
           <input type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             class="hidden" @change="onFileChange" />
@@ -128,16 +134,16 @@ async function uploadGdoc() {
       <!-- Google Docs input -->
       <div v-if="tab === 'gdoc'" class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
             Google Docs URL or Document ID
           </label>
           <input
             v-model="docId"
             type="text"
             placeholder="https://docs.google.com/document/d/…"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            class="w-full px-3 py-2 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
-          <p class="mt-1 text-xs text-gray-400">
+          <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
             The document must be shared with the service account configured in the backend.
           </p>
         </div>
@@ -148,7 +154,7 @@ async function uploadGdoc() {
       </div>
 
       <!-- Error -->
-      <p v-if="error" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+      <p v-if="error" class="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-700 rounded-lg px-3 py-2">
         {{ error }}
       </p>
 
