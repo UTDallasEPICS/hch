@@ -507,7 +507,8 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >47. Would you like to join a Support Group waitlist? If so, please select all that apply:</label
+          >47. Would you like to join a Support Group waitlist? If so, please select all that
+          apply:</label
         >
         <UCheckboxGroup v-model="form.q48" :class="groupClass" :items="SUPPORT_GROUP_OPTIONS" />
       </div>

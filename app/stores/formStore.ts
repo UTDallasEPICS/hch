@@ -182,7 +182,7 @@ export function useFormStore() {
   /**
    * Build API payload q1–q50 from current state.
    * Backend stores q01–q50.
-    * Legacy internal keys are offset by +1 from q4 onward (q5 -> payload q4, ..., q50 -> payload q49).
+   * Legacy internal keys are offset by +1 from q4 onward (q5 -> payload q4, ..., q50 -> payload q49).
    */
   function toPayload(): Record<string, string> {
     const payload: Record<string, string> = {}
@@ -268,9 +268,10 @@ export function useFormStore() {
               const values = Array.isArray((parsed as { values?: unknown }).values)
                 ? ((parsed as { values: string[] }).values ?? [])
                 : []
-              const other = typeof (parsed as { other?: unknown }).other === 'string'
-                ? ((parsed as { other: string }).other ?? '')
-                : ''
+              const other =
+                typeof (parsed as { other?: unknown }).other === 'string'
+                  ? ((parsed as { other: string }).other ?? '')
+                  : ''
 
               form.value.q18 = values
               form.value.q18Other = other

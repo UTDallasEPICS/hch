@@ -186,11 +186,15 @@
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 py-6 text-gray-900 sm:py-10 dark:bg-gray-950 dark:text-gray-100">
+  <div
+    class="min-h-screen bg-gray-50 py-6 text-gray-900 sm:py-10 dark:bg-gray-950 dark:text-gray-100"
+  >
     <UContainer class="max-w-3xl">
       <div class="mb-6 sm:mb-8">
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Application</h1>
-        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Please complete all required questions.</p>
+        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          Please complete all required questions.
+        </p>
       </div>
 
       <ApplicationStepper
