@@ -1,0 +1,19 @@
+Light Mode:
+    Form Background: #FFFFFF (Pure white for clarity) or #FDFBF2 (A very light tint of the cream).
+    Input Field Background: #F9F3D9 (The soft cream from the website).
+    Input Border (Default): #D1D5DB (Light gray).
+    Input Border (Focus): #4A6274 (The slate blue).
+    Label/Primary Text: #21364B (Dark navy).
+    Placeholder Text: #6B7280 (Medium gray).    
+    Primary Action Button: Background #4A6274, Text #FFFFFF.
+    Secondary/Selection Button: Background #F7D417 (The gold ribbon color), Text #21364B.
+
+Dark Mode:
+    Form Background: #1B2B3C (A slightly darker shade of the donation section navy).
+    Input Field Background: #21364B (The exact navy from the site).
+    Input Border (Default): #374151 (Dark slate gray).
+    Input Border (Focus): #F7D417 (The gold ribbon color—provides high contrast).
+    Label/Primary Text: #F9F3D9 (The soft cream used as a high-contrast text color).
+    Placeholder Text: #9CA3AF (Light gray).
+    Primary Action Button: Background #F7D417, Text #21364B (Gold buttons pop best in dark mode).
+    Secondary/Selection Button: Background #4A6274, Text #FFFFFF.
