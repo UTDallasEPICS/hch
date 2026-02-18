@@ -1,16 +1,3 @@
-/**
- * POST /api/convert/:id/save
- *
- * Promotes a reviewed DocumentUpload into a live Form + Question set.
- * Body: { title: string, description?: string, slug: string }
- *
- * Workflow:
- *   1. Load all non-deleted ExtractedFields for this document.
- *   2. Create a Question row for each field.
- *   3. Create a Form and link questions via FormQuestion junction rows.
- *   4. Mark DocumentUpload.status = "saved" and set savedFormId.
- */
-
 import { prisma } from '../../../utils/prisma'
 
 export default defineEventHandler(async (event) => {
@@ -39,11 +26,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 409, message: 'This document has already been saved as a form.' })
   }
 
-  // Create questions first (one per field)
   const questionData = doc.extractedFields.map((f) => ({
     text: f.label,
     type: f.type,
-    // Alias must be unique — derive from label; collisions handled via suffix
     alias: `${slug}_${f.fieldIndex}_${f.label
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '_')
@@ -54,7 +39,6 @@ export default defineEventHandler(async (event) => {
     questionData.map((q) => prisma.question.create({ data: q }))
   )
 
-  // Create form with junction rows
   const form = await prisma.form.create({
     data: {
       title: body.title,
@@ -72,7 +56,6 @@ export default defineEventHandler(async (event) => {
     },
   })
 
-  // Mark document as saved
   await prisma.documentUpload.update({
     where: { id },
     data: { status: 'saved', savedFormId: form.id },

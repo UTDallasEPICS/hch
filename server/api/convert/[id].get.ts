@@ -1,8 +1,3 @@
-/**
- * GET /api/convert/:id
- * Returns a DocumentUpload with its non-deleted ExtractedFields, sorted by fieldIndex.
- */
-
 import { prisma } from '../../utils/prisma'
 
 export default defineEventHandler(async (event) => {

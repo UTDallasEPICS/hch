@@ -1,10 +1,3 @@
-/**
- * GET /api/convert/:id/preview
- *
- * Streams the originally uploaded PDF or DOCX back to the browser
- * so the correction UI can embed it in an <iframe>.
- */
-
 import { createReadStream, existsSync } from 'node:fs'
 import { prisma } from '../../../utils/prisma'
 
@@ -19,7 +12,6 @@ export default defineEventHandler(async (event) => {
 
   if (!doc) throw createError({ statusCode: 404, message: 'Document not found.' })
 
-  // Google Docs have no local file — redirect to the doc URL instead
   if (doc.mimeType === 'application/vnd.google-apps.document') {
     throw createError({ statusCode: 404, message: 'No local file for Google Doc sources.' })
   }

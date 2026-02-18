@@ -1,12 +1,3 @@
-/**
- * PATCH /api/convert/:id
- *
- * Body: array of field patches.
- * Each patch must include { fieldId } plus any subset of { label, type, options, isDeleted }.
- *
- * Designed for real-time autosave from the correction UI.
- */
-
 import { prisma } from '../../utils/prisma'
 
 interface FieldPatch {
@@ -30,9 +21,9 @@ export default defineEventHandler(async (event) => {
     prisma.extractedField.update({
       where: { id: patch.fieldId },
       data: {
-        ...(patch.label !== undefined && { label: patch.label }),
-        ...(patch.type !== undefined && { type: patch.type }),
-        ...(patch.options !== undefined && {
+        ...(patch.label     !== undefined && { label: patch.label }),
+        ...(patch.type      !== undefined && { type: patch.type }),
+        ...(patch.options   !== undefined && {
           options: patch.options ? JSON.stringify(patch.options) : null,
         }),
         ...(patch.isDeleted !== undefined && { isDeleted: patch.isDeleted }),
