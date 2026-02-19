@@ -1,8 +1,4 @@
 <script setup lang="ts">
-definePageMeta({ layout: false })
-
-import { authClient } from '../utils/auth-client'
-
 const {
   data: tasks,
   pending,
@@ -47,52 +43,14 @@ async function startForm(slug: string) {
   }
 }
 
-async function logout() {
-  await authClient.signOut()
-  await navigateTo('/auth', { external: true })
-}
-
 function progressLabel(task: { progress: number; status: string }) {
   return task.status === 'COMPLETED' ? 'COMPLETED' : `${task.progress}%`
 }
 </script>
 
 <template>
-  <UApp>
-    <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <header
-        class="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:border-gray-800 dark:bg-gray-900/95 dark:supports-[backdrop-filter]:bg-gray-900/80"
-      >
-        <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-          <div class="flex h-16 items-center justify-between">
-            <NuxtLink
-              to="/"
-              class="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white"
-            >
-              <img src="/hopecopeheallogo.png" alt="Hope. Cope. Heal." class="h-8 w-auto" />
-            </NuxtLink>
-            <div class="flex items-center gap-3">
-              <NuxtLink
-                to="/"
-                class="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-              >
-                Dashboard
-              </NuxtLink>
-              <UButton
-                color="neutral"
-                variant="ghost"
-                size="sm"
-                icon="i-heroicons-arrow-right-on-rectangle-20-solid"
-                label="Logout"
-                @click="logout"
-              />
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-        <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+  <div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
               Tasks
@@ -222,7 +180,5 @@ function progressLabel(task: { progress: number; status: string }) {
             </div>
           </div>
         </div>
-      </main>
-    </div>
-  </UApp>
+  </div>
 </template>
