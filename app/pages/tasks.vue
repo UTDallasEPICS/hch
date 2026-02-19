@@ -67,8 +67,7 @@
             to="/"
             class="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white"
           >
-            <span class="text-2xl">🌱</span>
-            <span>Hope. Cope. Heal.</span>
+            <img src="/hopecopeheallogo.png" alt="Hope. Cope. Heal." class="h-8 w-auto" />
           </NuxtLink>
           <div class="flex items-center gap-3">
             <NuxtLink
