@@ -52,7 +52,7 @@ function progressLabel(task: { progress: number; status: string }) {
   <div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
     <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
+            <h1 class="text-2xl font-bold tracking-tight text-[#21364B] sm:text-3xl dark:text-[#F9F3D9]">
               Tasks
             </h1>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -68,7 +68,7 @@ function progressLabel(task: { progress: number; status: string }) {
           <div
             v-for="i in 3"
             :key="i"
-            class="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900"
+            class="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900"
           >
             <USkeleton class="mb-3 h-6 w-2/3" />
             <USkeleton class="h-4 w-full" />
@@ -89,11 +89,11 @@ function progressLabel(task: { progress: number; status: string }) {
           <div
             v-for="task in tasks"
             :key="task.id"
-            class="hover:border-primary-300 dark:hover:border-primary-700 rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition dark:border-gray-800 dark:bg-gray-900"
+            class="hover:border-primary-300 dark:hover:border-primary-700 rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition dark:border-gray-700 dark:bg-gray-900"
           >
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div class="min-w-0 flex-1">
-                <h2 class="truncate text-lg font-semibold text-gray-900 dark:text-white">
+                <h2 class="truncate text-lg font-semibold text-[#21364B] dark:text-[#F9F3D9]">
                   {{ task.title }}
                 </h2>
                 <p
@@ -158,16 +158,16 @@ function progressLabel(task: { progress: number; status: string }) {
           </div>
 
           <div v-if="availableForms?.length" class="mt-10">
-            <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Available forms</h2>
+            <h2 class="mb-4 text-lg font-semibold text-[#21364B] dark:text-[#F9F3D9]">Available forms</h2>
             <div class="space-y-4">
               <div
                 v-for="f in availableForms"
                 :key="f.id"
-                class="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900"
+                class="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900"
               >
                 <div class="flex items-center justify-between">
                   <div>
-                    <h3 class="font-semibold text-gray-900 dark:text-white">{{ f.title }}</h3>
+                    <h3 class="font-semibold text-[#21364B] dark:text-[#F9F3D9]">{{ f.title }}</h3>
                     <p v-if="f.description" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                       {{ f.description }}
                     </p>

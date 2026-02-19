@@ -5,7 +5,7 @@ const { data: users, pending, error } = await useFetch('/api/get/users')
 <template>
   <UContainer class="py-10">
     <div class="mb-8">
-      <h1 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Dashboard</h1>
+      <h1 class="text-3xl font-bold tracking-tight text-[#21364B] dark:text-[#F9F3D9]">Dashboard</h1>
       <p class="mt-1 text-gray-500 dark:text-gray-400">Manage your application users and settings.</p>
     </div>
 
@@ -14,7 +14,7 @@ const { data: users, pending, error } = await useFetch('/api/get/users')
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <UIcon name="i-heroicons-users-20-solid" class="w-5 h-5 text-gray-500" />
-            <h2 class="text-base font-semibold leading-7 text-gray-900 dark:text-white">Registered Users</h2>
+            <h2 class="text-base font-semibold leading-7 text-[#21364B] dark:text-[#F9F3D9]">Registered Users</h2>
           </div>
           <UBadge variant="subtle" color="primary" size="md">{{ users?.length || 0 }} Users</UBadge>
         </div>
@@ -47,7 +47,7 @@ const { data: users, pending, error } = await useFetch('/api/get/users')
           <div class="flex items-center gap-3">
             <UAvatar :alt="user.name" :src="user.image || undefined" size="md" />
             <div>
-              <p class="font-medium text-gray-900 dark:text-white">{{ user.name }}</p>
+              <p class="font-medium text-[#21364B] dark:text-[#F9F3D9]">{{ user.name }}</p>
               <p class="text-sm text-gray-500 dark:text-gray-400">{{ user.email }}</p>
             </div>
           </div>

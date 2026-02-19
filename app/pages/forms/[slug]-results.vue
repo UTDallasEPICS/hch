@@ -60,13 +60,13 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
     <header
-      class="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95"
+      class="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur dark:border-gray-700 dark:bg-gray-900/95"
     >
       <div class="relative mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-16 items-center justify-between">
           <NuxtLink
             to="/tasks"
-            class="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+            class="text-sm font-medium text-gray-600 hover:text-[#21364B] dark:text-gray-400 dark:hover:text-[#F9F3D9]"
           >
             ← Back to Tasks
           </NuxtLink>
@@ -96,7 +96,7 @@
       <template v-else-if="form">
         <!-- Header -->
         <div class="mb-8">
-          <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
+          <h1 class="text-2xl font-bold tracking-tight text-[#21364B] sm:text-3xl dark:text-[#F9F3D9]">
             {{ form.title }} - Results
           </h1>
           <p v-if="form.description" class="mt-2 text-gray-600 dark:text-gray-400">
@@ -110,7 +110,7 @@
 
         <!-- Score Card -->
         <div
-          class="mb-8 rounded-xl border border-gray-200 bg-white p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+          class="mb-8 rounded-xl border border-gray-200 bg-white p-8 shadow-sm dark:border-gray-700 dark:bg-gray-900"
         >
           <div class="text-center">
             <div class="mb-4">
@@ -137,7 +137,7 @@
 
         <!-- Responses Summary -->
         <div class="mb-8">
-          <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Your Responses</h2>
+          <h2 class="mb-4 text-lg font-semibold text-[#21364B] dark:text-[#F9F3D9]">Your Responses</h2>
           <!-- Instruction statement for ACE form -->
           <div
             v-if="form.slug === 'ace-form'"
@@ -151,11 +151,11 @@
             <div
               v-for="(q, index) in form.questions"
               :key="q.id"
-              class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+              class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900"
             >
               <div class="flex items-start justify-between">
                 <div class="flex-1">
-                  <p class="text-base font-medium text-gray-900 dark:text-white">
+                  <p class="text-base font-medium text-[#21364B] dark:text-[#F9F3D9]">
                     {{ index + 1 }}. {{ q.text }}
                   </p>
                   <div class="mt-2">

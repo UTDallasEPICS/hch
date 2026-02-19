@@ -1,32 +1,24 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 
-@theme static {
-  /* Primary: #213C4E and palette (light mode) */
-  --color-primary-50: #e8ecef;
-  --color-primary-100: #d1d9df;
-  --color-primary-200: #a3b3bf;
-  --color-primary-300: #758d9f;
-  --color-primary-400: #47677f;
-  --color-primary-500: #2d4a5f;
-  --color-primary-600: #213c4e;
-  --color-primary-700: #1a3040;
-  --color-primary-800: #142432;
-  --color-primary-900: #0d1824;
-  --color-primary-950: #070c12;
+/* ── Primary: slate blue #4A6274 (both modes) ───────────────── */
+@theme {
+  --color-primary-50:  #eef2f5;
+  --color-primary-100: #d9e4ea;
+  --color-primary-200: #b3c9d5;
+  --color-primary-300: #8aafc0;
+  --color-primary-400: #6594ab;
+  --color-primary-500: #4a6274;
+  --color-primary-600: #3d5262;
+  --color-primary-700: #2f3f4d;
+  --color-primary-800: #21364b;
+  --color-primary-900: #1b2b3c;
+  --color-primary-950: #0f1921;
 }
 
-/* Dark mode: lighter slate-blue variation of #213C4E for contrast on dark backgrounds */
+/* ── Dark mode: shift primary lighter for contrast ──────────── */
 .dark {
-  --color-primary-50: #e2eef5;
-  --color-primary-100: #c5dceb;
-  --color-primary-200: #9bc2d8;
-  --color-primary-300: #71a8c4;
-  --color-primary-400: #5b8fa8;
-  --color-primary-500: #4a7a90;
-  --color-primary-600: #3d6580;
-  --color-primary-700: #345a70;
-  --color-primary-800: #2b4d62;
-  --color-primary-900: #224055;
-  --color-primary-950: #1a3344;
+  --color-primary-400: #8aafc0;
+  --color-primary-500: #6594ab;
+  --color-primary-600: #4a6274;
 }

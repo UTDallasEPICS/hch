@@ -99,13 +99,13 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
     <header
-      class="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95"
+      class="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur dark:border-gray-700 dark:bg-gray-900/95"
     >
       <div class="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-16 items-center justify-between">
           <NuxtLink
             to="/tasks"
-            class="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+            class="text-sm font-medium text-gray-600 hover:text-[#21364B] dark:text-gray-400 dark:hover:text-[#F9F3D9]"
           >
             ← Back to Tasks
           </NuxtLink>
@@ -117,7 +117,7 @@
     </header>
 
     <main class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-      <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
+      <h1 class="text-2xl font-bold tracking-tight text-[#21364B] sm:text-3xl dark:text-[#F9F3D9]">
         Add New Form
       </h1>
       <p class="mt-1 text-gray-500 dark:text-gray-400">
@@ -126,39 +126,39 @@
 
       <!-- Form metadata -->
       <div
-        class="mt-8 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900"
+        class="mt-8 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900"
       >
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Form details</h2>
+        <h2 class="text-lg font-semibold text-[#21364B] dark:text-[#F9F3D9]">Form details</h2>
         <div class="mt-4 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
+            <label class="block text-sm font-medium text-[#21364B] dark:text-[#F9F3D9]">Title</label>
             <input
               v-model="formTitle"
               type="text"
               placeholder="e.g. ACE Questionnaire"
-              class="focus:border-primary-500 focus:ring-primary-500 mt-1 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 shadow-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+              class="focus:border-primary-500 focus:ring-primary-500 mt-1 w-full rounded-lg border border-gray-300 bg-[#F9F3D9] px-4 py-2 text-[#21364B] shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-[#F9F3D9]"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+            <label class="block text-sm font-medium text-[#21364B] dark:text-[#F9F3D9]"
               >Description (optional)</label
             >
             <textarea
               v-model="formDescription"
               rows="2"
               placeholder="Brief description of the form"
-              class="focus:border-primary-500 focus:ring-primary-500 mt-1 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 shadow-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+              class="focus:border-primary-500 focus:ring-primary-500 mt-1 w-full rounded-lg border border-gray-300 bg-[#F9F3D9] px-4 py-2 text-[#21364B] shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-[#F9F3D9]"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+            <label class="block text-sm font-medium text-[#21364B] dark:text-[#F9F3D9]"
               >URL slug</label
             >
             <input
               v-model="formSlug"
               type="text"
               placeholder="ace-form"
-              class="focus:border-primary-500 focus:ring-primary-500 mt-1 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 shadow-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+              class="focus:border-primary-500 focus:ring-primary-500 mt-1 w-full rounded-lg border border-gray-300 bg-[#F9F3D9] px-4 py-2 text-[#21364B] shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-[#F9F3D9]"
             />
           </div>
         </div>
@@ -183,9 +183,9 @@
 
       <!-- New question inline -->
       <div
-        class="mt-8 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900"
+        class="mt-8 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900"
       >
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Add a new question</h2>
+        <h2 class="text-lg font-semibold text-[#21364B] dark:text-[#F9F3D9]">Add a new question</h2>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
           It will be added to the master list and can be used in any form.
         </p>
@@ -194,12 +194,12 @@
             v-model="newQuestionText"
             type="text"
             placeholder="Question text"
-            class="focus:border-primary-500 focus:ring-primary-500 min-w-[200px] flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 shadow-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+            class="focus:border-primary-500 focus:ring-primary-500 min-w-[200px] flex-1 rounded-lg border border-gray-300 bg-[#F9F3D9] px-4 py-2 text-[#21364B] shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-[#F9F3D9]"
             @keydown.enter.prevent="addNewQuestion"
           />
           <select
             v-model="newQuestionType"
-            class="focus:border-primary-500 focus:ring-primary-500 w-40 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+            class="focus:border-primary-500 focus:ring-primary-500 w-40 rounded-lg border border-gray-300 bg-[#F9F3D9] px-4 py-2 text-[#21364B] dark:border-gray-700 dark:bg-gray-800 dark:text-[#F9F3D9]"
           >
             <option value="radio">Yes/No (radio)</option>
             <option value="text">Text</option>
@@ -217,9 +217,9 @@
       <!-- Selected order -->
       <div
         v-if="orderedSelected.length"
-        class="mt-8 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900"
+        class="mt-8 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900"
       >
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+        <h2 class="text-lg font-semibold text-[#21364B] dark:text-[#F9F3D9]">
           Order of questions in form
         </h2>
         <ul class="mt-4 space-y-2">
@@ -228,7 +228,7 @@
             :key="q.id"
             class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 dark:border-gray-700"
           >
-            <span class="text-sm text-gray-900 dark:text-white">{{ idx + 1 }}. {{ q.text }}</span>
+            <span class="text-sm text-[#21364B] dark:text-[#F9F3D9]">{{ idx + 1 }}. {{ q.text }}</span>
             <div class="flex gap-1">
               <UButton
                 size="xs"

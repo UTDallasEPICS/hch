@@ -21,10 +21,10 @@
 <template>
   <UApp>
     <div
-      class="flex min-h-screen flex-col bg-white text-gray-900 transition-colors duration-300 dark:bg-gray-900 dark:text-gray-100"
+      class="flex min-h-screen flex-col bg-white text-[#21364B] transition-colors duration-300 dark:bg-gray-900 dark:text-[#F9F3D9]"
     >
       <header
-        class="sticky top-0 z-50 border-b border-gray-200 bg-white/75 backdrop-blur-md dark:border-gray-800 dark:bg-gray-900/75"
+        class="sticky top-0 z-50 border-b border-gray-200 bg-white/75 backdrop-blur-md dark:border-gray-700 dark:bg-gray-900/75"
       >
         <UContainer class="flex h-16 items-center justify-between">
           <NuxtLink to="/" class="flex items-center gap-2 text-xl font-bold">
@@ -34,13 +34,13 @@
           <nav class="flex items-center gap-4">
             <NuxtLink
               to="/"
-              class="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+              class="text-sm font-medium text-gray-600 hover:text-[#21364B] dark:text-gray-400 dark:hover:text-[#F9F3D9]"
             >
               Dashboard
             </NuxtLink>
             <NuxtLink
               to="/tasks"
-              class="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+              class="text-sm font-medium text-gray-600 hover:text-[#21364B] dark:text-gray-400 dark:hover:text-[#F9F3D9]"
             >
               Tasks
             </NuxtLink>

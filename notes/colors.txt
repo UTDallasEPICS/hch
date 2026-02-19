@@ -1,19 +1,27 @@
 Light Mode:
-    Form Background: #FFFFFF (Pure white for clarity) or #FDFBF2 (A very light tint of the cream).
-    Input Field Background: #F9F3D9 (The soft cream from the website).
-    Input Border (Default): #D1D5DB (Light gray).
-    Input Border (Focus): #4A6274 (The slate blue).
-    Label/Primary Text: #21364B (Dark navy).
-    Placeholder Text: #6B7280 (Medium gray).    
-    Primary Action Button: Background #4A6274, Text #FFFFFF.
-    Secondary/Selection Button: Background #F7D417 (The gold ribbon color), Text #21364B.
+    Page Background: #FFFFFF (white)
+    Input Field Background: #F9F3D9 (soft cream)
+    Input Border (Default): #D1D5DB (light gray / gray-300)
+    Input Border (Focus): #4A6274 (slate blue / primary-500)
+    Label/Primary Text: #21364B (dark navy)
+    Placeholder Text: #6B7280 (medium gray)
+    Primary Action Button: Background #4A6274, Text #FFFFFF
+    Secondary/Selection Button: Background #F7D417 (gold ribbon), Text #21364B
 
 Dark Mode:
-    Form Background: #1B2B3C (A slightly darker shade of the donation section navy).
-    Input Field Background: #21364B (The exact navy from the site).
-    Input Border (Default): #374151 (Dark slate gray).
-    Input Border (Focus): #F7D417 (The gold ribbon color—provides high contrast).
-    Label/Primary Text: #F9F3D9 (The soft cream used as a high-contrast text color).
-    Placeholder Text: #9CA3AF (Light gray).
-    Primary Action Button: Background #F7D417, Text #21364B (Gold buttons pop best in dark mode).
-    Secondary/Selection Button: Background #4A6274, Text #FFFFFF.
+    Page Background: #111827 (gray-900, Tailwind default)
+    Input Field Background: #1F2937 (gray-800, Tailwind default)
+    Input Border (Default): #374151 (gray-700)
+    Input Border (Focus): #6594ab (lighter slate blue / primary-500 dark)
+    Label/Primary Text: #F9F3D9 (soft cream)
+    Placeholder Text: #9CA3AF (light gray)
+    Primary Action Button: Background #6594ab (lighter slate blue), Text #FFFFFF
+    Secondary/Selection Button: Background #4A6274, Text #FFFFFF
+
+Primary Color Scale (slate blue — both modes, dark shifts lighter):
+    primary-500 light: #4A6274
+    primary-500 dark:  #6594ab
+    primary-400 dark:  #8aafc0
+    Full scale: 50 #eef2f5 → 100 #d9e4ea → 200 #b3c9d5 → 300 #8aafc0
+                400 #6594ab → 500 #4a6274 → 600 #3d5262 → 700 #2f3f4d
+                800 #21364b → 900 #1b2b3c → 950 #0f1921

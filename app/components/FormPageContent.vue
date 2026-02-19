@@ -36,13 +36,13 @@ const {
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
     <header
-      class="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95"
+      class="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur dark:border-gray-700 dark:bg-gray-900/95"
     >
       <div class="relative mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-14 items-center justify-between">
           <NuxtLink
             to="/tasks"
-            class="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+            class="text-sm font-medium text-gray-600 hover:text-[#21364B] dark:text-gray-400 dark:hover:text-[#F9F3D9]"
           >
             ← Back to Tasks
           </NuxtLink>
@@ -53,7 +53,7 @@ const {
       </div>
       <div
         v-if="form"
-        class="border-t border-gray-100 bg-gray-50/80 px-4 py-3 sm:px-6 dark:border-gray-800 dark:bg-gray-900/80"
+        class="border-t border-gray-100 bg-gray-50/80 px-4 py-3 sm:px-6 dark:border-gray-700 dark:bg-gray-900/80"
       >
         <div class="mx-auto max-w-3xl">
           <div class="flex items-center justify-between text-sm">
@@ -98,7 +98,7 @@ const {
 
       <template v-else-if="form">
         <div class="mb-8">
-          <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
+          <h1 class="text-2xl font-bold tracking-tight text-[#21364B] sm:text-3xl dark:text-[#F9F3D9]">
             {{ form.title }}
           </h1>
           <p v-if="form.description" class="mt-2 text-gray-600 dark:text-gray-400">
@@ -127,10 +127,10 @@ const {
           <div
             v-for="(q, index) in form.questions"
             :key="q.id"
-            class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+            class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900"
           >
             <fieldset>
-              <legend class="text-base font-medium text-gray-900 dark:text-white">
+              <legend class="text-base font-medium text-[#21364B] dark:text-[#F9F3D9]">
                 {{ Number(index) + 1 }}. {{ q.text }}
               </legend>
               <div v-if="q.type === 'radio'" class="mt-4 flex flex-wrap gap-3">
@@ -152,7 +152,7 @@ const {
                     class="sr-only"
                     @change="setResponse(q.alias, opt)"
                   />
-                  <span class="text-sm font-medium text-gray-900 dark:text-white">{{ opt }}</span>
+                  <span class="text-sm font-medium text-[#21364B] dark:text-[#F9F3D9]">{{ opt }}</span>
                 </label>
               </div>
               <div v-else class="mt-4">
@@ -160,7 +160,7 @@ const {
                   :value="responses[q.alias]"
                   type="text"
                   :name="q.alias"
-                  class="focus:border-primary-500 focus:ring-primary-500 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  class="focus:border-primary-500 focus:ring-primary-500 w-full rounded-lg border border-gray-300 bg-[#F9F3D9] px-4 py-2.5 text-[#21364B] shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-[#F9F3D9]"
                   placeholder="Your answer"
                   @input="setResponse(q.alias, ($event.target as HTMLInputElement).value)"
                 />
@@ -202,7 +202,7 @@ const {
           class="mt-0.5 h-5 w-5 shrink-0 text-amber-500"
         />
         <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium text-gray-900 dark:text-white">Form incomplete</p>
+          <p class="text-sm font-medium text-[#21364B] dark:text-[#F9F3D9]">Form incomplete</p>
           <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
             You have
             <span class="font-semibold text-amber-600 dark:text-amber-400">{{ unansweredCount }}</span>
