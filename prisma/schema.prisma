@@ -99,7 +99,7 @@ model GadQuestion {
   g05 Int?
   g06 Int?
   g07 Int?
-  g08 Int? // difficulty question (optional)
+  g08 Int?
 
   form GadForm @relation(fields: [formId], references: [id], onDelete: Cascade)
   user User    @relation(fields: [userId], references: [id], onDelete: Cascade)

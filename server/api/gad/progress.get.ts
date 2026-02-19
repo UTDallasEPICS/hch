@@ -18,8 +18,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401 })
   }
 
+  const form = await prisma.gadForm.findFirst({
+    where: { userId, status: 'IN_PROGRESS' },
+    orderBy: { id: 'desc' },
+  })
+
+  if (!form) return { answered: 0, total: TOTAL }
+
   const q = await prisma.gadQuestion.findFirst({
-    where: { userId },
+    where: { formId: form.id },
   })
 
   if (!q) return { answered: 0, total: TOTAL }

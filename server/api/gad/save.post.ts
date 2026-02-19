@@ -18,17 +18,33 @@ export default defineEventHandler(async (event) => {
 
   const body = await readBody(event)
 
-  const questions = await prisma.gadQuestion.findFirst({
-    where: { userId },
+  // find or create form
+  let form = await prisma.gadForm.findFirst({
+    where: { userId, status: 'IN_PROGRESS' },
+    orderBy: { id: 'desc' },
   })
 
-  if (!questions) {
-    throw createError({
-      statusCode: 404,
-      statusMessage: 'GAD row not found',
+  if (!form) {
+    form = await prisma.gadForm.create({
+      data: { userId },
     })
   }
 
+  //find or create questions row
+  let questions = await prisma.gadQuestion.findFirst({
+    where: { formId: form.id },
+  })
+
+  if (!questions) {
+    questions = await prisma.gadQuestion.create({
+      data: {
+        formId: form.id,
+        userId,
+      },
+    })
+  }
+
+  // calculate score
   const total =
     (body.g1 ?? 0) +
     (body.g2 ?? 0) +
@@ -44,6 +60,7 @@ export default defineEventHandler(async (event) => {
   else if (total >= 10) severity = 'Moderate'
   else if (total >= 5) severity = 'Mild'
 
+  // save answers
   await prisma.gadQuestion.update({
     where: { id: questions.id },
     data: {
@@ -58,8 +75,9 @@ export default defineEventHandler(async (event) => {
     },
   })
 
+  // save score
   await prisma.gadForm.update({
-    where: { id: questions.formId },
+    where: { id: form.id },
     data: {
       totalScore: total,
       severity,

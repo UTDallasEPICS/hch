@@ -73,6 +73,11 @@
         body: form,
       })
 
+      toast.add({
+        title: 'Saved',
+        color: 'success',
+      })
+
       await navigateTo('/tasks')
     } catch {
       toast.add({
@@ -86,69 +91,84 @@
 </script>
 
 <template>
-  <UContainer class="py-10">
-    <h1 class="text-2xl font-semibold">GAD-7 Anxiety Assessment</h1>
+  <UContainer class="max-w-3xl py-10">
+    <h1 class="text-2xl font-semibold text-white">GAD-7 Anxiety Assessment</h1>
 
     <UCard class="mt-4">
-      <div class="space-y-2">
-        <h2 class="text-base font-semibold text-gray-900 dark:text-white">Instructions</h2>
-
-        <p class="text-sm text-gray-600 dark:text-gray-400">
-          Over the last <span class="font-medium">two weeks</span>, how often have you been bothered
-          by the following problems?
-        </p>
-
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          Please select the response that best describes your experience for each item.
-        </p>
-      </div>
+      <p class="text-sm text-gray-400">
+        Over the last <span class="font-medium">two weeks</span>, how often have you been bothered
+        by the following problems?
+      </p>
     </UCard>
 
     <UCard class="mt-6 space-y-6">
-      <div>
-        <label>1. Feeling nervous, anxious, or on edge</label>
-        <URadioGroup v-model="form.g1" :options="options" />
+      <!-- Question Component -->
+      <div v-for="(question, index) in 7" :key="index" class="space-y-3">
+        <label class="font-medium text-gray-200">
+          {{
+            [
+              'Feeling nervous, anxious, or on edge',
+              'Not being able to stop or control worrying',
+              'Worrying too much about different things',
+              'Trouble relaxing',
+              'Being so restless that it is hard to sit still',
+              'Becoming easily annoyed or irritable',
+              'Feeling afraid, as if something awful might happen',
+            ][index]
+          }}
+        </label>
+
+        <div class="space-y-2">
+          <label
+            v-for="opt in options"
+            :key="opt.value"
+            class="flex cursor-pointer items-center gap-3"
+          >
+            <input
+              type="radio"
+              :value="opt.value"
+              v-model="form['g' + (index + 1)]"
+              class="accent-primary-500 h-4 w-4"
+            />
+
+            <span class="text-sm text-gray-300">
+              {{ opt.label }}
+            </span>
+          </label>
+        </div>
       </div>
 
-      <div>
-        <label>2. Not being able to stop or control worrying</label>
-        <URadioGroup v-model="form.g2" :options="options" />
+      <!-- Difficulty Question -->
+      <div class="space-y-3">
+        <label class="font-medium text-gray-200">
+          If you checked any problems, how difficult have they made it for you?
+        </label>
+
+        <div class="space-y-2">
+          <label
+            v-for="opt in difficultyOptions"
+            :key="opt.value"
+            class="flex cursor-pointer items-center gap-3"
+          >
+            <input
+              type="radio"
+              :value="opt.value"
+              v-model="form.g8"
+              class="accent-primary-500 h-4 w-4"
+            />
+
+            <span class="text-sm text-gray-300">
+              {{ opt.label }}
+            </span>
+          </label>
+        </div>
       </div>
 
-      <div>
-        <label>3. Worrying too much about different things</label>
-        <URadioGroup v-model="form.g3" :options="options" />
-      </div>
-
-      <div>
-        <label>4. Trouble relaxing</label>
-        <URadioGroup v-model="form.g4" :options="options" />
-      </div>
-
-      <div>
-        <label>5. Being so restless that it is hard to sit still</label>
-        <URadioGroup v-model="form.g5" :options="options" />
-      </div>
-
-      <div>
-        <label>6. Becoming easily annoyed or irritable</label>
-        <URadioGroup v-model="form.g6" :options="options" />
-      </div>
-
-      <div>
-        <label>7. Feeling afraid, as if something awful might happen</label>
-        <URadioGroup v-model="form.g7" :options="options" />
-      </div>
-
-      <div>
-        <label> If you checked any problems, how difficult have they made it for you? </label>
-        <URadioGroup v-model="form.g8" :options="difficultyOptions" />
-      </div>
-
+      <!-- Score -->
       <UCard>
-        <div class="text-lg font-semibold">Total Score: {{ totalScore }}</div>
+        <div class="text-lg font-semibold text-white">Total Score: {{ totalScore }}</div>
 
-        <div class="text-sm">Severity: {{ severity }}</div>
+        <div class="text-sm text-gray-400">Severity: {{ severity }}</div>
       </UCard>
     </UCard>
 

@@ -4,7 +4,6 @@ import { prisma } from '../server/utils/prisma'
 async function main() {
   console.log('Start seeding...')
 
-  // 1. Create a User with a Password (Local Auth)
   const user1 = await prisma.user.create({
     data: {
       id: 'user_01',
@@ -15,14 +14,13 @@ async function main() {
         create: {
           id: 'acc_01',
           accountId: 'alice_local_id',
-          providerId: 'credential', // Common for email/password
-          password: 'hashed_password_here', // In a real app, hash this!
+          providerId: 'credential',
+          password: 'hashed_password_here',
         },
       },
     },
   })
 
-  // 2. Create a User with an OAuth Account (e.g., Google)
   const user2 = await prisma.user.create({
     data: {
       id: 'user_02',

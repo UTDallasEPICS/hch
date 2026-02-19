@@ -16,6 +16,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
   }
 
+  // Find active form
   const existingForm = await prisma.gadForm.findFirst({
     where: { userId, status: 'IN_PROGRESS' },
     orderBy: { id: 'desc' },
@@ -23,12 +24,15 @@ export default defineEventHandler(async (event) => {
 
   if (existingForm) {
     let questions = await prisma.gadQuestion.findFirst({
-      where: { userId },
+      where: { formId: existingForm.id },
     })
 
     if (!questions) {
       questions = await prisma.gadQuestion.create({
-        data: { formId: existingForm.id, userId },
+        data: {
+          formId: existingForm.id,
+          userId,
+        },
       })
     }
 
@@ -38,6 +42,7 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  // Create new form
   const createdForm = await prisma.gadForm.create({
     data: { userId },
   })
