@@ -1,28 +1,12 @@
 <script setup lang="ts">
-import { authClient } from '../utils/auth-client'
-
 const { data: users, pending, error } = await useFetch('/api/get/users')
-
-async function logout() {
-  await authClient.signOut()
-  await navigateTo('/auth', { external: true })
-}
 </script>
 
 <template>
   <UContainer class="py-10">
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-      <div>
-        <h1 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Dashboard</h1>
-        <p class="mt-1 text-gray-500 dark:text-gray-400">Manage your application users and settings.</p>
-      </div>
-      <UButton 
-        color="error" 
-        variant="soft" 
-        icon="i-heroicons-arrow-right-on-rectangle-20-solid" 
-        label="Logout" 
-        @click="logout" 
-      />
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Dashboard</h1>
+      <p class="mt-1 text-gray-500 dark:text-gray-400">Manage your application users and settings.</p>
     </div>
 
     <UCard class="w-full">
