@@ -1,13 +1,22 @@
 <script setup lang="ts">
   const gadAnswered = ref(0)
   const gadTotal = ref(7)
+  const gadScore = ref<number | null>(null)
+  const gadSeverity = ref<string | null>(null)
 
   onMounted(async () => {
     try {
-      const progress = await $fetch<{ answered: number; total: number }>('/api/gad/progress')
+      const progress = await $fetch<{
+        answered: number
+        total: number
+        totalScore: number | null
+        severity: string | null
+      }>('/api/gad/progress')
 
       gadAnswered.value = progress.answered
       gadTotal.value = progress.total
+      gadScore.value = progress.totalScore
+      gadSeverity.value = progress.severity
     } catch {
       gadAnswered.value = 0
       gadTotal.value = 7
@@ -26,7 +35,14 @@
         variant="soft"
         to="/gad"
       >
-        <span>GAD-7 Anxiety Assessment</span>
+        <div class="flex flex-col items-start">
+          <span>GAD-7 Anxiety Assessment</span>
+
+          <span v-if="gadScore !== null" class="text-xs text-gray-500">
+            Score: {{ gadScore }} • {{ gadSeverity }}
+          </span>
+        </div>
+
         <span>{{ gadAnswered }}/{{ gadTotal }}</span>
       </UButton>
     </div>
