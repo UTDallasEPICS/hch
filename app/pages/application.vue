@@ -6,6 +6,7 @@
   const toast = useToast()
   const isSaving = ref(false)
   const currentStep = ref(1)
+  const isReadOnly = ref(false)
   const { form, toPayload, applySavedAnswers } = useFormStore()
 
   const TOTAL_STEPS = 5
@@ -125,6 +126,10 @@
   })
 
   async function persistProgress(showError = true) {
+    if (isReadOnly.value) {
+      return true
+    }
+
     try {
       const payload = toPayload()
       await $fetch('/api/application/save', { method: 'POST', body: payload })
@@ -148,6 +153,11 @@
   }
 
   async function saveAndExit() {
+    if (isReadOnly.value) {
+      await navigateTo('/taskPage')
+      return
+    }
+
     try {
       isSaving.value = true
       const saved = await persistProgress(true)
@@ -162,26 +172,48 @@
   async function goNext() {
     if (currentStep.value >= TOTAL_STEPS) return
 
-    await persistProgress(true)
+    if (!isReadOnly.value) {
+      await persistProgress(true)
+    }
     currentStep.value += 1
   }
 
   async function goPrev() {
     if (currentStep.value <= 1) return
 
-    await persistProgress(true)
+    if (!isReadOnly.value) {
+      await persistProgress(true)
+    }
     currentStep.value -= 1
   }
 
   onBeforeRouteLeave(async () => {
+    if (isReadOnly.value) {
+      return
+    }
+
     await persistProgress(false)
   })
 
   onMounted(async () => {
-    const response = await $fetch<{ answers?: AppAnswerPayload | null }>('/api/application/start', {
-      method: 'POST',
-    })
-    applySavedAnswers(response?.answers)
+    try {
+      const response = await $fetch<{ answers?: AppAnswerPayload | null; submitted?: boolean }>(
+        '/api/application/start',
+        {
+          method: 'POST',
+        }
+      )
+      applySavedAnswers(response?.answers)
+      isReadOnly.value = Boolean(response?.submitted)
+    } catch (error: any) {
+      toast.add({
+        title: 'Unable to load application',
+        description:
+          error?.data?.statusMessage || error?.statusMessage || 'Please try again later.',
+        color: 'error',
+      })
+      await navigateTo('/taskPage')
+    }
   })
 </script>
 
@@ -192,8 +224,11 @@
     <UContainer class="max-w-3xl">
       <div class="mb-6 sm:mb-8">
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Application</h1>
-        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+        <p v-if="!isReadOnly" class="mt-1 text-sm text-gray-600 dark:text-gray-400">
           Please complete all required questions.
+        </p>
+        <p v-else class="text-primary-600 dark:text-primary-400 mt-1 text-sm font-medium">
+          Submitted form (view only).
         </p>
       </div>
 
@@ -220,7 +255,7 @@
           </div>
         </div>
 
-        <div class="min-h-[280px]">
+        <div class="min-h-[280px]" :inert="isReadOnly">
           <FormStep :step="currentStep" />
         </div>
 
@@ -230,12 +265,12 @@
           >
             <div class="flex flex-wrap items-center gap-2">
               <UButton
+                v-if="currentStep > 1"
                 label="Previous"
                 color="neutral"
                 variant="soft"
                 size="md"
-                :disabled="currentStep <= 1"
-                class="min-w-[100px]"
+                class="min-w-[100px] justify-center text-center"
                 @click="goPrev"
               />
               <UButton
@@ -244,17 +279,17 @@
                 color="primary"
                 variant="soft"
                 size="md"
-                class="min-w-[100px]"
+                class="min-w-[100px] justify-center text-center"
                 @click="goNext"
               />
             </div>
             <UButton
-              label="Save and Exit"
+              :label="isReadOnly ? 'Back to Tasks' : 'Save and Exit'"
               color="error"
               variant="soft"
               size="md"
               :loading="isSaving"
-              class="min-w-[120px]"
+              class="min-w-[120px] justify-center text-center"
               @click="saveAndExit"
             />
           </div>

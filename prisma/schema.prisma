@@ -80,13 +80,11 @@ model Verification {
 
 model AppForm {
   id          Int          @id @default(autoincrement())
-  userId      String
+  userId      String       @unique
   status      String       @default("IN_PROGRESS")
   submittedAt DateTime?
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   questions   AppQuestion?
-
-  @@index([userId])
 }
 
 model AppQuestion {

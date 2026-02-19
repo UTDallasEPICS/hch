@@ -13,10 +13,6 @@
       colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'
     },
   })
-
-  const headerLogo = computed(() =>
-    isDark.value ? '/HCH%20Dark%20Mode%20Logo.png' : '/HCH%20Light%20Mode%20Logo.png'
-  )
 </script>
 
 <template>
@@ -29,7 +25,16 @@
       >
         <UContainer class="flex h-16 items-center justify-between">
           <NuxtLink to="/" class="flex items-center gap-2 text-xl font-bold">
-            <img :src="headerLogo" alt="Hope Cope Heal logo" class="h-8 w-auto" />
+            <img
+              src="/HCH%20Light%20Mode%20Logo.png"
+              alt="Hope Cope Heal logo"
+              class="h-8 w-auto dark:hidden"
+            />
+            <img
+              src="/HCH%20Dark%20Mode%20Logo.png"
+              alt="Hope Cope Heal logo"
+              class="hidden h-8 w-auto dark:block"
+            />
             <span>Hope. Cope. Heal.</span>
           </NuxtLink>
 

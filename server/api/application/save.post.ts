@@ -57,44 +57,6 @@ type AnswersBody = {
 
 const TOTAL_QUESTIONS = 50
 
-function hasAnswer(value: string | null | undefined) {
-  if (!value) {
-    return false
-  }
-
-  const trimmed = value.trim()
-  if (trimmed.length === 0) {
-    return false
-  }
-
-  try {
-    const parsed = JSON.parse(trimmed) as unknown
-
-    if (Array.isArray(parsed)) {
-      return parsed.length > 0
-    }
-
-    if (parsed && typeof parsed === 'object') {
-      const record = parsed as Record<string, unknown>
-
-      if (Array.isArray(record.values)) {
-        const other = typeof record.other === 'string' ? record.other.trim() : ''
-        return record.values.length > 0 || other.length > 0
-      }
-
-      if ('value' in record || 'text' in record) {
-        const selected = typeof record.value === 'string' ? record.value.trim() : ''
-        const text = typeof record.text === 'string' ? record.text.trim() : ''
-        return selected.length > 0 || text.length > 0
-      }
-    }
-  } catch {
-    return trimmed.length > 0
-  }
-
-  return trimmed.length > 0
-}
-
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
   for (const [key, value] of Object.entries(getHeaders(event))) {
@@ -116,7 +78,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  let existingQuestions = await prisma.appQuestion.findFirst({
+  let form = await prisma.appForm.findFirst({
     where: {
       userId,
     },
@@ -125,29 +87,39 @@ export default defineEventHandler(async (event) => {
     },
   })
 
-  if (!existingQuestions) {
-    let form = await prisma.appForm.findFirst({
-      where: {
+  if (!form) {
+    form = await prisma.appForm.create({
+      data: {
         userId,
         status: 'IN_PROGRESS',
       },
-      orderBy: {
-        id: 'desc',
-      },
     })
+  } else if (form.status === 'COMPLETE') {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Application already submitted',
+    })
+  }
 
-    if (!form) {
-      form = await prisma.appForm.create({
-        data: {
-          userId,
-          status: 'IN_PROGRESS',
-        },
-      })
-    }
+  let existingQuestions = await prisma.appQuestion.findUnique({
+    where: {
+      formId: form.id,
+    },
+  })
 
+  if (!existingQuestions) {
     existingQuestions = await prisma.appQuestion.create({
       data: {
         formId: form.id,
+        userId,
+      },
+    })
+  } else if (existingQuestions.userId !== userId) {
+    existingQuestions = await prisma.appQuestion.update({
+      where: {
+        id: existingQuestions.id,
+      },
+      data: {
         userId,
       },
     })
@@ -169,20 +141,13 @@ export default defineEventHandler(async (event) => {
     data,
   })
 
-  let answered = 0
-  for (let index = 1; index <= TOTAL_QUESTIONS; index += 1) {
-    const key = `q${String(index).padStart(2, '0')}`
-    if (hasAnswer(data[key])) {
-      answered += 1
-    }
-  }
-
   await prisma.appForm.update({
     where: {
-      id: existingQuestions.formId,
+      id: form.id,
     },
     data: {
-      status: answered === TOTAL_QUESTIONS ? 'COMPLETE' : 'IN_PROGRESS',
+      status: 'IN_PROGRESS',
+      submittedAt: null,
     },
   })
 

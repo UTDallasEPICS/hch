@@ -23,68 +23,54 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const existingForm = await prisma.appForm.findFirst({
+  let existingForm = await prisma.appForm.findFirst({
     where: {
       userId,
-      status: 'IN_PROGRESS',
     },
     orderBy: {
-      id: 'desc',
+      id: 'asc',
     },
   })
+  let created = false
 
-  if (existingForm) {
-    let existingQuestions = await prisma.appQuestion.findFirst({
-      where: {
+  if (!existingForm) {
+    existingForm = await prisma.appForm.create({
+      data: {
         userId,
-      },
-      orderBy: {
-        id: 'asc',
+        status: 'IN_PROGRESS',
       },
     })
-
-    if (!existingQuestions) {
-      existingQuestions = await prisma.appQuestion.create({
-        data: {
-          formId: existingForm.id,
-          userId,
-        },
-      })
-    } else if (existingQuestions.formId !== existingForm.id) {
-      existingQuestions = await prisma.appQuestion.update({
-        where: {
-          id: existingQuestions.id,
-        },
-        data: {
-          formId: existingForm.id,
-        },
-      })
-    }
-
-    return {
-      formId: existingForm.id,
-      created: false,
-      answers: existingQuestions,
-    }
+    created = true
   }
 
-  const createdForm = await prisma.appForm.create({
-    data: {
-      userId,
-      status: 'IN_PROGRESS',
+  let existingQuestions = await prisma.appQuestion.findUnique({
+    where: {
+      formId: existingForm.id,
     },
   })
 
-  const createdQuestions = await prisma.appQuestion.create({
-    data: {
-      formId: createdForm.id,
-      userId,
-    },
-  })
+  if (!existingQuestions) {
+    existingQuestions = await prisma.appQuestion.create({
+      data: {
+        formId: existingForm.id,
+        userId,
+      },
+    })
+  } else if (existingQuestions.userId !== userId) {
+    existingQuestions = await prisma.appQuestion.update({
+      where: {
+        id: existingQuestions.id,
+      },
+      data: {
+        userId,
+      },
+    })
+  }
 
   return {
-    formId: createdForm.id,
-    created: true,
-    answers: createdQuestions,
+    formId: existingForm.id,
+    created,
+    submitted: existingForm.status === 'COMPLETE',
+    answers: existingQuestions,
   }
 })

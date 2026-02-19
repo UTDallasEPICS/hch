@@ -1,17 +1,58 @@
 <script setup lang="ts">
   const answered = ref(0)
   const total = ref(50)
+  const submitted = ref(false)
+  const isSubmitting = ref(false)
+  const toast = useToast()
+
+  const canSubmit = computed(() => answered.value === total.value && !submitted.value)
+
+  async function loadProgress() {
+    const progress = await $fetch<{ answered: number; total: number; submitted?: boolean }>(
+      '/api/application/progress'
+    )
+
+    answered.value = progress.answered
+    total.value = progress.total
+    submitted.value = Boolean(progress.submitted)
+  }
+
+  async function submitForms() {
+    if (!canSubmit.value) return
+
+    try {
+      isSubmitting.value = true
+      await $fetch('/api/application/submit', { method: 'POST' })
+      submitted.value = true
+      toast.add({
+        title: 'Forms submitted',
+        description: 'Your application has been submitted successfully.',
+        color: 'success',
+      })
+    } catch (error: any) {
+      const description =
+        error?.data?.statusMessage ||
+        error?.statusMessage ||
+        'Unable to submit forms. Please try again.'
+
+      toast.add({
+        title: 'Submission failed',
+        description,
+        color: 'error',
+      })
+      await loadProgress()
+    } finally {
+      isSubmitting.value = false
+    }
+  }
 
   onMounted(async () => {
     try {
-      const progress = await $fetch<{ answered: number; total: number }>(
-        '/api/application/progress'
-      )
-      answered.value = progress.answered
-      total.value = progress.total
+      await loadProgress()
     } catch {
       answered.value = 0
       total.value = 50
+      submitted.value = false
     }
   })
 </script>
@@ -32,7 +73,22 @@
       to="/application"
     >
       <span>Application Form</span>
-      <span>{{ answered }}/{{ total }}</span>
+      <span>{{ submitted ? 'Submitted' : `${answered}/${total}` }}</span>
     </UButton>
+
+    <div class="mt-6 flex justify-end">
+      <div v-if="canSubmit" class="flex flex-col items-end gap-2">
+        <p class="text-right text-sm text-red-500">
+          Please verify your answers on the forms are accurate before submission.
+        </p>
+        <UButton
+          label="Submit Forms"
+          color="primary"
+          variant="solid"
+          :loading="isSubmitting"
+          @click="submitForms"
+        />
+      </div>
+    </div>
   </UContainer>
 </template>

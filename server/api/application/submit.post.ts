@@ -75,30 +75,47 @@ export default defineEventHandler(async (event) => {
     },
   })
 
-  const questions = form?.questions
+  if (!form || !form.questions) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Application form not started',
+    })
+  }
 
-  if (!questions) {
+  if (form.status === 'COMPLETE') {
     return {
-      answered: 0,
-      total: TOTAL_QUESTIONS,
-      submitted: false,
+      submitted: true,
     }
   }
 
   let answered = 0
-
   for (let index = 1; index <= TOTAL_QUESTIONS; index += 1) {
-    const key = `q${String(index).padStart(2, '0')}` as keyof typeof questions
-    const value = questions[key]
+    const key = `q${String(index).padStart(2, '0')}` as keyof typeof form.questions
+    const value = form.questions[key]
 
     if (typeof value === 'string' && hasAnswer(value)) {
       answered += 1
     }
   }
 
+  if (answered !== TOTAL_QUESTIONS) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Please complete all required questions before submitting',
+    })
+  }
+
+  await prisma.appForm.update({
+    where: {
+      id: form.id,
+    },
+    data: {
+      status: 'COMPLETE',
+      submittedAt: new Date(),
+    },
+  })
+
   return {
-    answered,
-    total: TOTAL_QUESTIONS,
-    submitted: form.status === 'COMPLETE',
+    submitted: true,
   }
 })
