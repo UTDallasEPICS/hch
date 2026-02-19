@@ -28,7 +28,7 @@
       >
         <UContainer class="flex h-16 items-center justify-between">
           <NuxtLink to="/" class="flex items-center gap-2 text-xl font-bold">
-            <img src="/hopecopeheallogo.png" alt="Hope. Cope. Heal." class="h-8 w-auto" />
+            <img src="/hopecopeheallogo.png" alt="Hope. Cope. Heal." class="h-14 w-auto dark:rounded-md dark:bg-white dark:px-3 dark:py-1" />
           </NuxtLink>
 
           <nav class="flex items-center gap-4">

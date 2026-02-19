@@ -71,7 +71,7 @@
             ← Back to Tasks
           </NuxtLink>
           <NuxtLink to="/" class="absolute left-1/2 -translate-x-1/2">
-            <img src="/hopecopeheallogo.png" alt="Hope. Cope. Heal." class="h-8 w-auto" />
+            <img src="/hopecopeheallogo.png" alt="Hope. Cope. Heal." class="h-14 w-auto dark:rounded-md dark:bg-white dark:px-3 dark:py-1" />
           </NuxtLink>
         </div>
       </div>
