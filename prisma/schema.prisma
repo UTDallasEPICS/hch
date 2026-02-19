@@ -7,16 +7,23 @@ datasource db {
   provider = "sqlite"
 }
 
+enum Role {
+  ADMIN
+  CLIENT
+}
+
 model User {
   id            String    @id
   name          String
   email         String
   emailVerified Boolean   @default(false)
-  image         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  role          Role          @default(CLIENT)
+  phqForms      PhqForm[]
+  phqQuestions  PhqQuestion[]
 
   @@unique([email])
   @@map("user")
@@ -68,4 +75,35 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+model PhqForm {
+  id          Int          @id @default(autoincrement())
+  userId      String       @unique
+  status      String       @default("IN_PROGRESS")
+  totalScore  Int? 
+  submittedAt DateTime?
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions   PhqQuestion?
+}
+
+model PhqQuestion {
+  id     Int    @id @default(autoincrement())
+  formId Int    @unique
+  userId String
+
+  p01 Int?
+  p02 Int?
+  p03 Int?
+  p04 Int?
+  p05 Int?
+  p06 Int?
+  p07 Int?
+  p08 Int?
+  p09 Int?
+
+  form PhqForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
