@@ -116,7 +116,7 @@ const {
               <legend class="text-base font-medium text-[#21364B] dark:text-[#F9F3D9]">
                 {{ Number(index) + 1 }}. {{ q.text }}
               </legend>
-              <div v-if="q.type === 'radio'" class="mt-4 flex flex-wrap gap-3">
+              <div v-if="q.type === 'radio'" class="mt-4 flex flex-col gap-2">
                 <label
                   v-for="opt in ['Yes', 'No']"
                   :key="opt"
