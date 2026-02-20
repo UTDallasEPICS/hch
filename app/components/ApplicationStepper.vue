@@ -36,6 +36,16 @@
                 <template v-else>{{ index + 1 }}</template>
               </span>
               <span
+                class="block text-[11px] leading-tight font-medium sm:hidden"
+                :class="
+                  stepStates[index] === 'upcoming'
+                    ? 'text-gray-500 dark:text-gray-500'
+                    : 'text-gray-700 dark:text-gray-200'
+                "
+              >
+                {{ step.shortLabel ?? step.label }}
+              </span>
+              <span
                 class="hidden text-xs font-medium sm:inline"
                 :class="
                   stepStates[index] === 'upcoming'
@@ -67,6 +77,16 @@
               >
                 <template v-if="index + 1 < currentStep">✓</template>
                 <template v-else>{{ index + 1 }}</template>
+              </span>
+              <span
+                class="block text-[11px] leading-tight font-medium sm:hidden"
+                :class="
+                  index + 1 <= currentStep
+                    ? 'text-gray-700 dark:text-gray-200'
+                    : 'text-gray-500 dark:text-gray-500'
+                "
+              >
+                {{ step.shortLabel ?? step.label }}
               </span>
               <span
                 class="hidden text-xs font-medium sm:inline"
