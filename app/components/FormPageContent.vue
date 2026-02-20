@@ -35,44 +35,27 @@ const {
 
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
-    <header
-      class="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur dark:border-gray-700 dark:bg-gray-900/95"
+    <div
+      v-if="form"
+      class="border-b border-gray-200 bg-white/95 px-4 py-3 sm:px-6 dark:border-gray-700 dark:bg-gray-900/95"
     >
-      <div class="relative mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-        <div class="flex h-14 items-center justify-between">
-          <NuxtLink
-            to="/tasks"
-            class="text-sm font-medium text-gray-600 hover:text-[#21364B] dark:text-gray-400 dark:hover:text-[#F9F3D9]"
+      <div class="mx-auto max-w-3xl">
+        <div class="flex items-center justify-between text-sm">
+          <span class="font-medium text-gray-700 dark:text-gray-300"
+            >{{ progressPercent }}% Complete</span
           >
-            ← Back to Tasks
-          </NuxtLink>
-          <NuxtLink to="/" class="absolute left-1/2 -translate-x-1/2">
-            <img src="/hopecopeheallogo.png" alt="Hope. Cope. Heal." class="h-14 w-auto dark:rounded-md dark:bg-white dark:px-3 dark:py-1" />
-          </NuxtLink>
+          <span class="text-gray-500 dark:text-gray-400"
+            >{{ completedCount }} of {{ totalCount }} answered</span
+          >
+        </div>
+        <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+          <div
+            class="bg-primary-500 h-full rounded-full transition-all duration-300"
+            :style="{ width: `${progressPercent}%` }"
+          />
         </div>
       </div>
-      <div
-        v-if="form"
-        class="border-t border-gray-100 bg-gray-50/80 px-4 py-3 sm:px-6 dark:border-gray-700 dark:bg-gray-900/80"
-      >
-        <div class="mx-auto max-w-3xl">
-          <div class="flex items-center justify-between text-sm">
-            <span class="font-medium text-gray-700 dark:text-gray-300"
-              >{{ progressPercent }}% Complete</span
-            >
-            <span class="text-gray-500 dark:text-gray-400"
-              >{{ completedCount }} of {{ totalCount }} answered</span
-            >
-          </div>
-          <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-            <div
-              class="bg-primary-500 h-full rounded-full transition-all duration-300"
-              :style="{ width: `${progressPercent}%` }"
-            />
-          </div>
-        </div>
-      </div>
-    </header>
+    </div>
 
     <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       <div v-if="formPending" class="space-y-6">

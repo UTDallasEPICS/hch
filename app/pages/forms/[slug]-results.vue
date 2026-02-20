@@ -59,24 +59,6 @@
 
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
-    <header
-      class="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur dark:border-gray-700 dark:bg-gray-900/95"
-    >
-      <div class="relative mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-        <div class="flex h-16 items-center justify-between">
-          <NuxtLink
-            to="/tasks"
-            class="text-sm font-medium text-gray-600 hover:text-[#21364B] dark:text-gray-400 dark:hover:text-[#F9F3D9]"
-          >
-            ← Back to Tasks
-          </NuxtLink>
-          <NuxtLink to="/" class="absolute left-1/2 -translate-x-1/2">
-            <img src="/hopecopeheallogo.png" alt="Hope. Cope. Heal." class="h-14 w-auto dark:rounded-md dark:bg-white dark:px-3 dark:py-1" />
-          </NuxtLink>
-        </div>
-      </div>
-    </header>
-
     <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       <div v-if="pending" class="space-y-6">
         <USkeleton class="h-8 w-2/3" />
