@@ -24,7 +24,7 @@
         class="sticky top-0 z-50 border-b border-gray-200 bg-white/75 backdrop-blur-md dark:border-gray-800 dark:bg-gray-900/75"
       >
         <UContainer class="flex h-16 items-center justify-between">
-          <NuxtLink to="/" class="flex items-center gap-2 text-xl font-bold">
+          <NuxtLink to="/" class="flex items-center gap-2 font-bold">
             <img
               src="/HCH%20Light%20Mode%20Logo.png"
               alt="Hope Cope Heal logo"
@@ -35,7 +35,10 @@
               alt="Hope Cope Heal logo"
               class="hidden h-8 w-auto dark:block"
             />
-            <span>Hope. Cope. Heal.</span>
+            <span class="text-sm leading-none whitespace-nowrap sm:hidden">Hope.Cope.Heal.</span>
+            <span class="hidden text-xl leading-none whitespace-nowrap sm:inline"
+              >Hope. Cope. Heal.</span
+            >
           </NuxtLink>
 
           <div class="flex items-center gap-2">
