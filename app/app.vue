@@ -36,7 +36,9 @@
               class="hidden h-8 w-auto dark:block"
             />
             <span class="text-sm leading-none whitespace-nowrap sm:hidden">Hope.Cope.Heal.</span>
-            <span class="hidden text-xl leading-none whitespace-nowrap sm:inline">Hope. Cope. Heal.</span>
+            <span class="hidden text-xl leading-none whitespace-nowrap sm:inline"
+              >Hope. Cope. Heal.</span
+            >
           </NuxtLink>
 
           <div class="flex items-center gap-2">

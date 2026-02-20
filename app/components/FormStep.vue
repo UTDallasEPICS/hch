@@ -162,8 +162,7 @@
     { label: 'No', value: 'no' },
   ]
 
-  const inputClass =
-    'mt-2 w-full'
+  const inputClass = 'mt-2 w-full'
   const groupClass =
     'mt-2 !group:border-gray-300 !group:bg-white dark:!group:border-gray-600 dark:!group:bg-gray-800'
 </script>
