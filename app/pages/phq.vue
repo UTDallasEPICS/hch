@@ -76,19 +76,19 @@
       <div class="flex justify-between">
         <label class="flex flex-col items-center">
           <span class="text-sm">Not difficult at all</span>
-          <input type="radio" value="0" v-model="difficulty" />
+          <input type="radio" :value="0" v-model="difficulty" />
         </label>
         <label class="flex flex-col items-center">
           <span class="text-sm">Somewhat difficult</span>
-          <input type="radio" value="1" v-model="difficulty" />
+          <input type="radio" :value="1" v-model="difficulty" />
         </label>
         <label class="flex flex-col items-center">
           <span class="text-sm">Very difficult</span>
-          <input type="radio" value="2" v-model="difficulty" />
+          <input type="radio" :value="2" v-model="difficulty" />
         </label>
         <label class="flex flex-col items-center">
           <span class="text-sm">Extremely difficult</span>
-          <input type="radio" value="3" v-model="difficulty" />
+          <input type="radio" :value="3" v-model="difficulty" />
         </label>
       </div>
     </div>
