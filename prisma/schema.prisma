@@ -17,12 +17,13 @@ model User {
   name          String
   email         String
   emailVerified Boolean   @default(false)
+  image         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
   role          Role          @default(CLIENT)
-  phqForms      PhqForm[]
+  phqForm      PhqForm[]
   phqQuestions  PhqQuestion[]
 
   @@unique([email])
@@ -92,15 +93,15 @@ model PhqQuestion {
   formId Int    @unique
   userId String
 
-  p01 Int?
-  p02 Int?
-  p03 Int?
-  p04 Int?
-  p05 Int?
-  p06 Int?
-  p07 Int?
-  p08 Int?
-  p09 Int?
+  q1 Int?
+  q2 Int?
+  q3 Int?
+  q4 Int?
+  q5 Int?
+  q6 Int?
+  q7 Int?
+  q8 Int?
+  q9 Int?
 
   form PhqForm @relation(fields: [formId], references: [id], onDelete: Cascade)
   user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
