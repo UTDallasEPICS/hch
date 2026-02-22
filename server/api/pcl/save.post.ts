@@ -48,13 +48,13 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  let form = await prisma.pCLForm.findFirst({
+  let form = await prisma.pclForm.findFirst({
     where: { userId },
     orderBy: { id: 'asc' },
   })
 
   if (!form) {
-    form = await prisma.pCLForm.create({
+    form = await prisma.pclForm.create({
       data: {
         userId,
         status: 'IN_PROGRESS',
@@ -67,12 +67,12 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  let existingQuestions = await prisma.pCLQuestion.findUnique({
+  let existingQuestions = await prisma.pclQuestion.findUnique({
     where: { formId: form.id },
   })
 
   if (!existingQuestions) {
-    existingQuestions = await prisma.pCLQuestion.create({
+    existingQuestions = await prisma.pclQuestion.create({
       data: {
         formId: form.id,
         userId,
@@ -90,12 +90,12 @@ export default defineEventHandler(async (event) => {
     data[dbKey] = typeof value === 'number' ? value : null
   }
 
-  await prisma.pCLQuestion.update({
+  await prisma.pclQuestion.update({
     where: { id: existingQuestions.id },
     data,
   })
 
-  await prisma.pCLForm.update({
+  await prisma.pclForm.update({
     where: { id: form.id },
     data: {
       status: 'IN_PROGRESS',

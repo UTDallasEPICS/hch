@@ -1,4 +1,7 @@
 <script setup lang="ts">
+const toast = useToast()
+const isSaving = ref(false)
+const isReadOnly = ref(false)
 const worstEvent = ref('')
 
 const questions = [
@@ -15,7 +18,7 @@ const questions = [
   'Having strong negative feelings such as fear, horror, anger, guilt, or shame?',
   'Loss of interest in activities that you used to enjoy?',
   'Feeling distant or cut off from other people?',
-  'Trouble experiencing positive feelings (for example, being unable to feel happiness or have loving feelings for people close to you)?',
+  'Trouble experiencing positive feelings (sfor example, being unable to feel happiness or have loving feelings for people close to you)?',
   'Irritable behavior, angry outbursts, or acting aggressively?',
   'Taking too many risks or doing things that could cause you harm?',
   'Being "superalert" or watchful or on guard?',
@@ -27,51 +30,108 @@ const questions = [
 const responses = ref<number[]>(Array(questions.length).fill(-1))
 
 function buildPayload() {
-  const body: Record<string, number | string> = { worstEvent: worstEvent.value }
+  const body: Record<string, number | string | null> = { worstEvent: worstEvent.value }
   responses.value.forEach((val, i) => {
-    body[`q${i + 1}`] = val
+    body[`q${i + 1}`] = val === -1 ? null : val
   })
   return body
 }
 
 async function saveAndExit() {
-  await $fetch('/api/pcl/save', {
-    method: 'POST',
-    body: buildPayload(),
-  })
-  navigateTo('/taskPage')
+  if (isReadOnly.value) {
+    await navigateTo('/tasks')
+    return
+  }
+
+  try {
+    isSaving.value = true
+    await $fetch('/api/pcl/save', { method: 'POST', body: buildPayload() })
+    await navigateTo('/tasks')
+  } catch (error: any) {
+    toast.add({
+      title: 'Save failed',
+      description: error?.data?.statusMessage || error?.statusMessage || 'Your answers could not be saved. Please try again.',
+      color: 'error',
+    })
+  } finally {
+    isSaving.value = false
+  }
 }
 
 async function finish() {
-  await $fetch('/api/pcl/save', {
-    method: 'POST',
-    body: buildPayload(),
-  })
-  await $fetch('/api/pcl/submit', { method: 'POST' })
-  navigateTo('/taskPage')
+  if (isReadOnly.value) {
+    await navigateTo('/tasks')
+    return
+  }
+
+  try {
+    isSaving.value = true
+    await $fetch('/api/pcl/save', { method: 'POST', body: buildPayload() })
+    await $fetch('/api/pcl/submit', { method: 'POST' })
+    toast.add({
+      title: 'PCL-5 submitted',
+      description: 'Your form has been submitted successfully.',
+      color: 'success',
+    })
+    await navigateTo('/tasks')
+  } catch (error: any) {
+    toast.add({
+      title: 'Submission failed',
+      description: error?.data?.statusMessage || error?.statusMessage || 'Unable to submit. Please try again.',
+      color: 'error',
+    })
+  } finally {
+    isSaving.value = false
+  }
 }
+
+onMounted(async () => {
+  try {
+    const data = await $fetch<{ answers?: Record<string, any>; submitted?: boolean }>('/api/pcl/load')
+    isReadOnly.value = Boolean(data?.submitted)
+    if (data?.answers) {
+      for (let i = 1; i <= 20; i++) {
+        const key = `q${String(i).padStart(2, '0')}`
+        const val = data.answers[key]
+        if (typeof val === 'number') {
+          responses.value[i - 1] = val
+        }
+      }
+    }
+  } catch (error: any) {
+    toast.add({
+      title: 'Unable to load form',
+      description: error?.data?.statusMessage || error?.statusMessage || 'Please try again later.',
+      color: 'error',
+    })
+    await navigateTo('/tasks')
+  }
+})
 </script>
 
 <template>
   <UContainer class="py-10">
     <div class="mb-8">
       <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">PCL-5</h1>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 mb-3">
+      <p v-if="!isReadOnly" class="mt-1 text-sm text-gray-500 dark:text-gray-400 mb-3">
         Instructions: Below is a list of problems that people sometimes have in response to a very
         stressful experience. Keeping your worst event in mind, please read each problem carefully
         and then select one of the numbers to the right to indicate how much you have been bothered
         by that problem in the past month.
       </p>
+      <p v-else class="mt-1 text-sm font-medium text-primary-600 dark:text-primary-400 mb-3">
+        Submitted form (view only).
+      </p>
     </div>
 
-    <div class="mb-6">
+    <div class="mb-6" :inert="isReadOnly">
       <label class="block text-sm font-medium text-gray-900 dark:text-white mb-2">
         Your worst event:
       </label>
       <UInput v-model="worstEvent" placeholder="Describe your worst event" class="w-full" />
     </div>
 
-    <div class="flex flex-col gap-4 mt-6">
+    <div class="flex flex-col gap-4 mt-6" :inert="isReadOnly">
       <div
         v-for="(question, index) in questions"
         :key="index"
@@ -92,8 +152,21 @@ async function finish() {
     </div>
 
     <div class="mt-12 flex gap-4">
-      <UButton label="Save and Exit" @click="saveAndExit" color="error" variant="soft" />
-      <UButton label="Finish" @click="finish" color="success" variant="soft" />
+      <UButton
+        :label="isReadOnly ? 'Back to Tasks' : 'Save and Exit'"
+        color="error"
+        variant="soft"
+        :loading="isSaving"
+        @click="saveAndExit"
+      />
+      <UButton
+        v-if="!isReadOnly"
+        label="Finish"
+        color="success"
+        variant="soft"
+        :loading="isSaving"
+        @click="finish"
+      />
     </div>
   </UContainer>
 </template>

@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const form = await prisma.pCLForm.findFirst({
+  const form = await prisma.pclForm.findFirst({
     where: {
       userId,
     },
@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
   if (!form || !form.questions) {
     throw createError({
       statusCode: 400,
-      statusMessage: 'Application form not started',
+      statusMessage: 'PCL-5 form not started',
     })
   }
 
@@ -67,7 +67,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  await prisma.pCLForm.update({
+  await prisma.pclForm.update({
     where: {
       id: form.id,
     },

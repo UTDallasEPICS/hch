@@ -18,8 +18,8 @@ model User {
   sessions      Session[]
   accounts      Account[]
 
-  PCLForms       PCLForm[]
-  PCLQuestions   PCLQuestion[]
+  PclForms       PclForm[]
+  PclQuestions   PclQuestion[]
 
   @@unique([email])
   @@map("user")
@@ -73,18 +73,18 @@ model Verification {
   @@map("verification")
 }
 
-model PCLForm {
+model PclForm {
   id          Int          @id @default(autoincrement())
   userId      String
   status      String       @default("IN_PROGRESS")
   submittedAt DateTime?
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  questions   PCLQuestion?
+  questions   PclQuestion?
 
   @@index([userId])
 }
 
-model PCLQuestion {
+model PclQuestion {
   id     Int    @id @default(autoincrement())
   formId Int    @unique
   userId String
@@ -110,7 +110,7 @@ model PCLQuestion {
   q19 Int?
   q20 Int?
 
-  form PCLForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  form PclForm @relation(fields: [formId], references: [id], onDelete: Cascade)
   user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])

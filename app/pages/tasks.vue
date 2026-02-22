@@ -26,7 +26,7 @@
       submitted.value = true
       toast.add({
         title: 'Forms submitted',
-        description: 'Your form has been submitted successfully.',
+        description: 'Your PCL-5 has been submitted successfully.',
         color: 'success',
       })
     } catch (error: any) {

@@ -15,7 +15,6 @@ export default defineEventHandler(async (event) => {
   })
 
   const userId = session?.user?.id
-
   if (!userId) {
     throw createError({
       statusCode: 401,
@@ -24,15 +23,11 @@ export default defineEventHandler(async (event) => {
   }
 
   let existingForm = await prisma.pclForm.findFirst({
-    where: {
-      userId,
-    },
-    orderBy: {
-      id: 'asc',
-    },
+    where: { userId },
+    orderBy: { id: 'asc' },
   })
-  let created = false
 
+  let created = false
   if (!existingForm) {
     existingForm = await prisma.pclForm.create({
       data: {
@@ -44,24 +39,13 @@ export default defineEventHandler(async (event) => {
   }
 
   let existingQuestions = await prisma.pclQuestion.findUnique({
-    where: {
-      formId: existingForm.id,
-    },
+    where: { formId: existingForm.id },
   })
 
   if (!existingQuestions) {
     existingQuestions = await prisma.pclQuestion.create({
       data: {
         formId: existingForm.id,
-        userId,
-      },
-    })
-  } else if (existingQuestions.userId !== userId) {
-    existingQuestions = await prisma.pclQuestion.update({
-      where: {
-        id: existingQuestions.id,
-      },
-      data: {
         userId,
       },
     })
