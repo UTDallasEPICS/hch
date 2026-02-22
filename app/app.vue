@@ -2,7 +2,7 @@
   const route = useRoute()
   const colorMode = useColorMode()
 
-  const isTasksPage = computed(() => route.path === '/tasks')
+  const isTasksPage = computed(() => route.path === '/taskPage')
   const isDashboardPage = computed(() => route.path === '/')
 
   const isDark = computed({
@@ -25,8 +25,20 @@
       >
         <UContainer class="flex h-16 items-center justify-between">
           <NuxtLink to="/" class="flex items-center gap-2 font-bold">
-            <UIcon name="i-heroicons-cube-transparent" class="w-8 h-8 text-primary-500" />
-              <span class="text-xl">Nuxt Template</span>
+            <img
+              src="/HCH%20Light%20Mode%20Logo.png"
+              alt="Hope Cope Heal logo"
+              class="h-8 w-auto dark:hidden"
+            />
+            <img
+              src="/HCH%20Dark%20Mode%20Logo.png"
+              alt="Hope Cope Heal logo"
+              class="hidden h-8 w-auto dark:block"
+            />
+            <span class="text-sm leading-none whitespace-nowrap sm:hidden">Hope.Cope.Heal.</span>
+            <span class="hidden text-xl leading-none whitespace-nowrap sm:inline"
+              >Hope. Cope. Heal.</span
+            >
           </NuxtLink>
 
           <div class="flex items-center gap-2">
@@ -38,7 +50,7 @@
             />
             <UButton
               label="Tasks"
-              to="/tasks"
+              to="/taskPage"
               color="primary"
               :variant="isTasksPage ? 'solid' : 'soft'"
             />
