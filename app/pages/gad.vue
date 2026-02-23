@@ -13,6 +13,16 @@
     g8: null as number | null,
   })
 
+  const questions = [
+    'Feeling nervous, anxious, or on edge',
+    'Not being able to stop or control worrying',
+    'Worrying too much about different things',
+    'Trouble relaxing',
+    'Being so restless that it is hard to sit still',
+    'Becoming easily annoyed or irritable',
+    'Feeling afraid, as if something awful might happen',
+  ]
+
   const options = [
     { label: 'Not at all', value: 0 },
     { label: 'Several days', value: 1 },
@@ -92,30 +102,21 @@
 
 <template>
   <UContainer class="max-w-3xl py-10">
-    <h1 class="text-2xl font-semibold text-white">GAD-7 Anxiety Assessment</h1>
+    <h1 class="text-2xl font-semibold">GAD-7 Anxiety Assessment</h1>
 
+    <!-- Intro -->
     <UCard class="mt-4">
-      <p class="text-sm text-gray-400">
+      <p class="text-muted text-sm">
         Over the last <span class="font-medium">two weeks</span>, how often have you been bothered
         by the following problems?
       </p>
     </UCard>
 
-    <UCard class="mt-6 space-y-6">
-      <!-- Question Component -->
-      <div v-for="(question, index) in 7" :key="index" class="space-y-3">
-        <label class="font-medium text-gray-200">
-          {{
-            [
-              'Feeling nervous, anxious, or on edge',
-              'Not being able to stop or control worrying',
-              'Worrying too much about different things',
-              'Trouble relaxing',
-              'Being so restless that it is hard to sit still',
-              'Becoming easily annoyed or irritable',
-              'Feeling afraid, as if something awful might happen',
-            ][index]
-          }}
+    <!-- Questions -->
+    <div class="mt-6 space-y-6">
+      <UCard v-for="(question, index) in questions" :key="index" class="space-y-4">
+        <label class="text-default font-medium">
+          {{ question }}
         </label>
 
         <div class="space-y-2">
@@ -131,16 +132,16 @@
               class="accent-primary-500 h-4 w-4"
             />
 
-            <span class="text-sm text-gray-300">
+            <span class="text-muted text-sm">
               {{ opt.label }}
             </span>
           </label>
         </div>
-      </div>
+      </UCard>
 
-      <!-- Difficulty Question -->
-      <div class="space-y-3">
-        <label class="font-medium text-gray-200">
+      <!-- Difficulty -->
+      <UCard class="space-y-4">
+        <label class="text-default font-medium">
           If you checked any problems, how difficult have they made it for you?
         </label>
 
@@ -157,21 +158,21 @@
               class="accent-primary-500 h-4 w-4"
             />
 
-            <span class="text-sm text-gray-300">
+            <span class="text-muted text-sm">
               {{ opt.label }}
             </span>
           </label>
         </div>
-      </div>
+      </UCard>
 
       <!-- Score -->
       <UCard>
-        <div class="text-lg font-semibold text-white">Total Score: {{ totalScore }}</div>
-
-        <div class="text-sm text-gray-400">Severity: {{ severity }}</div>
+        <div class="text-lg font-semibold">Total Score: {{ totalScore }}</div>
+        <div class="text-muted text-sm">Severity: {{ severity }}</div>
       </UCard>
-    </UCard>
+    </div>
 
+    <!-- Save -->
     <div class="mt-8">
       <UButton label="Save and Exit" :loading="isSaving" @click="saveAndExit" />
     </div>
