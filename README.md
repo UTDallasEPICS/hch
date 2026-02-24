@@ -59,19 +59,8 @@ Open `.env` and configure the following:
 
 ### 4. Database Setup
 
-Initialize your SQLite database and run migrations.
-
-```bash
-pnpm dlx prisma migrate dev --name init
-```
-
-Generate the Prisma client
-
-```bash
-pnpm dlx prisma generate
-```
-
-To reset the database and run the seed script:
+Initialize your SQLite database and run migrations. You will need to run this command anytime you need to change or create a database.
+If there are any migrations that need to be run, the command will ask for a name for the migration. You can simply hit enter, or name your migration.
 
 ```bash
 pnpm prisma:reset
@@ -90,7 +79,7 @@ Your application will be available at `http://localhost:3000`. This command also
 Login requires an email address that already exists in the database.
 
 - **Option A: Use the seeded user**
-  Go to `/auth` and log in with `alice@a.com`.
+  Go to `/auth` and log in with `email@example.com`.
 - **Option B: Use your own email**
   Update `prisma/seed.ts` with your email, then run `pnpm prisma:reset` to re-seed.
 
