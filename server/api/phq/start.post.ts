@@ -56,16 +56,7 @@ export default defineEventHandler(async (event) => {
         userId,
       },
     })
-  } else if (existingQuestions.userId !== userId) {
-    existingQuestions = await prisma.phqQuestion.update({
-      where: {
-        id: existingQuestions.id,
-      },
-      data: {
-        userId,
-      },
-    })
-  }
+  } 
 
   return {
     formId: existingForm.id,

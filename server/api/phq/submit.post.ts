@@ -55,7 +55,7 @@ export default defineEventHandler(async (event) => {
     const key = `q${index}` as keyof typeof form.questions
     const value = form.questions[key]
 
-    if (typeof value === 'number' && value >= 0) {
+    if (typeof value === 'number') {
       answered += 1
     }
   }

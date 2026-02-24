@@ -68,13 +68,6 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  if (!existingQuestions) {
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'Failed to initialize questions',
-    })
-  }
-
   const body = await readBody<AnswersBody>(event)
 
   const data: Record<string, number | null> = {}
