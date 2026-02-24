@@ -28,6 +28,10 @@
       PHQ-9 - Patient Health Questionnaire-9
     </h1>
 
+    <p class="font-semibold text-sm text-gray-700 dark:text-white">
+      Over the last 2 weeks, how often have you been bothered by any of the following problems?
+    </p>
+
     <!-- Questions -->
     <div
       v-for="(question, index) in questions"
@@ -42,22 +46,22 @@
       <div class="flex justify-between">
         <label class="flex flex-col items-center">
           <span class="text-sm">Not at all</span>
-          <input type="radio" :name="'q' + index" value="0" v-model="responses[index]" />
+          <input type="radio" :name="'q' + index" :value="0" v-model="responses[index]" />
         </label>
 
         <label class="flex flex-col items-center">
           <span class="text-sm">Several days</span>
-          <input type="radio" :name="'q' + index" value="1" v-model="responses[index]" />
+          <input type="radio" :name="'q' + index" :value="1" v-model="responses[index]" />
         </label>
 
         <label class="flex flex-col items-center">
           <span class="text-sm">More than half</span>
-          <input type="radio" :name="'q' + index" value="2" v-model="responses[index]" />
+          <input type="radio" :name="'q' + index" :value="2" v-model="responses[index]" />
         </label>
 
         <label class="flex flex-col items-center">
           <span class="text-sm">Nearly every day</span>
-          <input type="radio" :name="'q' + index" value="3" v-model="responses[index]" />
+          <input type="radio" :name="'q' + index" :value="3" v-model="responses[index]" />
         </label>
       </div>
     </div>
@@ -93,14 +97,10 @@
       </div>
     </div>
 
-    <!-- Save and ExitButton -->
+    <!-- Save and Exit Button -->
     <div class="mt-auto pt-6">
-      <UButton label="Save and Exit" to="/taskPage" color="error" variant="soft" />
+      <UButton label="Save and Exit" to="/taskPage" color="success" variant="soft" />
     </div>
 
-    <!-- Finish Button -->
-    <div class="mt-6 flex justify-between gap-3">
-      <UButton label="Finish" to="/taskPage" color="success" variant="soft" />
-    </div>
   </UContainer>
 </template>

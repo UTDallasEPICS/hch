@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
 
   let answered = 0
   for (let index = 1; index <= TOTAL_QUESTIONS; index += 1) {
-    const key = `q${String(index).padStart(2, '0')}` as keyof typeof form.questions
+    const key = `q${index}` as keyof typeof form.questions
     const value = form.questions[key]
 
     if (typeof value === 'number' && value >= 0) {

@@ -80,6 +80,8 @@ model PhqForm {
   submittedAt DateTime?
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   questions   PhqQuestion?
+  
+  @@index([userId])
 }
 
 model PhqQuestion {

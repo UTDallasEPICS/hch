@@ -38,7 +38,7 @@
             />
             <UButton
               label="Tasks"
-              to="/tasks"
+              to="/taskPage"
               color="primary"
               :variant="isTasksPage ? 'solid' : 'soft'"
             />

@@ -5,7 +5,7 @@
   const isSubmitting = ref(false)
   const toast = useToast()
 
-  const canSubmit = computed(() => answered.value === total.value && !submitted.value)
+  const canSubmit = computed(() => answered.value === total.value)
 
   async function loadProgress() {
     const progress = await $fetch<{ answered: number; total: number; submitted?: boolean }>(
@@ -82,7 +82,7 @@
           Please verify your answers on the forms are accurate before submission.
         </p>
         <UButton
-          label="Submit Forms"
+          label="Submit"
           color="primary"
           variant="solid"
           :loading="isSubmitting"
@@ -92,3 +92,4 @@
     </div>
   </UContainer>
 </template>
+
