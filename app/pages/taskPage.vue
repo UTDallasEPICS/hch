@@ -8,6 +8,9 @@
   const gadTotal = ref(7)
   const gadScore = ref<number | null>(null)
   const gadSeverity = ref<string | null>(null)
+  const phqAnswered = ref(0)
+  const phqTotal = ref(9)
+  const phqSubmitted = ref(false)
   const isSubmitting = ref(false)
   const toast = useToast()
 
@@ -24,7 +27,7 @@
   )
 
   async function loadProgress() {
-    const [progress, aceForm, aceResponses, gadProgress] = await Promise.all([
+    const [progress, aceForm, aceResponses, gadProgress, phqProgress] = await Promise.all([
       $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/application/progress'),
       $fetch<{ questions: Array<{ id: string }> }>('/api/forms/ace-form'),
       $fetch<Record<string, string>>('/api/forms/ace-form/responses'),
@@ -34,6 +37,7 @@
         totalScore: number | null
         severity: string | null
       }>('/api/gad/progress'),
+      $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/phq/progress'),
     ])
 
     answered.value = progress.answered
@@ -49,6 +53,10 @@
     gadTotal.value = gadProgress.total
     gadScore.value = gadProgress.totalScore
     gadSeverity.value = gadProgress.severity
+
+    phqAnswered.value = phqProgress.answered
+    phqTotal.value = phqProgress.total
+    phqSubmitted.value = Boolean(phqProgress.submitted)
   }
 
   async function submitForms() {
@@ -93,6 +101,9 @@
       gadTotal.value = 7
       gadScore.value = null
       gadSeverity.value = null
+      phqAnswered.value = 0
+      phqTotal.value = 9
+      phqSubmitted.value = false
     }
   })
 </script>
@@ -137,6 +148,16 @@
         {{ gadAnswered }}/{{ gadTotal }}
         <template v-if="gadScore !== null"> • {{ gadSeverity }}</template>
       </span>
+    </UButton>
+
+    <UButton
+      class="mt-3 w-full justify-between rounded-xl px-5 py-4 text-sm font-semibold"
+      color="primary"
+      variant="soft"
+      to="/phq"
+    >
+      <span>PHQ-9 Form</span>
+      <span>{{ phqSubmitted ? 'Submitted' : `${phqAnswered}/${phqTotal}` }}</span>
     </UButton>
 
     <div class="mt-6 flex justify-end">

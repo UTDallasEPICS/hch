@@ -30,6 +30,8 @@ model User {
   aceResponses    AceResponse[]
   gadForms        GadForm[]
   gadQuestions    GadQuestion[]
+  phqForm         PhqForm[]
+  phqQuestions    PhqQuestion[]
 
   @@unique([email])
   @@map("user")
@@ -232,7 +234,7 @@ model GadForm {
   severity    String?
   submittedAt DateTime?
 
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   questions GadQuestion?
 
   @@index([userId])
@@ -253,6 +255,39 @@ model GadQuestion {
   g08 Int?
 
   form GadForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PhqForm {
+  id          Int          @id @default(autoincrement())
+  userId      String       @unique
+  status      String       @default("IN_PROGRESS")
+  totalScore  Int?
+  submittedAt DateTime?
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions   PhqQuestion?
+
+  @@index([userId])
+}
+
+model PhqQuestion {
+  id     Int    @id @default(autoincrement())
+  formId Int    @unique
+  userId String
+
+  q1 Int?
+  q2 Int?
+  q3 Int?
+  q4 Int?
+  q5 Int?
+  q6 Int?
+  q7 Int?
+  q8 Int?
+  q9 Int?
+
+  form PhqForm @relation(fields: [formId], references: [id], onDelete: Cascade)
   user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
