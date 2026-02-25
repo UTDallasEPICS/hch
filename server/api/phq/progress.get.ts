@@ -30,7 +30,7 @@ export default defineEventHandler(async (event) => {
       userId,
     },
     orderBy: {
-      id: 'asc',
+      id: 'desc',
     },
     include: {
       questions: true,

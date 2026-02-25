@@ -81,9 +81,16 @@
       })
 
       await navigateTo('/taskPage')
-    } catch {
+    } catch (error: any) {
+      const description =
+        error?.data?.statusMessage ||
+        error?.data?.message ||
+        error?.statusMessage ||
+        'Unable to save your responses. Please try again.'
+
       toast.add({
         title: 'Save failed',
+        description,
         color: 'error',
       })
     } finally {

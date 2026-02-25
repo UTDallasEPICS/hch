@@ -16,9 +16,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
   }
 
-  // Find active form
+  // Find latest form
   const existingForm = await prisma.gadForm.findFirst({
-    where: { userId, status: 'IN_PROGRESS' },
+    where: { userId },
     orderBy: { id: 'desc' },
   })
 

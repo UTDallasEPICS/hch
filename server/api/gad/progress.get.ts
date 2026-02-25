@@ -21,18 +21,19 @@ export default defineEventHandler(async (event) => {
   const form = await prisma.gadForm.findFirst({
     where: { userId },
     orderBy: { id: 'desc' },
+    include: {
+      questions: true,
+    },
   })
 
-  const q = await prisma.gadQuestion.findFirst({
-    where: { userId },
-  })
+  const q = form?.questions
 
   if (!q) {
     return {
       answered: 0,
       total: TOTAL,
-      totalScore: null,
-      severity: null,
+      totalScore: form?.totalScore ?? null,
+      severity: form?.severity ?? null,
     }
   }
 

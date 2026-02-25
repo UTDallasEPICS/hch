@@ -27,7 +27,7 @@
   )
 
   async function loadProgress() {
-    const [progress, aceForm, aceResponses, gadProgress, phqProgress] = await Promise.all([
+    const [appResult, aceFormResult, aceResponsesResult, gadResult, phqResult] = await Promise.allSettled([
       $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/application/progress'),
       $fetch<{ questions: Array<{ id: string }> }>('/api/forms/ace-form'),
       $fetch<Record<string, string>>('/api/forms/ace-form/responses'),
@@ -40,23 +40,34 @@
       $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/phq/progress'),
     ])
 
-    answered.value = progress.answered
-    total.value = progress.total
-    submitted.value = Boolean(progress.submitted)
+    if (appResult.status === 'fulfilled') {
+      answered.value = appResult.value.answered
+      total.value = appResult.value.total
+      submitted.value = Boolean(appResult.value.submitted)
+    }
 
-    aceTotal.value = aceForm.questions.length
-    aceAnswered.value = Object.values(aceResponses).filter(
-      (value) => typeof value === 'string' && value.trim().length > 0
-    ).length
+    if (aceFormResult.status === 'fulfilled') {
+      aceTotal.value = aceFormResult.value.questions.length
+    }
 
-    gadAnswered.value = gadProgress.answered
-    gadTotal.value = gadProgress.total
-    gadScore.value = gadProgress.totalScore
-    gadSeverity.value = gadProgress.severity
+    if (aceResponsesResult.status === 'fulfilled') {
+      aceAnswered.value = Object.values(aceResponsesResult.value).filter(
+        (value) => typeof value === 'string' && value.trim().length > 0
+      ).length
+    }
 
-    phqAnswered.value = phqProgress.answered
-    phqTotal.value = phqProgress.total
-    phqSubmitted.value = Boolean(phqProgress.submitted)
+    if (gadResult.status === 'fulfilled') {
+      gadAnswered.value = gadResult.value.answered
+      gadTotal.value = gadResult.value.total
+      gadScore.value = gadResult.value.totalScore
+      gadSeverity.value = gadResult.value.severity
+    }
+
+    if (phqResult.status === 'fulfilled') {
+      phqAnswered.value = phqResult.value.answered
+      phqTotal.value = phqResult.value.total
+      phqSubmitted.value = Boolean(phqResult.value.submitted)
+    }
   }
 
   async function submitForms() {

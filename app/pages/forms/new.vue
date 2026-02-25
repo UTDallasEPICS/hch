@@ -54,7 +54,11 @@
     const next = idx + dir
     if (next < 0 || next >= selectedQuestionIds.value.length) return
     const arr = [...selectedQuestionIds.value]
-    ;[arr[idx], arr[next]] = [arr[next], arr[idx]]
+    const currentValue = arr[idx]
+    const nextValue = arr[next]
+    if (!currentValue || !nextValue) return
+    arr[idx] = nextValue
+    arr[next] = currentValue
     selectedQuestionIds.value = arr
   }
 

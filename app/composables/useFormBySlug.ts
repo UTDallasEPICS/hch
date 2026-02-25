@@ -1,6 +1,22 @@
 export async function useFormBySlug(slug: Ref<string> | ComputedRef<string>) {
   const route = useRoute()
   const slugValue = computed(() => unref(slug))
+  type FormQuestion = {
+    id: string
+    text: string
+    type: string
+    alias: string
+    order: number
+  }
+  type FormPayload = {
+    id: string
+    title: string
+    description: string | null
+    slug: string
+    questions: FormQuestion[]
+  }
+  const formEndpoint = computed(() => `/api/forms/${slugValue.value}`)
+  const responsesEndpoint = computed(() => `/api/forms/${slugValue.value}/responses`)
 
   // Ensure slug is valid - redirect if missing (only when slug comes from route)
   watch(
@@ -17,11 +33,8 @@ export async function useFormBySlug(slug: Ref<string> | ComputedRef<string>) {
     data: form,
     pending: formPending,
     error: formError,
-  } = await useFetch(
-    () => {
-      if (!slugValue.value) return null
-      return `/api/forms/${slugValue.value}`
-    },
+  } = await useFetch<FormPayload>(
+    formEndpoint,
     {
       watch: [slugValue],
       immediate: !!slugValue.value,
@@ -29,11 +42,8 @@ export async function useFormBySlug(slug: Ref<string> | ComputedRef<string>) {
     }
   )
 
-  const { data: existingResponses } = await useFetch(
-    () => {
-      if (!slugValue.value) return null
-      return `/api/forms/${slugValue.value}/responses`
-    },
+  const { data: existingResponses } = await useFetch<Record<string, string>>(
+    responsesEndpoint,
     {
       watch: [slugValue],
       default: () => ({}),
@@ -45,11 +55,17 @@ export async function useFormBySlug(slug: Ref<string> | ComputedRef<string>) {
 
   const responses = ref<Record<string, string>>({})
   const completedCount = computed(() => {
-    if (!form.value) return 0
-    return form.value.questions.filter((q) => {
-      const answer = responses.value[q.alias]
-      return answer !== undefined && answer !== null && answer !== ''
-    }).length
+    const questions = form.value?.questions ?? []
+    let count = 0
+
+    for (const question of questions) {
+      const answer = responses.value[question.alias]
+      if (answer !== undefined && answer !== null && answer !== '') {
+        count += 1
+      }
+    }
+
+    return count
   })
   const totalCount = computed(() => form.value?.questions?.length ?? 0)
   const progressPercent = computed(() =>
