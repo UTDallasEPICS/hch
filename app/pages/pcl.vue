@@ -128,8 +128,14 @@ onMounted(async () => {
       <label class="block text-sm font-medium text-gray-900 dark:text-white mb-2">
         Your worst event:
       </label>
-      <UInput v-model="worstEvent" placeholder="Describe your worst event" class="w-full" />
+      <textarea
+        v-model="worstEvent"
+        placeholder="Describe your worst event"
+        rows="4"
+        class="w-full rounded-lg p-3 bg-gray-800 dark:bg-gray-800 border border-gray-700 dark:border-gray-700 text-gray-900 dark:text-white"
+      ></textarea>
     </div>
+
 
     <div class="flex flex-col gap-4 mt-6" :inert="isReadOnly">
       <div
@@ -158,14 +164,6 @@ onMounted(async () => {
         variant="soft"
         :loading="isSaving"
         @click="saveAndExit"
-      />
-      <UButton
-        v-if="!isReadOnly"
-        label="Finish"
-        color="success"
-        variant="soft"
-        :loading="isSaving"
-        @click="finish"
       />
     </div>
   </UContainer>
