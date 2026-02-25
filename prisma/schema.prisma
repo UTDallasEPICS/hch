@@ -13,21 +13,94 @@ enum Role {
 }
 
 model User {
-  id            String        @id
-  name          String
-  email         String
-  emailVerified Boolean       @default(false)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  sessions      Session[]
-  accounts      Account[]
-  role          Role          @default(CLIENT)
-  phoneNumber   Int?
-  appForms      AppForm[]
-  appQuestions  AppQuestion[]
+  id              String           @id
+  name            String
+  email           String
+  emailVerified   Boolean          @default(false)
+  image           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  sessions        Session[]
+  accounts        Account[]
+  role            Role             @default(CLIENT)
+  phoneNumber     Int?
+  appForms        AppForm[]
+  appQuestions    AppQuestion[]
+  formAssignments FormAssignment[]
+  aceResponses    AceResponse[]
 
   @@unique([email])
   @@map("user")
+}
+
+// Form metadata (e.g. ACE Questionnaire)
+model Form {
+  id            String           @id @default(cuid())
+  title         String
+  description   String?
+  slug          String           @unique // e.g. 'ace-form'
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  formQuestions FormQuestion[]
+  assignments   FormAssignment[]
+
+  @@map("form")
+}
+
+// Master list of all possible questions (reusable across forms)
+model Question {
+  id            String         @id @default(cuid())
+  text          String
+  type          String // 'radio', 'text', 'checkbox', etc.
+  alias         String         @unique // e.g. 'parent_insult', 'physical_harm'
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  formQuestions FormQuestion[]
+
+  @@map("question")
+}
+
+// Junction: which questions belong to which form, and in what order
+model FormQuestion {
+  id         String   @id @default(cuid())
+  formId     String
+  questionId String
+  order      Int // 1-based position for display and mapping
+  form       Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([formId, questionId])
+  @@index([formId])
+  @@index([questionId])
+  @@map("form_question")
+}
+
+// Assigns forms to users (tasks); completion tracked here
+model FormAssignment {
+  id          String    @id @default(cuid())
+  userId      String
+  formId      String
+  assignedAt  DateTime  @default(now())
+  completedAt DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  form        Form      @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, formId])
+  @@index([userId])
+  @@index([formId])
+  @@map("form_assignment")
+}
+
+// ACE-specific response table. Responses stored as JSON mapping question alias -> value (boolean string or text)
+model AceResponse {
+  id          String   @id @default(cuid())
+  userId      String
+  responses   String // JSON: { "alias1": "true", "alias2": "false", ... }
+  completedAt DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("ace_response")
 }
 
 model Session {

@@ -2,19 +2,34 @@
   const answered = ref(0)
   const total = ref(50)
   const submitted = ref(false)
+  const aceAnswered = ref(0)
+  const aceTotal = ref(0)
   const isSubmitting = ref(false)
   const toast = useToast()
 
-  const canSubmit = computed(() => answered.value === total.value && !submitted.value)
+  const isApplicationComplete = computed(() => answered.value === total.value)
+  const isAceComplete = computed(() => aceTotal.value > 0 && aceAnswered.value === aceTotal.value)
+  const canSubmit = computed(
+    () => isApplicationComplete.value && isAceComplete.value && !submitted.value
+  )
+  const aceTarget = computed(() => (submitted.value ? '/forms/ace-form-results' : '/forms/ace-form'))
+  const aceProgressLabel = computed(() => (submitted.value ? 'Submitted' : `${aceAnswered.value}/${aceTotal.value}`))
 
   async function loadProgress() {
-    const progress = await $fetch<{ answered: number; total: number; submitted?: boolean }>(
-      '/api/application/progress'
-    )
+    const [progress, aceForm, aceResponses] = await Promise.all([
+      $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/application/progress'),
+      $fetch<{ questions: Array<{ id: string }> }>('/api/forms/ace-form'),
+      $fetch<Record<string, string>>('/api/forms/ace-form/responses'),
+    ])
 
     answered.value = progress.answered
     total.value = progress.total
     submitted.value = Boolean(progress.submitted)
+
+    aceTotal.value = aceForm.questions.length
+    aceAnswered.value = Object.values(aceResponses).filter(
+      (value) => typeof value === 'string' && value.trim().length > 0
+    ).length
   }
 
   async function submitForms() {
@@ -53,6 +68,8 @@
       answered.value = 0
       total.value = 50
       submitted.value = false
+      aceAnswered.value = 0
+      aceTotal.value = 0
     }
   })
 </script>
@@ -74,6 +91,16 @@
     >
       <span>Application Form</span>
       <span>{{ submitted ? 'Submitted' : `${answered}/${total}` }}</span>
+    </UButton>
+
+    <UButton
+      class="mt-3 w-full justify-between rounded-xl px-5 py-4 text-sm font-semibold"
+      color="primary"
+      variant="soft"
+      :to="aceTarget"
+    >
+      <span>ACE Form</span>
+      <span>{{ aceProgressLabel }}</span>
     </UButton>
 
     <div class="mt-6 flex justify-end">

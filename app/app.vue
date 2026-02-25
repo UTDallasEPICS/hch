@@ -4,7 +4,6 @@
 
   const isTasksPage = computed(() => route.path === '/taskPage')
   const isDashboardPage = computed(() => route.path === '/')
-
   const isDark = computed({
     get() {
       return colorMode.value === 'dark'
@@ -28,11 +27,17 @@
             <img
               src="/HCH%20Light%20Mode%20Logo.png"
               alt="Hope Cope Heal logo"
+              width="160"
+              height="32"
+              style="height: 32px; width: auto;"
               class="h-8 w-auto dark:hidden"
             />
             <img
               src="/HCH%20Dark%20Mode%20Logo.png"
               alt="Hope Cope Heal logo"
+              width="160"
+              height="32"
+              style="height: 32px; width: auto;"
               class="hidden h-8 w-auto dark:block"
             />
             <span class="text-sm leading-none whitespace-nowrap sm:hidden">Hope.Cope.Heal.</span>
