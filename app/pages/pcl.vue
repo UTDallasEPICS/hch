@@ -39,45 +39,18 @@ function buildPayload() {
 
 async function saveAndExit() {
   if (isReadOnly.value) {
-    await navigateTo('/tasks')
+    await navigateTo('/taskPage')
     return
   }
 
   try {
     isSaving.value = true
     await $fetch('/api/pcl/save', { method: 'POST', body: buildPayload() })
-    await navigateTo('/tasks')
+    await navigateTo('/taskPage')
   } catch (error: any) {
     toast.add({
       title: 'Save failed',
       description: error?.data?.statusMessage || error?.statusMessage || 'Your answers could not be saved. Please try again.',
-      color: 'error',
-    })
-  } finally {
-    isSaving.value = false
-  }
-}
-
-async function finish() {
-  if (isReadOnly.value) {
-    await navigateTo('/tasks')
-    return
-  }
-
-  try {
-    isSaving.value = true
-    await $fetch('/api/pcl/save', { method: 'POST', body: buildPayload() })
-    await $fetch('/api/pcl/submit', { method: 'POST' })
-    toast.add({
-      title: 'PCL-5 submitted',
-      description: 'Your form has been submitted successfully.',
-      color: 'success',
-    })
-    await navigateTo('/tasks')
-  } catch (error: any) {
-    toast.add({
-      title: 'Submission failed',
-      description: error?.data?.statusMessage || error?.statusMessage || 'Unable to submit. Please try again.',
       color: 'error',
     })
   } finally {
@@ -104,7 +77,7 @@ onMounted(async () => {
       description: error?.data?.statusMessage || error?.statusMessage || 'Please try again later.',
       color: 'error',
     })
-    await navigateTo('/tasks')
+    await navigateTo('/taskPage')
   }
 })
 </script>
@@ -158,14 +131,6 @@ onMounted(async () => {
         variant="soft"
         :loading="isSaving"
         @click="saveAndExit"
-      />
-      <UButton
-        v-if="!isReadOnly"
-        label="Finish"
-        color="success"
-        variant="soft"
-        :loading="isSaving"
-        @click="finish"
       />
     </div>
   </UContainer>

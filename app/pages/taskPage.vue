@@ -13,6 +13,9 @@
   const phqSubmitted = ref(false)
   const isSubmitting = ref(false)
   const toast = useToast()
+  const pclAnswered = ref(0)
+  const pclTotal = ref(20)
+  const pclSubmitted = ref(false)
 
   const isApplicationComplete = computed(() => answered.value === total.value)
   const isAceComplete = computed(() => aceTotal.value > 0 && aceAnswered.value === aceTotal.value)
@@ -27,7 +30,8 @@
   )
 
   async function loadProgress() {
-    const [appResult, aceFormResult, aceResponsesResult, gadResult, phqResult] = await Promise.allSettled([
+    const [appResult, aceFormResult, aceResponsesResult, gadResult, phqResult, pclResult] =
+      await Promise.allSettled([
       $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/application/progress'),
       $fetch<{ questions: Array<{ id: string }> }>('/api/forms/ace-form'),
       $fetch<Record<string, string>>('/api/forms/ace-form/responses'),
@@ -38,6 +42,7 @@
         severity: string | null
       }>('/api/gad/progress'),
       $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/phq/progress'),
+      $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/pcl/progress'),
     ])
 
     if (appResult.status === 'fulfilled') {
@@ -67,6 +72,12 @@
       phqAnswered.value = phqResult.value.answered
       phqTotal.value = phqResult.value.total
       phqSubmitted.value = Boolean(phqResult.value.submitted)
+    }
+
+    if (pclResult.status === 'fulfilled') {
+      pclAnswered.value = pclResult.value.answered
+      pclTotal.value = pclResult.value.total
+      pclSubmitted.value = Boolean(pclResult.value.submitted)
     }
   }
 
@@ -115,6 +126,9 @@
       phqAnswered.value = 0
       phqTotal.value = 9
       phqSubmitted.value = false
+      pclAnswered.value = 0
+      pclTotal.value = 20
+      pclSubmitted.value = false
     }
   })
 </script>
@@ -169,6 +183,16 @@
     >
       <span>PHQ-9 Form</span>
       <span>{{ phqSubmitted ? 'Submitted' : `${phqAnswered}/${phqTotal}` }}</span>
+    </UButton>
+
+    <UButton
+      class="mt-3 w-full justify-between rounded-xl px-5 py-4 text-sm font-semibold"
+      color="primary"
+      variant="soft"
+      to="/pcl"
+    >
+      <span>PCL-5 Form</span>
+      <span>{{ pclSubmitted ? 'Submitted' : `${pclAnswered}/${pclTotal}` }}</span>
     </UButton>
 
     <div class="mt-6 flex justify-end">
