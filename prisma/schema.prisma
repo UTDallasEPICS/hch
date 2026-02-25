@@ -33,6 +33,9 @@ model User {
   phqForm         PhqForm[]
   phqQuestions    PhqQuestion[]
 
+  PclForms       PclForm[]
+  PclQuestions   PclQuestion[]
+
   @@unique([email])
   @@map("user")
 }
@@ -288,6 +291,49 @@ model PhqQuestion {
   q9 Int?
 
   form PhqForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PclForm {
+  id          Int          @id @default(autoincrement())
+  userId      String
+  status      String       @default("IN_PROGRESS")
+  submittedAt DateTime?
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions   PclQuestion?
+
+  @@index([userId])
+}
+
+model PclQuestion {
+  id     Int    @id @default(autoincrement())
+  formId Int    @unique
+  userId String
+
+  q01 Int?
+  q02 Int?
+  q03 Int?
+  q04 Int?
+  q05 Int?
+  q06 Int?
+  q07 Int?
+  q08 Int?
+  q09 Int?
+  q10 Int?
+  q11 Int?
+  q12 Int?
+  q13 Int?
+  q14 Int?
+  q15 Int?
+  q16 Int?
+  q17 Int?
+  q18 Int?
+  q19 Int?
+  q20 Int?
+
+  form PclForm @relation(fields: [formId], references: [id], onDelete: Cascade)
   user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
