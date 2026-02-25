@@ -19,6 +19,62 @@
   const totalScore = computed(() =>
     responses.value.reduce((sum, val) => sum + (val >= 0 ? val : 0), 0)
   )
+
+  async function saveForm() {
+  try {
+    isSaving.value = true
+
+    await $fetch('/api/phq/save', {
+      method: 'POST',
+      body: {
+        q1: responses.value[0],
+        q2: responses.value[1],
+        q3: responses.value[2],
+        q4: responses.value[3],
+        q5: responses.value[4],
+        q6: responses.value[5],
+        q7: responses.value[6],
+        q8: responses.value[7],
+        q9: responses.value[8],
+      },
+    })
+
+    await navigateTo('/taskPage')
+  } catch (error) {
+    toast.add({
+      title: 'Save failed',
+      description: 'Could not save your responses.',
+      color: 'error',
+    })
+  } finally {
+    isSaving.value = false
+  }
+}
+
+onMounted(async () => {
+  try {
+    const data = await $fetch('/api/phq/start', {
+      method: 'POST',
+    })
+
+    if (data?.answers) {
+      responses.value = [
+        data.answers.q1 ?? -1,
+        data.answers.q2 ?? -1,
+        data.answers.q3 ?? -1,
+        data.answers.q4 ?? -1,
+        data.answers.q5 ?? -1,
+        data.answers.q6 ?? -1,
+        data.answers.q7 ?? -1,
+        data.answers.q8 ?? -1,
+        data.answers.q9 ?? -1,
+      ]
+    }
+  } catch (error) {
+    console.error('Failed to load saved answers')
+  }
+})
+
 </script>
 
 <template>
@@ -99,7 +155,13 @@
 
     <!-- Save and Exit Button -->
     <div class="mt-auto pt-6">
-      <UButton label="Save and Exit" to="/taskPage" color="success" variant="soft" />
+      <UButton
+        label="Save and Exit"
+        color="success"
+        variant="soft"
+        :loading="isSaving"
+        @click="saveForm"
+      />
     </div>
 
   </UContainer>
