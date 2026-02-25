@@ -28,6 +28,8 @@ model User {
   appQuestions    AppQuestion[]
   formAssignments FormAssignment[]
   aceResponses    AceResponse[]
+  gadForms        GadForm[]
+  gadQuestions    GadQuestion[]
 
   @@unique([email])
   @@map("user")
@@ -217,6 +219,40 @@ model AppQuestion {
   q50 String?
 
   form AppForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model GadForm {
+  id          Int       @id @default(autoincrement())
+  userId      String
+  status      String    @default("IN_PROGRESS")
+  totalScore  Int?
+  severity    String?
+  submittedAt DateTime?
+
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions GadQuestion?
+
+  @@index([userId])
+}
+
+model GadQuestion {
+  id     Int    @id @default(autoincrement())
+  formId Int    @unique
+  userId String
+
+  g01 Int?
+  g02 Int?
+  g03 Int?
+  g04 Int?
+  g05 Int?
+  g06 Int?
+  g07 Int?
+  g08 Int?
+
+  form GadForm @relation(fields: [formId], references: [id], onDelete: Cascade)
   user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])

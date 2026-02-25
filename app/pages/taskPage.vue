@@ -4,6 +4,10 @@
   const submitted = ref(false)
   const aceAnswered = ref(0)
   const aceTotal = ref(0)
+  const gadAnswered = ref(0)
+  const gadTotal = ref(7)
+  const gadScore = ref<number | null>(null)
+  const gadSeverity = ref<string | null>(null)
   const isSubmitting = ref(false)
   const toast = useToast()
 
@@ -12,14 +16,24 @@
   const canSubmit = computed(
     () => isApplicationComplete.value && isAceComplete.value && !submitted.value
   )
-  const aceTarget = computed(() => (submitted.value ? '/forms/ace-form-results' : '/forms/ace-form'))
-  const aceProgressLabel = computed(() => (submitted.value ? 'Submitted' : `${aceAnswered.value}/${aceTotal.value}`))
+  const aceTarget = computed(() =>
+    submitted.value ? '/forms/ace-form-results' : '/forms/ace-form'
+  )
+  const aceProgressLabel = computed(() =>
+    submitted.value ? 'Submitted' : `${aceAnswered.value}/${aceTotal.value}`
+  )
 
   async function loadProgress() {
-    const [progress, aceForm, aceResponses] = await Promise.all([
+    const [progress, aceForm, aceResponses, gadProgress] = await Promise.all([
       $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/application/progress'),
       $fetch<{ questions: Array<{ id: string }> }>('/api/forms/ace-form'),
       $fetch<Record<string, string>>('/api/forms/ace-form/responses'),
+      $fetch<{
+        answered: number
+        total: number
+        totalScore: number | null
+        severity: string | null
+      }>('/api/gad/progress'),
     ])
 
     answered.value = progress.answered
@@ -30,6 +44,11 @@
     aceAnswered.value = Object.values(aceResponses).filter(
       (value) => typeof value === 'string' && value.trim().length > 0
     ).length
+
+    gadAnswered.value = gadProgress.answered
+    gadTotal.value = gadProgress.total
+    gadScore.value = gadProgress.totalScore
+    gadSeverity.value = gadProgress.severity
   }
 
   async function submitForms() {
@@ -70,6 +89,10 @@
       submitted.value = false
       aceAnswered.value = 0
       aceTotal.value = 0
+      gadAnswered.value = 0
+      gadTotal.value = 7
+      gadScore.value = null
+      gadSeverity.value = null
     }
   })
 </script>
@@ -101,6 +124,19 @@
     >
       <span>ACE Form</span>
       <span>{{ aceProgressLabel }}</span>
+    </UButton>
+
+    <UButton
+      class="mt-3 w-full justify-between rounded-xl px-5 py-4 text-sm font-semibold"
+      color="primary"
+      variant="soft"
+      to="/gad"
+    >
+      <span>GAD-7 Form</span>
+      <span>
+        {{ gadAnswered }}/{{ gadTotal }}
+        <template v-if="gadScore !== null"> • {{ gadSeverity }}</template>
+      </span>
     </UButton>
 
     <div class="mt-6 flex justify-end">

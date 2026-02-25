@@ -73,9 +73,7 @@ export async function useFormBySlug(slug: Ref<string> | ComputedRef<string>) {
       await persistResponses()
     }
 
-    const next = (pendingSave ?? Promise.resolve())
-      .catch(() => undefined)
-      .then(run)
+    const next = (pendingSave ?? Promise.resolve()).catch(() => undefined).then(run)
 
     pendingSave = next
       .catch((e) => {

@@ -116,9 +116,7 @@
       <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
         Add New Form
       </h1>
-      <p class="mt-1 text-gray-500 dark:text-gray-400">
-        Create a form by adding new questions.
-      </p>
+      <p class="mt-1 text-gray-500 dark:text-gray-400">Create a form by adding new questions.</p>
 
       <!-- Form metadata -->
       <div

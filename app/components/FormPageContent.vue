@@ -1,25 +1,25 @@
 <script setup lang="ts">
-const props = defineProps<{ slug: string }>()
-const slugRef = computed(() => props.slug)
-const {
-  form,
-  formPending,
-  formError,
-  slug,
-  responses,
-  completedCount,
-  totalCount,
-  progressPercent,
-  setResponse,
-  submitting,
-  submitError,
-  submit,
-} = await useFormBySlug(slugRef)
+  const props = defineProps<{ slug: string }>()
+  const slugRef = computed(() => props.slug)
+  const {
+    form,
+    formPending,
+    formError,
+    slug,
+    responses,
+    completedCount,
+    totalCount,
+    progressPercent,
+    setResponse,
+    submitting,
+    submitError,
+    submit,
+  } = await useFormBySlug(slugRef)
 
-function toggleRadioResponse(alias: string, option: string) {
-  const current = responses.value[alias]
-  setResponse(alias, current === option ? '' : option, { immediate: true })
-}
+  function toggleRadioResponse(alias: string, option: string) {
+    const current = responses.value[alias]
+    setResponse(alias, current === option ? '' : option, { immediate: true })
+  }
 </script>
 
 <template>
@@ -27,8 +27,12 @@ function toggleRadioResponse(alias: string, option: string) {
     <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       <div v-if="form" class="mb-6">
         <div class="flex items-center justify-between text-sm">
-          <span class="font-medium text-gray-700 dark:text-gray-300">{{ progressPercent }}% Complete</span>
-          <span class="text-gray-500 dark:text-gray-400">{{ completedCount }} of {{ totalCount }} answered</span>
+          <span class="font-medium text-gray-700 dark:text-gray-300"
+            >{{ progressPercent }}% Complete</span
+          >
+          <span class="text-gray-500 dark:text-gray-400"
+            >{{ completedCount }} of {{ totalCount }} answered</span
+          >
         </div>
         <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
           <div
@@ -96,7 +100,7 @@ function toggleRadioResponse(alias: string, option: string) {
                   class="relative flex cursor-pointer items-center rounded-lg border px-4 py-3 transition"
                   :class="
                     responses[q.alias] === opt
-                      ? 'border-primary-600 bg-primary-100 ring-primary-400/60 text-primary-900 ring-2 dark:border-primary-500 dark:bg-primary-900/40 dark:text-primary-100 dark:ring-primary-500/50'
+                      ? 'border-primary-600 bg-primary-100 ring-primary-400/60 text-primary-900 dark:border-primary-500 dark:bg-primary-900/40 dark:text-primary-100 dark:ring-primary-500/50 ring-2'
                       : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:border-gray-600 dark:hover:bg-gray-800/60'
                   "
                   @click="toggleRadioResponse(q.alias, opt)"
@@ -139,6 +143,5 @@ function toggleRadioResponse(alias: string, option: string) {
         </form>
       </template>
     </main>
-
   </div>
 </template>

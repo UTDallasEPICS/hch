@@ -19,6 +19,13 @@
         </p>
       </div>
       <UButton
+        color="primary"
+        variant="soft"
+        icon="i-heroicons-clipboard-document-list-20-solid"
+        label="Tasks"
+        to="/taskPage"
+      />
+      <UButton
         color="error"
         variant="soft"
         icon="i-heroicons-arrow-right-on-rectangle-20-solid"
