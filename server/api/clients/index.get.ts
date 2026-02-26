@@ -53,6 +53,7 @@ export default defineEventHandler(async (event) => {
       const clientProfile = user.client
       const storedStatus = clientProfile?.status ?? 'INCOMPLETE'
       const therapyWeek = clientProfile?.therapyWeek ?? null
+      const missedSessions = clientProfile?.missedSessions ?? 0
       const allFormsComplete = await isAllFormsComplete(prisma, user.id)
       const incompleteForms = storedStatus === 'INCOMPLETE' ? await getIncompleteForms(prisma, user.id) : []
       const { fname, lname } = parseName(user.name)
@@ -66,6 +67,7 @@ export default defineEventHandler(async (event) => {
         status: storedStatus,
         allFormsComplete,
         therapyWeek,
+        missedSessions,
         incompleteForms,
       }
     })

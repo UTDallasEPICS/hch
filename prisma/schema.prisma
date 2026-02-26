@@ -20,11 +20,12 @@ enum ClientStatus {
 }
 
 model Client {
-  id          String       @id @default(cuid())
-  userId      String       @unique
-  status      ClientStatus @default(INCOMPLETE)
-  therapyWeek Int?         // 0-26, max weeks of therapy
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  userId         String       @unique
+  status         ClientStatus @default(INCOMPLETE)
+  therapyWeek    Int?         // 0-26, max weeks of therapy
+  missedSessions Int          @default(0) // count of missed therapy sessions
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([status])
   @@map("client")

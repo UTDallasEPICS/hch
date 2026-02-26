@@ -18,6 +18,7 @@
     status: ClientStatus
     allFormsComplete: boolean
     therapyWeek: number | null
+    missedSessions: number
     incompleteForms: string[]
   }
 
@@ -38,7 +39,12 @@
     return params
   })
 
-  const { data: clients, pending, error, refresh } = await useFetch<Client[]>('/api/clients', {
+  const {
+    data: clients,
+    pending,
+    error,
+    refresh,
+  } = await useFetch<Client[]>('/api/clients', {
     query: queryParams,
     watch: [queryParams],
     getCachedData: () => undefined,
@@ -59,14 +65,33 @@
     return labels[status]
   }
 
-  function statusColor(status: ClientStatus): 'neutral' | 'warning' | 'primary' | 'neutral' {
-    const colors: Record<ClientStatus, 'neutral' | 'warning' | 'primary' | 'neutral'> = {
+  function statusColor(
+    status: ClientStatus
+  ): 'warning' | 'primary' | 'success' | 'neutral' {
+    const colors: Record<
+      ClientStatus,
+      'warning' | 'primary' | 'success' | 'neutral'
+    > = {
       INCOMPLETE: 'warning',
       WAITLIST: 'primary',
-      ACTIVE: 'primary',
+      ACTIVE: 'success',
       ARCHIVED: 'neutral',
     }
     return colors[status]
+  }
+
+  function statusVariant(status: ClientStatus): 'soft' | 'outline' {
+    return status === 'ARCHIVED' ? 'outline' : 'soft'
+  }
+
+  function statusIcon(status: ClientStatus): string {
+    const icons: Record<ClientStatus, string> = {
+      INCOMPLETE: 'i-heroicons-clock',
+      WAITLIST: 'i-heroicons-queue-list',
+      ACTIVE: 'i-heroicons-check-circle',
+      ARCHIVED: 'i-heroicons-archive-box',
+    }
+    return icons[status]
   }
 
   function statusHint(c: Client): string {
@@ -85,7 +110,10 @@
   )
 
   function formatIncompleteForms(c: Client): string {
-    if (c.status !== 'INCOMPLETE' || !c.incompleteForms?.length) return ''
+    if (c.status !== 'INCOMPLETE') return ''
+    if (!c.incompleteForms?.length || c.allFormsComplete) {
+      return 'Congradulations! All Forms Complete'
+    }
     const count = c.incompleteForms.length
     const names = c.incompleteForms.map((k) => FORM_LABELS[k] ?? k).join(', ')
     return `${count} remaining: ${names}`
@@ -97,10 +125,17 @@
   const STATUS_ORDER: ClientStatus[] = ['INCOMPLETE', 'WAITLIST', 'ACTIVE', 'ARCHIVED']
 
   function getNextStatus(client: Client): ClientStatus | null {
-    if (client.status === 'ARCHIVED') return null
+    if (client.status === 'ARCHIVED') return 'ACTIVE'
     if (client.status === 'INCOMPLETE' && !client.allFormsComplete) return null
+    if (client.status === 'ACTIVE') {
+      const missedSessions = client.missedSessions ?? 0
+      const therapyWeek = client.therapyWeek ?? 0
+      const canArchive = missedSessions >= 2 || therapyWeek >= 26
+      return canArchive ? 'ARCHIVED' : null
+    }
     const idx = STATUS_ORDER.indexOf(client.status)
-    return idx >= 0 && idx < STATUS_ORDER.length - 1 ? STATUS_ORDER[idx + 1] : null
+    if (idx < 0 || idx >= STATUS_ORDER.length - 1) return null
+    return STATUS_ORDER[idx + 1]!
   }
 
   const confirmModalOpen = ref(false)
@@ -143,8 +178,7 @@
       })
       await refresh()
     } catch (error: any) {
-      const msg =
-        error?.data?.statusMessage || error?.statusMessage || 'Failed to update status'
+      const msg = error?.data?.statusMessage || error?.statusMessage || 'Failed to update status'
       toast.add({
         title: 'Update failed',
         description: msg,
@@ -178,9 +212,7 @@
             name="i-heroicons-user-group-20-solid"
             class="h-5 w-5 text-gray-500 dark:text-gray-400"
           />
-          <h2 class="text-base font-semibold text-gray-900 dark:text-white">
-            Client list
-          </h2>
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">Client list</h2>
         </div>
         <div class="flex items-center gap-3">
           <USelect
@@ -197,7 +229,11 @@
       </div>
 
       <div v-if="pending" class="space-y-4">
-        <div v-for="i in 5" :key="i" class="flex items-center gap-4 border-b border-gray-200 py-4 dark:border-gray-800">
+        <div
+          v-for="i in 5"
+          :key="i"
+          class="flex items-center gap-4 border-b border-gray-200 py-4 dark:border-gray-800"
+        >
           <USkeleton class="h-10 w-10 rounded-full" />
           <div class="flex-1 space-y-2">
             <USkeleton class="h-4 w-48" />
@@ -222,31 +258,36 @@
             <thead>
               <tr class="border-b border-gray-200 dark:border-gray-800">
                 <th
-                  class="pb-3 pr-4 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400"
+                  class="pr-4 pb-3 text-left text-sm font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
                 >
                   Status
                 </th>
                 <th
-                  class="pb-3 pr-4 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400"
+                  class="pr-4 pb-3 text-left text-sm font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
                 >
                   Name
                 </th>
                 <th
-                  class="pb-3 pr-4 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400"
+                  class="pr-4 pb-3 text-left text-sm font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
                 >
                   Email
                 </th>
                 <th
                   v-if="showFormsRemainingColumn"
-                  class="pb-3 pr-4 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400"
+                  class="pr-4 pb-3 text-left text-sm font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
                 >
                   Forms remaining
                 </th>
                 <th
                   v-if="showWeekNoColumn"
-                  class="pb-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400"
+                  class="pr-4 pb-3 text-left text-sm font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
                 >
                   Week no
+                </th>
+                <th
+                  class="w-0 pb-3 pr-4 text-right text-sm font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
+                >
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -257,59 +298,70 @@
                 class="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
               >
                 <td class="py-4 pr-4">
-                  <div class="flex flex-col gap-1">
-                    <div class="flex items-center gap-2">
-                      <UBadge
-                        :color="statusColor(client.status)"
-                        variant="subtle"
-                        size="xs"
-                      >
-                        {{ statusLabel(client.status) }}
-                      </UBadge>
-                      <UButton
-                        v-if="getNextStatus(client) && updatingId !== client.id"
-                        size="xs"
-                        variant="outline"
-                        color="primary"
-                        :label="`→ ${statusLabel(getNextStatus(client)!)}`"
-                        @click="openConfirmModal(client, getNextStatus(client)!)"
-                      />
-                    </div>
+                  <div class="flex flex-col gap-1.5">
+                    <UBadge
+                      :color="statusColor(client.status)"
+                      :variant="statusVariant(client.status)"
+                      size="md"
+                      :icon="statusIcon(client.status)"
+                      leading
+                      class="inline-flex w-fit font-medium"
+                    >
+                      {{ statusLabel(client.status) }}
+                    </UBadge>
                     <span
                       v-if="statusHint(client)"
-                      class="text-xs text-amber-600 dark:text-amber-400"
+                      class="text-sm text-amber-600 dark:text-amber-400"
                     >
                       {{ statusHint(client) }}
                     </span>
                   </div>
                 </td>
-                <td class="py-4 pr-4 font-medium text-gray-900 dark:text-white">
+                <td class="py-4 pr-4 text-base font-medium text-gray-900 dark:text-white">
                   {{ displayName(client) }}
                 </td>
-                <td class="py-4 pr-4 text-sm text-gray-600 dark:text-gray-400">
+                <td class="py-4 pr-4 text-base text-gray-600 dark:text-gray-400">
                   {{ client.email }}
                 </td>
                 <td
                   v-if="showFormsRemainingColumn"
-                  class="py-4 pr-4 text-sm text-amber-600 dark:text-amber-400"
+                  :class="[
+                    'py-4 pr-4 text-base',
+                    client.allFormsComplete
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-amber-600 dark:text-amber-400',
+                  ]"
                 >
                   {{ formatIncompleteForms(client) }}
                 </td>
                 <td
                   v-if="showWeekNoColumn"
-                  class="py-4 pr-4 text-sm text-gray-600 dark:text-gray-400"
+                  class="py-4 pr-4 text-base text-gray-600 dark:text-gray-400"
                 >
-                  {{ client.status === 'ACTIVE' && client.therapyWeek !== null ? `${client.therapyWeek} / 26` : (client.status === 'ACTIVE' ? '—' : '') }}
+                  {{
+                    client.status === 'ACTIVE' && client.therapyWeek !== null
+                      ? `${client.therapyWeek} / 26`
+                      : client.status === 'ACTIVE'
+                        ? '—'
+                        : ''
+                  }}
+                </td>
+                <td class="py-4 pr-4 text-right">
+                  <UButton
+                    v-if="getNextStatus(client) && updatingId !== client.id"
+                    size="md"
+                    variant="outline"
+                    color="primary"
+                    :label="`→ ${statusLabel(getNextStatus(client)!)}`"
+                    @click="openConfirmModal(client, getNextStatus(client)!)"
+                  />
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div
-          v-if="!clients?.length"
-          class="py-12 text-center text-gray-500 dark:text-gray-400"
-        >
+        <div v-if="!clients?.length" class="py-12 text-center text-gray-500 dark:text-gray-400">
           No clients found.
         </div>
       </div>

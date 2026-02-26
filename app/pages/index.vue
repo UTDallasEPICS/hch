@@ -24,13 +24,6 @@
       </div>
       <div class="flex items-center gap-2">
         <UButton
-          to="/clients"
-          color="primary"
-          variant="soft"
-          icon="i-heroicons-user-group-20-solid"
-          label="Clients"
-        />
-        <UButton
           color="error"
           variant="soft"
           icon="i-heroicons-arrow-right-on-rectangle-20-solid"
