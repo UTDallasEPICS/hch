@@ -94,21 +94,38 @@
   const toast = useToast()
   const updatingId = ref<string | null>(null)
 
-  function statusUpdateOptionsFor(client: Client) {
-    return [
-      { label: 'Incomplete', value: 'INCOMPLETE' as ClientStatus },
-      { label: 'Waitlist', value: 'WAITLIST' as ClientStatus },
-      {
-        label: 'Active',
-        value: 'ACTIVE' as ClientStatus,
-        disabled: client.status !== 'WAITLIST',
-      },
-      {
-        label: 'Archived',
-        value: 'ARCHIVED' as ClientStatus,
-        disabled: client.status !== 'ACTIVE',
-      },
-    ]
+  const STATUS_ORDER: ClientStatus[] = ['INCOMPLETE', 'WAITLIST', 'ACTIVE', 'ARCHIVED']
+
+  function getNextStatus(client: Client): ClientStatus | null {
+    if (client.status === 'ARCHIVED') return null
+    if (client.status === 'INCOMPLETE' && !client.allFormsComplete) return null
+    const idx = STATUS_ORDER.indexOf(client.status)
+    return idx >= 0 && idx < STATUS_ORDER.length - 1 ? STATUS_ORDER[idx + 1] : null
+  }
+
+  const confirmModalOpen = ref(false)
+  const pendingClient = ref<Client | null>(null)
+  const pendingNextStatus = ref<ClientStatus | null>(null)
+
+  function openConfirmModal(client: Client, nextStatus: ClientStatus) {
+    pendingClient.value = client
+    pendingNextStatus.value = nextStatus
+    confirmModalOpen.value = true
+  }
+
+  function closeConfirmModal() {
+    confirmModalOpen.value = false
+    pendingClient.value = null
+    pendingNextStatus.value = null
+  }
+
+  async function confirmStatusUpdate() {
+    if (!pendingClient.value || !pendingNextStatus.value) {
+      closeConfirmModal()
+      return
+    }
+    await updateStatus(pendingClient.value.id, pendingNextStatus.value)
+    closeConfirmModal()
   }
 
   async function updateStatus(clientId: string, newStatus: ClientStatus) {
@@ -241,15 +258,23 @@
               >
                 <td class="py-4 pr-4">
                   <div class="flex flex-col gap-1">
-                    <USelect
-                      :model-value="client.status"
-                      :items="statusUpdateOptionsFor(client)"
-                      value-key="value"
-                      size="xs"
-                      class="w-28"
-                      :disabled="updatingId === client.id"
-                      @update:model-value="(v: string) => updateStatus(client.id, v as ClientStatus)"
-                    />
+                    <div class="flex items-center gap-2">
+                      <UBadge
+                        :color="statusColor(client.status)"
+                        variant="subtle"
+                        size="xs"
+                      >
+                        {{ statusLabel(client.status) }}
+                      </UBadge>
+                      <UButton
+                        v-if="getNextStatus(client) && updatingId !== client.id"
+                        size="xs"
+                        variant="outline"
+                        color="primary"
+                        :label="`→ ${statusLabel(getNextStatus(client)!)}`"
+                        @click="openConfirmModal(client, getNextStatus(client)!)"
+                      />
+                    </div>
                     <span
                       v-if="statusHint(client)"
                       class="text-xs text-amber-600 dark:text-amber-400"
@@ -289,5 +314,26 @@
         </div>
       </div>
     </div>
+
+    <UModal
+      v-model:open="confirmModalOpen"
+      :title="`Move to ${pendingNextStatus ? statusLabel(pendingNextStatus) : ''}?`"
+      :description="
+        pendingClient
+          ? `Move ${displayName(pendingClient)} to ${pendingNextStatus ? statusLabel(pendingNextStatus) : ''} status?`
+          : ''
+      "
+      :ui="{ footer: 'justify-end' }"
+    >
+      <template #footer>
+        <UButton label="Cancel" color="neutral" variant="outline" @click="closeConfirmModal()" />
+        <UButton
+          label="Confirm"
+          color="primary"
+          :loading="!!pendingClient && updatingId === pendingClient?.id"
+          @click="confirmStatusUpdate()"
+        />
+      </template>
+    </UModal>
   </main>
 </template>
