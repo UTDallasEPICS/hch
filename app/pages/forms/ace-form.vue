@@ -1,7 +1,7 @@
 <script setup lang="ts">
-definePageMeta({
-  name: 'forms-ace-form',
-})
+  definePageMeta({
+    name: 'forms-ace-form',
+  })
 </script>
 
 <template>

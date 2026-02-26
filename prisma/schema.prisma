@@ -36,8 +36,28 @@ model User {
   PclForms       PclForm[]
   PclQuestions   PclQuestion[]
 
+  clientAppointments Appointment[] @relation("ClientAppointments")
+  adminAppointments  Appointment[] @relation("AdminAppointments")
+
   @@unique([email])
   @@map("user")
+  
+}
+
+model Appointment {
+  id          String   @id @default(cuid())
+  clientId    String
+  adminId     String
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  status      String   @default("SCHEDULED")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  client User @relation("ClientAppointments", fields: [clientId], references: [id])
+  admin  User @relation("AdminAppointments", fields: [adminId], references: [id])
 }
 
 // Form metadata (e.g. ACE Questionnaire)

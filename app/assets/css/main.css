@@ -30,3 +30,41 @@
   --color-primary-900: #224055;
   --color-primary-950: #1a3344;
 }
+
+/* FullCalendar Dark Mode Fix */
+
+.dark .fc {
+  color: #e5e7eb; /* gray-200 */
+}
+
+.dark .fc-theme-standard td,
+.dark .fc-theme-standard th {
+  border-color: #374151; /* gray-700 */
+}
+
+.dark .fc-col-header-cell {
+  background-color: #111827; /* gray-900 */
+  color: #e5e7eb;
+}
+
+.dark .fc-daygrid-day {
+  background-color: #030712; /* gray-950 */
+}
+
+.dark .fc-day-today {
+  background-color: rgba(59, 130, 246, 0.15) !important; /* blue highlight */
+}
+
+.dark .fc-button {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+  color: #e5e7eb !important;
+}
+
+.dark .fc-button-active {
+  background-color: #2563eb !important;
+}
+
+.dark .fc-toolbar-title {
+  color: #f9fafb;
+}

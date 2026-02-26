@@ -141,6 +141,11 @@
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
     <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       ```
+      <div class="mb-4">
+        <UButton to="/taskPage" icon="i-heroicons-arrow-left" variant="ghost" color="neutral">
+          Back to Tasks
+        </UButton>
+      </div>
       <!-- Already Submitted Message -->
       <div
         v-if="isSubmitted"

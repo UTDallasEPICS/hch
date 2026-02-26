@@ -11,6 +11,9 @@
     "prisma:reset": "prisma migrate reset -f && prisma db seed"
   },
   "dependencies": {
+    "@fullcalendar/daygrid": "^6.1.20",
+    "@fullcalendar/interaction": "^6.1.20",
+    "@fullcalendar/vue3": "^6.1.20",
     "@nuxt/ui": "^4.3.0",
     "@prisma/adapter-better-sqlite3": "^7.2.0",
     "@prisma/client": "^7.2.0",
@@ -24,6 +27,7 @@
     "zod": "^4.2.1"
   },
   "devDependencies": {
+    "@iconify-json/heroicons": "^1.2.3",
     "@types/better-sqlite3": "^7.6.13",
     "concurrently": "^9.2.1",
     "prettier": "3.7.4",
