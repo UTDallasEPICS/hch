@@ -1,5 +1,6 @@
 import { prisma } from '../../../utils/prisma'
 import { auth } from '../../../utils/auth'
+import { getAceFormQuestions } from '../../../utils/ace-questions'
 
 export default defineEventHandler(async (event) => {
   const slug = getRouterParam(event, 'slug')
@@ -17,12 +18,14 @@ export default defineEventHandler(async (event) => {
 
   const form = await prisma.form.findUnique({
     where: { slug },
-    include: {
-      formQuestions: {
-        orderBy: { order: 'asc' },
-        include: { question: true },
+    ...(slug !== 'ace-form' && {
+      include: {
+        formQuestions: {
+          orderBy: { order: 'asc' },
+          include: { question: true },
+        },
       },
-    },
+    }),
   })
 
   if (!form) {
@@ -42,7 +45,6 @@ export default defineEventHandler(async (event) => {
       completedAt = aceResponse.completedAt
     }
   }
-  // Future: other form slugs could query other response tables
 
   // Calculate score (for ACE: count of "Yes" answers)
   let score = 0
@@ -50,23 +52,29 @@ export default defineEventHandler(async (event) => {
     score = Object.values(responses).filter((v) => v === 'Yes' || v === 'true').length
   }
 
+  // ACE form: questions from front-end constant
+  const questions =
+    slug === 'ace-form'
+      ? getAceFormQuestions()
+      : (form as any).formQuestions.map((fq: any) => ({
+          id: fq.question.id,
+          text: fq.question.text,
+          type: fq.question.type,
+          alias: fq.question.alias,
+          order: fq.order,
+        }))
+
   return {
     form: {
       id: form.id,
       title: form.title,
       description: form.description,
       slug: form.slug,
-      questions: form.formQuestions.map((fq) => ({
-        id: fq.question.id,
-        text: fq.question.text,
-        type: fq.question.type,
-        alias: fq.question.alias,
-        order: fq.order,
-      })),
+      questions,
     },
     responses,
     score,
     completedAt,
-    totalQuestions: form.formQuestions.length,
+    totalQuestions: questions.length,
   }
 })
