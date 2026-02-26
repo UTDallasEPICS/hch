@@ -1,4 +1,6 @@
 <script setup lang="ts">
+  import { useFormStore } from '~/stores/formStore'
+  const { form } = useFormStore()
   const answered = ref(0)
   const total = ref(50)
   const submitted = ref(false)
@@ -29,6 +31,10 @@
     aceSubmitted.value ? '/forms/ace-form-results' : '/forms/ace-form'
   )
 
+  const applicationPhoneValid = computed(() => {
+    const digits = (form.value?.q5 || '').replace(/\D/g, '')
+    return digits.length === 10
+  })
   const showApplicationSubmit = computed(
     () => isApplicationComplete.value && !submitted.value
   )
@@ -109,6 +115,14 @@
 
   async function submitApplication() {
     if (!showApplicationSubmit.value) return
+    if (!applicationPhoneValid.value) {
+      toast.add({
+        title: 'Invalid phone number',
+        description: 'Phone number must be exactly 10 digits before submitting.',
+        color: 'error',
+      })
+      return
+    }
     try {
       submittingForm.value = 'application'
       await $fetch('/api/application/submit', { method: 'POST' })

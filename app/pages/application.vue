@@ -88,6 +88,12 @@
     return hasAnswer(form.value[requirement])
   }
 
+  const phoneDigits = computed(() => (form.value.q5 || '').replace(/\D/g, ''))
+  const isPhoneValid = computed(() => phoneDigits.value.length === 10)
+  const isStep1Blocked = computed(
+    () => currentStep.value === 1 && form.value.q5 && !isPhoneValid.value
+  )
+
   const sectionState = computed(() => {
     return STEP_REQUIREMENTS.map((requirements) => {
       const answeredCount = requirements.filter((requirement) =>
@@ -164,6 +170,14 @@
       await navigateTo('/taskPage')
       return
     }
+    if (isStep1Blocked.value) {
+      toast.add({
+        title: 'Invalid phone number',
+        description: 'Phone number must be exactly 10 digits before saving.',
+        color: 'error',
+      })
+      return
+    }
 
     try {
       isSaving.value = true
@@ -178,7 +192,14 @@
 
   async function goNext() {
     if (currentStep.value >= TOTAL_STEPS) return
-
+    if (isStep1Blocked.value) {
+      toast.add({
+        title: 'Invalid phone number',
+        description: 'Phone number must be exactly 10 digits.',
+        color: 'error',
+      })
+      return
+    }
     if (!isReadOnly.value) {
       await persistProgress(true)
     }

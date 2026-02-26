@@ -12,10 +12,106 @@
 
   const { form, first_name } = useFormStore()
 
+  const ADDRESS_DELIMITER = '|||'
+
   const phoneNumber = computed({
     get: () => form.value.q5,
     set: (value: string) => {
-      form.value.q5 = value.replace(/\D+/g, '')
+      form.value.q5 = value.replace(/\D+/g, '').slice(0, 10)
+    },
+  })
+
+  const phoneDigitsCount = computed(() => (form.value.q5 || '').replace(/\D/g, '').length)
+  const isPhoneValid = computed(() => phoneDigitsCount.value === 10)
+
+  function setAddressParts(street: string, city: string, state: string, zip: string) {
+    const all = [street, city, state, zip].map((s) => (s || '').trim())
+    form.value.q8 = all.every((s) => !s) ? '' : all.join(ADDRESS_DELIMITER)
+  }
+
+  const addressStreet = computed({
+    get: () => {
+      const parts = (form.value.q8 || '').split(ADDRESS_DELIMITER)
+      return parts[0] ?? ''
+    },
+    set: (v: string) => {
+      const parts = (form.value.q8 || '').split(ADDRESS_DELIMITER)
+      setAddressParts(v, parts[1] ?? '', parts[2] ?? '', parts[3] ?? '')
+    },
+  })
+  const addressCity = computed({
+    get: () => {
+      const parts = (form.value.q8 || '').split(ADDRESS_DELIMITER)
+      return parts[1] ?? ''
+    },
+    set: (v: string) => {
+      const parts = (form.value.q8 || '').split(ADDRESS_DELIMITER)
+      setAddressParts(parts[0] ?? '', v, parts[2] ?? '', parts[3] ?? '')
+    },
+  })
+  const addressState = computed({
+    get: () => {
+      const parts = (form.value.q8 || '').split(ADDRESS_DELIMITER)
+      return parts[2] ?? ''
+    },
+    set: (v: string) => {
+      const parts = (form.value.q8 || '').split(ADDRESS_DELIMITER)
+      setAddressParts(parts[0] ?? '', parts[1] ?? '', v, parts[3] ?? '')
+    },
+  })
+  const addressZip = computed({
+    get: () => {
+      const parts = (form.value.q8 || '').split(ADDRESS_DELIMITER)
+      return parts[3] ?? ''
+    },
+    set: (v: string) => {
+      const parts = (form.value.q8 || '').split(ADDRESS_DELIMITER)
+      setAddressParts(parts[0] ?? '', parts[1] ?? '', parts[2] ?? '', v)
+    },
+  })
+
+  function setChildAddressParts(street: string, city: string, state: string, zip: string) {
+    const all = [street, city, state, zip].map((s) => (s || '').trim())
+    form.value.q13 = all.every((s) => !s) ? '' : all.join(ADDRESS_DELIMITER)
+  }
+  const childAddressStreet = computed({
+    get: () => {
+      const parts = (form.value.q13 || '').split(ADDRESS_DELIMITER)
+      return parts[0] ?? ''
+    },
+    set: (v: string) => {
+      const parts = (form.value.q13 || '').split(ADDRESS_DELIMITER)
+      setChildAddressParts(v, parts[1] ?? '', parts[2] ?? '', parts[3] ?? '')
+    },
+  })
+  const childAddressCity = computed({
+    get: () => {
+      const parts = (form.value.q13 || '').split(ADDRESS_DELIMITER)
+      return parts[1] ?? ''
+    },
+    set: (v: string) => {
+      const parts = (form.value.q13 || '').split(ADDRESS_DELIMITER)
+      setChildAddressParts(parts[0] ?? '', v, parts[2] ?? '', parts[3] ?? '')
+    },
+  })
+  const childAddressState = computed({
+    get: () => {
+      const parts = (form.value.q13 || '').split(ADDRESS_DELIMITER)
+      return parts[2] ?? ''
+    },
+    set: (v: string) => {
+      const parts = (form.value.q13 || '').split(ADDRESS_DELIMITER)
+      setChildAddressParts(parts[0] ?? '', parts[1] ?? '', v, parts[3] ?? '')
+    },
+  })
+  const childAddressZip = computed({
+    get: () => {
+      const parts = (form.value.q13 || '').split(ADDRESS_DELIMITER)
+      return parts[3] ?? ''
+    },
+    set: (v: string) => {
+      const parts = (form.value.q13 || '').split(ADDRESS_DELIMITER)
+      setChildAddressParts(parts[0] ?? '', parts[1] ?? '', parts[2] ?? '', v)
     },
   })
 
@@ -192,10 +288,14 @@
           type="text"
           inputmode="numeric"
           pattern="[0-9]*"
+          maxlength="10"
           :class="inputClass"
-          placeholder="Phone number"
+          placeholder="10 digits"
           @keydown="blockNonNumericInput"
         />
+        <p v-if="phoneDigitsCount > 0 && !isPhoneValid" class="mt-1 text-sm text-amber-600 dark:text-amber-400">
+          Phone number must be exactly 10 digits.
+        </p>
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">5. Gender</label>
@@ -209,16 +309,25 @@
           :class="inputClass + ' [color-scheme:light] dark:[color-scheme:dark]'"
         />
       </div>
-      <div>
-        <label class="text-sm font-semibold text-gray-200"
-          >7. Address (Street, Apt, City, State, Zip)</label
+      <div class="space-y-4">
+        <div>
+          <label class="text-sm font-semibold text-gray-200">7. Address</label>
+          <UInput
+            v-model="addressStreet"
+            :class="inputClass"
+            placeholder="Street address, Apt/Unit"
+          />
+        </div>
+        <div
+          class="rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
         >
-        <UTextarea
-          v-model="form.q8"
-          :class="inputClass"
-          :rows="3"
-          placeholder="Street address, Apt/Unit, City, State, Zip Code"
-        />
+          <label class="mb-3 block text-sm font-semibold text-gray-200">City, State, Zip</label>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <UInput v-model="addressCity" :class="inputClass" placeholder="City" />
+            <UInput v-model="addressState" :class="inputClass" placeholder="State" />
+            <UInput v-model="addressZip" :class="inputClass" placeholder="Zip code" />
+          </div>
+        </div>
       </div>
     </template>
 
@@ -244,14 +353,25 @@
         <label class="text-sm font-semibold text-gray-200">11. Gender (Child)</label>
         <URadioGroup v-model="form.q12" :class="groupClass" :items="GENDER_OPTIONS" />
       </div>
-      <div>
-        <label class="text-sm font-semibold text-gray-200">12. Child's address</label>
-        <UTextarea
-          v-model="form.q13"
-          :class="inputClass"
-          :rows="3"
-          placeholder="Street address, City, State, Zip"
-        />
+      <div class="space-y-4">
+        <div>
+          <label class="text-sm font-semibold text-gray-200">12. Child's address</label>
+          <UInput
+            v-model="childAddressStreet"
+            :class="inputClass"
+            placeholder="Street address, Apt/Unit"
+          />
+        </div>
+        <div
+          class="rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
+        >
+          <label class="mb-3 block text-sm font-semibold text-gray-200">City, State, Zip</label>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <UInput v-model="childAddressCity" :class="inputClass" placeholder="City" />
+            <UInput v-model="childAddressState" :class="inputClass" placeholder="State" />
+            <UInput v-model="childAddressZip" :class="inputClass" placeholder="Zip code" />
+          </div>
+        </div>
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">13. Medical Diagnosis</label>
@@ -323,30 +443,37 @@
         <label class="text-sm font-semibold text-gray-200">20. Legal Mother's Last Name</label
         ><UInput v-model="form.q21" :class="inputClass" placeholder="Last name" />
       </div>
-      <div>
-        <label class="text-sm font-semibold text-gray-200">21. Legal Mother's Street Address</label
-        ><UInput v-model="form.q22" :class="inputClass" placeholder="Street address" />
-      </div>
-      <div class="grid gap-4 sm:grid-cols-3">
+      <div class="space-y-4">
         <div>
-          <label class="text-sm font-semibold text-gray-200">22. City</label
-          ><UInput v-model="form.q23" :class="inputClass" placeholder="City" />
+          <label class="text-sm font-semibold text-gray-200">21. Legal Mother's Address</label>
+          <UInput v-model="form.q22" :class="inputClass" placeholder="Street address" />
         </div>
-        <div>
-          <label class="text-sm font-semibold text-gray-200">23. State</label
-          ><UInput v-model="form.q24" :class="inputClass" placeholder="State" />
-        </div>
-        <div>
-          <label class="text-sm font-semibold text-gray-200">24. Zip Code</label
-          ><UInput
-            v-model="legalMotherZipCode"
-            type="text"
-            inputmode="numeric"
-            pattern="[0-9]*"
-            :class="inputClass"
-            placeholder="Zip code"
-            @keydown="blockNonNumericInput"
-          />
+        <div
+          class="rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
+        >
+          <label class="mb-3 block text-sm font-semibold text-gray-200">City, State, Zip</label>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <div>
+              <label class="text-xs text-gray-500 dark:text-gray-400">City</label>
+              <UInput v-model="form.q23" :class="inputClass" placeholder="City" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 dark:text-gray-400">State</label>
+              <UInput v-model="form.q24" :class="inputClass" placeholder="State" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 dark:text-gray-400">Zip Code</label>
+              <UInput
+                v-model="legalMotherZipCode"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                :class="inputClass"
+                placeholder="Zip code"
+                @keydown="blockNonNumericInput"
+              />
+            </div>
+          </div>
         </div>
       </div>
       <div>
@@ -379,30 +506,37 @@
         <label class="text-sm font-semibold text-gray-200">29. Legal Father's Last Name</label
         ><UInput v-model="form.q30" :class="inputClass" placeholder="Last name" />
       </div>
-      <div>
-        <label class="text-sm font-semibold text-gray-200">30. Legal Father's Street Address</label
-        ><UInput v-model="form.q31" :class="inputClass" placeholder="Street address" />
-      </div>
-      <div class="grid gap-4 sm:grid-cols-3">
+      <div class="space-y-4">
         <div>
-          <label class="text-sm font-semibold text-gray-200">31. City</label
-          ><UInput v-model="form.q32" :class="inputClass" placeholder="City" />
+          <label class="text-sm font-semibold text-gray-200">30. Legal Father's Address</label>
+          <UInput v-model="form.q31" :class="inputClass" placeholder="Street address" />
         </div>
-        <div>
-          <label class="text-sm font-semibold text-gray-200">32. State</label
-          ><UInput v-model="form.q33" :class="inputClass" placeholder="State" />
-        </div>
-        <div>
-          <label class="text-sm font-semibold text-gray-200">33. Zip Code</label
-          ><UInput
-            v-model="legalFatherZipCode"
-            type="text"
-            inputmode="numeric"
-            pattern="[0-9]*"
-            :class="inputClass"
-            placeholder="Zip code"
-            @keydown="blockNonNumericInput"
-          />
+        <div
+          class="rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
+        >
+          <label class="mb-3 block text-sm font-semibold text-gray-200">City, State, Zip</label>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <div>
+              <label class="text-xs text-gray-500 dark:text-gray-400">City</label>
+              <UInput v-model="form.q32" :class="inputClass" placeholder="City" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 dark:text-gray-400">State</label>
+              <UInput v-model="form.q33" :class="inputClass" placeholder="State" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 dark:text-gray-400">Zip Code</label>
+              <UInput
+                v-model="legalFatherZipCode"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                :class="inputClass"
+                placeholder="Zip code"
+                @keydown="blockNonNumericInput"
+              />
+            </div>
+          </div>
         </div>
       </div>
       <div>
