@@ -110,105 +110,116 @@
 </script>
 
 <template>
-  <UContainer class="max-w-3xl py-10">
-    <div class="mb-6">
-      <div class="flex items-center justify-between text-sm">
-        <span class="font-medium text-gray-700 dark:text-gray-300"
-          >{{ progressPercent }}% Complete</span
-        >
-        <span class="text-gray-500 dark:text-gray-400"
-          >{{ completedCount }} of {{ TOTAL_QUESTIONS }} answered</span
-        >
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+      <div class="mb-6">
+        <div class="flex items-center justify-between text-sm">
+          <span class="font-medium text-gray-700 dark:text-gray-300"
+            >{{ progressPercent }}% Complete</span
+          >
+          <span class="text-gray-500 dark:text-gray-400"
+            >{{ completedCount }} of {{ TOTAL_QUESTIONS }} answered</span
+          >
+        </div>
+        <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+          <div
+            class="bg-primary-500 h-full rounded-full transition-all duration-300"
+            :style="{ width: `${progressPercent}%` }"
+          />
+        </div>
       </div>
-      <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+
+      <div class="mb-8">
+        <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
+          GAD-7 Anxiety Assessment
+        </h1>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          Over the last <span class="font-medium">two weeks</span>, how often have you been bothered
+          by the following problems?
+        </p>
+      </div>
+
+      <form class="space-y-8" @submit.prevent="saveAndExit">
+        <!-- Questions - each in its own card -->
         <div
-          class="bg-primary-500 h-full rounded-full transition-all duration-300"
-          :style="{ width: `${progressPercent}%` }"
-        />
-      </div>
-    </div>
-    <h1 class="text-2xl font-semibold text-white">GAD-7 Anxiety Assessment</h1>
-
-    <UCard class="mt-4">
-      <p class="text-sm text-gray-400">
-        Over the last <span class="font-medium">two weeks</span>, how often have you been bothered
-        by the following problems?
-      </p>
-    </UCard>
-
-    <UCard class="mt-6 space-y-6">
-      <!-- Question Component -->
-      <div v-for="(questionKey, index) in questionKeys" :key="questionKey" class="space-y-3">
-        <label class="font-medium text-gray-200">
-          {{
-            [
-              'Feeling nervous, anxious, or on edge',
-              'Not being able to stop or control worrying',
-              'Worrying too much about different things',
-              'Trouble relaxing',
-              'Being so restless that it is hard to sit still',
-              'Becoming easily annoyed or irritable',
-              'Feeling afraid, as if something awful might happen',
-            ][index]
-          }}
-        </label>
-
-        <div class="space-y-2">
-          <label
-            v-for="opt in options"
-            :key="opt.value"
-            class="flex cursor-pointer items-center gap-3"
-          >
-            <input
-              type="radio"
-              :value="opt.value"
-              v-model="form[questionKey as keyof typeof form]"
-              class="accent-primary-500 h-4 w-4"
-            />
-
-            <span class="text-sm text-gray-300">
-              {{ opt.label }}
-            </span>
-          </label>
+          v-for="(questionKey, index) in questionKeys"
+          :key="questionKey"
+          class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+        >
+          <p class="font-medium text-gray-900 dark:text-white mb-3">
+            {{ index + 1 }}.
+            {{
+              [
+                'Feeling nervous, anxious, or on edge',
+                'Not being able to stop or control worrying',
+                'Worrying too much about different things',
+                'Trouble relaxing',
+                'Being so restless that it is hard to sit still',
+                'Becoming easily annoyed or irritable',
+                'Feeling afraid, as if something awful might happen',
+              ][index]
+            }}
+          </p>
+          <div class="flex justify-between mt-4">
+            <label
+              v-for="opt in options"
+              :key="opt.value"
+              class="flex flex-col items-center gap-1"
+            >
+              <span class="text-sm text-gray-700 dark:text-gray-300">{{ opt.label }}</span>
+              <input
+                type="radio"
+                :value="opt.value"
+                v-model="form[questionKey as keyof typeof form]"
+                class="accent-primary-500 mt-1"
+              />
+            </label>
+          </div>
         </div>
-      </div>
 
-      <!-- Difficulty Question -->
-      <div class="space-y-3">
-        <label class="font-medium text-gray-200">
-          If you checked any problems, how difficult have they made it for you?
-        </label>
-
-        <div class="space-y-2">
-          <label
-            v-for="opt in difficultyOptions"
-            :key="opt.value"
-            class="flex cursor-pointer items-center gap-3"
-          >
-            <input
-              type="radio"
-              :value="opt.value"
-              v-model="form.g8"
-              class="accent-primary-500 h-4 w-4"
-            />
-
-            <span class="text-sm text-gray-300">
-              {{ opt.label }}
-            </span>
-          </label>
+        <!-- Difficulty Question -->
+        <div
+          class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+        >
+          <p class="font-medium text-gray-900 dark:text-white mb-3">
+            If you checked any problems, how difficult have they made it for you?
+          </p>
+          <div class="flex justify-between mt-4">
+            <label
+              v-for="opt in difficultyOptions"
+              :key="opt.value"
+              class="flex flex-col items-center gap-1"
+            >
+              <span class="text-sm text-gray-700 dark:text-gray-300">{{ opt.label }}</span>
+              <input
+                type="radio"
+                :value="opt.value"
+                v-model="form.g8"
+                class="accent-primary-500 mt-1"
+              />
+            </label>
+          </div>
         </div>
-      </div>
 
-      <!-- Score -->
-      <UCard>
-        <div class="text-lg font-semibold text-white">Total Score: {{ totalScore }}</div>
+        <!-- Total Score -->
+        <div class="text-lg font-semibold text-gray-900 dark:text-white">
+          Total Score: {{ totalScore }}
+          <span class="ml-2 text-sm font-normal text-gray-600 dark:text-gray-400"
+            >({{ severity }})</span
+          >
+        </div>
 
-        <div class="text-sm text-gray-400">Severity: {{ severity }}</div>
-      </UCard>
-    </UCard>
-
-    <div class="mt-8">
-      <UButton label="Save and Exit" :loading="isSaving" @click="saveAndExit" />
-    </div>
-  </UContainer>
+        <div class="flex justify-end">
+          <UButton
+            type="submit"
+            label="Save and Exit"
+            color="error"
+            variant="soft"
+            size="lg"
+            :loading="isSaving"
+          />
+        </div>
+      </form>
+    </main>
+  </div>
 </template>

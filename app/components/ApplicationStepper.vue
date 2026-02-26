@@ -9,7 +9,7 @@
 <template>
   <nav aria-label="Application progress" class="w-full">
     <ol
-      class="grid w-full grid-cols-5 items-center rounded-xl border border-gray-200 bg-white/80 p-3 sm:p-4 dark:border-gray-700/60 dark:bg-gray-800/50"
+      class="grid w-full grid-cols-5 items-center rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
       role="list"
     >
       <li v-for="(step, index) in steps" :key="index" class="relative min-w-0" role="listitem">
@@ -27,7 +27,7 @@
                       ? 'bg-amber-500 text-gray-900'
                       : stepStates[index] === 'current'
                         ? 'bg-primary-500 ring-primary-400 text-white ring-2 ring-offset-2 ring-offset-white dark:ring-offset-gray-900'
-                        : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                        : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
                 "
                 :aria-current="stepStates[index] === 'current' ? 'step' : undefined"
                 :aria-label="`Step ${index + 1}: ${step.label}`"
@@ -39,7 +39,7 @@
                 class="block text-[11px] leading-tight font-medium sm:hidden"
                 :class="
                   stepStates[index] === 'upcoming'
-                    ? 'text-gray-500 dark:text-gray-500'
+                    ? 'text-gray-500 dark:text-gray-400'
                     : 'text-gray-700 dark:text-gray-200'
                 "
               >
@@ -49,7 +49,7 @@
                 class="hidden text-xs font-medium sm:inline"
                 :class="
                   stepStates[index] === 'upcoming'
-                    ? 'text-gray-500 dark:text-gray-500'
+                    ? 'text-gray-500 dark:text-gray-400'
                     : 'text-gray-700 dark:text-gray-200'
                 "
               >
@@ -93,7 +93,7 @@
                 :class="
                   index + 1 <= currentStep
                     ? 'text-gray-700 dark:text-gray-200'
-                    : 'text-gray-500 dark:text-gray-500'
+                    : 'text-gray-500 dark:text-gray-400'
                 "
               >
                 {{ step.shortLabel ?? step.label }}

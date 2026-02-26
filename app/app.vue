@@ -17,13 +17,13 @@
 <template>
   <UApp>
     <div
-      class="flex min-h-screen flex-col bg-white text-gray-900 transition-colors duration-300 dark:bg-gray-900 dark:text-gray-100"
+      class="flex min-h-screen flex-col bg-gray-50 text-gray-900 transition-colors duration-300 dark:bg-gray-950 dark:text-gray-100"
     >
       <header
-        class="sticky top-0 z-50 border-b border-gray-200 bg-white/75 backdrop-blur-md dark:border-gray-800 dark:bg-gray-900/75"
+        class="sticky top-0 z-50 border-b border-gray-200 bg-white backdrop-blur-md dark:border-gray-800 dark:bg-gray-900"
       >
         <UContainer class="flex h-16 items-center justify-between">
-          <NuxtLink to="/" class="flex items-center gap-2 font-bold">
+          <NuxtLink to="/" class="flex items-center gap-2 font-bold text-gray-900 dark:text-white">
             <img
               src="/HCH%20Light%20Mode%20Logo.png"
               alt="Hope Cope Heal logo"

@@ -90,7 +90,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <UContainer class="py-10">
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
+  <UContainer class="max-w-3xl py-10">
     <div class="mb-6" v-if="!isReadOnly">
       <div class="flex items-center justify-between text-sm">
         <span class="font-medium text-gray-700 dark:text-gray-300"
@@ -108,7 +109,9 @@ onMounted(async () => {
       </div>
     </div>
     <div class="mb-8">
-      <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">PCL-5</h1>
+      <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
+        PCL-5
+      </h1>
       <p v-if="!isReadOnly" class="mt-1 text-sm text-gray-500 dark:text-gray-400 mb-3">
         Instructions: Below is a list of problems that people sometimes have in response to a very
         stressful experience. Keeping your worst event in mind, please read each problem carefully
@@ -131,30 +134,38 @@ onMounted(async () => {
       <div
         v-for="(question, index) in questions"
         :key="index"
-        class="bg-gray-100 dark:bg-gray-800 rounded-lg p-4"
+        class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
       >
-        <p class="font-medium mb-4">{{ index + 1 }}. {{ question }}</p>
-        <div class="flex justify-between">
+        <p class="font-medium text-gray-900 dark:text-white mb-4">{{ index + 1 }}. {{ question }}</p>
+        <div class="flex justify-between mt-4">
           <label
             v-for="(label, score) in ['Not at all', 'A little bit', 'Moderately', 'Quite a bit', 'Extremely']"
             :key="score"
             class="flex flex-col items-center gap-1"
           >
-            <input type="radio" :name="'q' + index" :value="score" v-model="responses[index]" />
-            <span class="text-sm dark:text-gray-200 text-center">{{ label }}</span>
+            <input
+              type="radio"
+              :name="'q' + index"
+              :value="score"
+              v-model="responses[index]"
+              class="accent-primary-500 mt-1"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300 text-center">{{ label }}</span>
           </label>
         </div>
       </div>
     </div>
 
-    <div class="mt-12 flex gap-4">
+    <div class="mt-12 flex justify-end">
       <UButton
         :label="isReadOnly ? 'Back to Tasks' : 'Save and Exit'"
         color="error"
         variant="soft"
+        size="lg"
         :loading="isSaving"
         @click="saveAndExit"
       />
     </div>
   </UContainer>
+  </div>
 </template>

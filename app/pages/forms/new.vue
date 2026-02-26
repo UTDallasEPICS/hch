@@ -102,13 +102,13 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
     <header
-      class="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95"
+      class="sticky top-0 z-50 border-b border-gray-200 bg-white backdrop-blur dark:border-gray-800 dark:bg-gray-900"
     >
       <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-16 items-center justify-between">
           <NuxtLink
             to="/taskPage"
-            class="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+            class="text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
           >
             ← Back to Tasks
           </NuxtLink>
@@ -120,11 +120,11 @@
       <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
         Add New Form
       </h1>
-      <p class="mt-1 text-gray-500 dark:text-gray-400">Create a form by adding new questions.</p>
+      <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Create a form by adding new questions.</p>
 
       <!-- Form metadata -->
       <div
-        class="mt-8 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900"
+        class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
       >
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Form details</h2>
         <div class="mt-4 space-y-4">
@@ -181,10 +181,10 @@
 
       <!-- New question inline -->
       <div
-        class="mt-8 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900"
+        class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
       >
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Add a new question</h2>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
           It will be added to the master list and can be used in any form.
         </p>
         <div class="mt-4 flex flex-wrap gap-3">
@@ -215,7 +215,7 @@
       <!-- Selected order -->
       <div
         v-if="orderedSelected.length"
-        class="mt-8 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900"
+        class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
       >
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
           Order of questions in form
@@ -224,7 +224,7 @@
           <li
             v-for="(q, idx) in orderedSelected"
             :key="q.id"
-            class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 dark:border-gray-700"
+            class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 dark:border-gray-800"
           >
             <span class="text-sm text-gray-900 dark:text-white">{{ idx + 1 }}. {{ q.text }}</span>
             <div class="flex gap-1">
