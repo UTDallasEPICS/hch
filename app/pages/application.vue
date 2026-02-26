@@ -172,8 +172,8 @@
     }
     if (isStep1Blocked.value) {
       toast.add({
-        title: 'Invalid phone number',
-        description: 'Phone number must be exactly 10 digits before saving.',
+        title: 'Invalid Phone Number',
+        description: 'Phone Number must be exactly 10 digits before saving.',
         color: 'error',
       })
       return
@@ -194,8 +194,8 @@
     if (currentStep.value >= TOTAL_STEPS) return
     if (isStep1Blocked.value) {
       toast.add({
-        title: 'Invalid phone number',
-        description: 'Phone number must be exactly 10 digits.',
+        title: 'Invalid Phone Number',
+        description: 'Phone Number must be exactly 10 digits.',
         color: 'error',
       })
       return
@@ -245,7 +245,7 @@
       isReadOnly.value = Boolean(response?.submitted)
     } catch (error: any) {
       toast.add({
-        title: 'Unable to load application',
+        title: 'Unable to Load Application',
         description:
           error?.data?.statusMessage || error?.statusMessage || 'Please try again later.',
         color: 'error',
@@ -281,10 +281,10 @@
           Application
         </h1>
         <p v-if="!isReadOnly" class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Please complete all required questions.
+          Please Complete All Required Questions.
         </p>
         <p v-else class="text-primary-600 dark:text-primary-400 mt-1 text-sm font-medium">
-          Submitted form (view only).
+          Submitted Form (View Only).
         </p>
       </div>
 

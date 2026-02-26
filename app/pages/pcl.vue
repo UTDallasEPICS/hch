@@ -124,7 +124,7 @@ onMounted(async () => {
         by that problem in the past month.
       </p>
       <p v-else class="mt-1 text-sm font-medium text-primary-600 dark:text-primary-400 mb-3">
-        Submitted form (view only).
+        Submitted Form (View Only).
       </p>
     </div>
 
@@ -132,7 +132,7 @@ onMounted(async () => {
       <label class="block text-sm font-medium text-gray-900 dark:text-white mb-2">
         Your worst event:
       </label>
-      <UInput v-model="worstEvent" placeholder="Describe your worst event" class="w-full" />
+      <UInput v-model="worstEvent" placeholder="Describe Your Worst Event" class="w-full" />
     </div>
 
     <div class="flex flex-col gap-4 mt-6" :inert="isReadOnly">

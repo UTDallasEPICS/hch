@@ -129,13 +129,13 @@
       <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
         Add New Form
       </h1>
-      <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Create a form by adding new questions.</p>
+      <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Create a Form by Adding New Questions.</p>
 
       <!-- Form metadata -->
       <div
         class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
       >
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Form details</h2>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Form Details</h2>
         <div class="mt-4 space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
@@ -192,7 +192,7 @@
             size="lg"
             @click="createFormAndAssign"
           >
-            Create form & assign to me
+            Create Form & Assign to Me
           </UButton>
         </div>
       </div>
@@ -236,7 +236,7 @@
         class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
       >
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-          Order of questions in form
+          Order of Questions in Form
         </h2>
         <ul class="mt-4 space-y-2">
           <li

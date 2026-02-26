@@ -172,7 +172,7 @@
         body: { status: newStatus },
       })
       toast.add({
-        title: 'Status updated',
+        title: 'Status Updated',
         description: `Client moved to ${statusLabel(newStatus)}`,
         color: 'success',
       })
@@ -180,7 +180,7 @@
     } catch (error: any) {
       const msg = error?.data?.statusMessage || error?.statusMessage || 'Failed to update status'
       toast.add({
-        title: 'Update failed',
+        title: 'Update Failed',
         description: msg,
         color: 'error',
       })
@@ -198,7 +198,7 @@
           Clients
         </h1>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Filterable list of clients. Manage status and therapy progress.
+          Filterable List of Clients. Manage Status and Therapy Progress.
         </p>
       </div>
     </div>
@@ -212,14 +212,14 @@
             name="i-heroicons-user-group-20-solid"
             class="h-5 w-5 text-gray-500 dark:text-gray-400"
           />
-          <h2 class="text-base font-semibold text-gray-900 dark:text-white">Client list</h2>
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">Client List</h2>
         </div>
         <div class="flex items-center gap-3">
           <USelect
             v-model="statusFilter"
             :items="statusOptions"
             value-key="value"
-            placeholder="Filter by status"
+            placeholder="Filter by Status"
             class="min-w-[180px]"
           />
           <UBadge variant="subtle" color="primary" size="md">

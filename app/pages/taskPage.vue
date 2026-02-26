@@ -117,8 +117,8 @@
     if (!showApplicationSubmit.value) return
     if (!applicationPhoneValid.value) {
       toast.add({
-        title: 'Invalid phone number',
-        description: 'Phone number must be exactly 10 digits before submitting.',
+        title: 'Invalid Phone Number',
+        description: 'Phone Number must be exactly 10 digits before submitting.',
         color: 'error',
       })
       return
@@ -128,7 +128,7 @@
       await $fetch('/api/application/submit', { method: 'POST' })
       submitted.value = true
       toast.add({
-        title: 'Application submitted',
+        title: 'Application Submitted',
         description: 'Your application form has been submitted successfully.',
         color: 'success',
       })
@@ -154,7 +154,7 @@
       await $fetch('/api/forms/ace-form/submit', { method: 'POST' })
       aceSubmitted.value = true
       toast.add({
-        title: 'ACE Form submitted',
+        title: 'ACE Form Submitted',
         description: 'Your ACE form has been submitted successfully.',
         color: 'success',
       })
@@ -180,7 +180,7 @@
       await $fetch('/api/gad/submit', { method: 'POST' })
       gadSubmitted.value = true
       toast.add({
-        title: 'GAD-7 Form submitted',
+        title: 'GAD-7 Form Submitted',
         description: 'Your GAD-7 form has been submitted successfully.',
         color: 'success',
       })
@@ -206,7 +206,7 @@
       await $fetch('/api/phq/submit', { method: 'POST' })
       phqSubmitted.value = true
       toast.add({
-        title: 'PHQ-9 Form submitted',
+        title: 'PHQ-9 Form Submitted',
         description: 'Your PHQ-9 form has been submitted successfully.',
         color: 'success',
       })
@@ -232,7 +232,7 @@
       await $fetch('/api/pcl/submit', { method: 'POST' })
       pclSubmitted.value = true
       toast.add({
-        title: 'PCL-5 Form submitted',
+        title: 'PCL-5 Form Submitted',
         description: 'Your PCL-5 form has been submitted successfully.',
         color: 'success',
       })
@@ -280,10 +280,10 @@
   <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
     <div class="mb-8">
       <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
-        Tasks to complete
+        Tasks to Complete
       </h1>
       <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-        Complete each form to submit your application.
+        Complete Each Form to Submit Your Application.
       </p>
     </div>
     <div

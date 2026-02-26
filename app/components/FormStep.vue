@@ -390,14 +390,14 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">2. First Name</label>
-        <UInput v-model="first_name" :class="inputClass" placeholder="First name" />
+        <UInput v-model="first_name" :class="inputClass" placeholder="First Name" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">3. Last Name</label>
-        <UInput v-model="form.q3" :class="inputClass" placeholder="Last name" />
+        <UInput v-model="form.q3" :class="inputClass" placeholder="Last Name" />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">4. Phone number</label>
+        <label class="text-sm font-semibold text-gray-200">4. Phone Number</label>
         <UInput
           v-model="phoneNumber"
           type="text"
@@ -409,7 +409,7 @@
           @keydown="blockNonNumericInput"
         />
         <p v-if="phoneDigitsCount > 0 && !isPhoneValid" class="mt-1 text-sm text-amber-600 dark:text-amber-400">
-          Phone number must be exactly 10 digits.
+          Phone Number must be exactly 10 digits.
         </p>
       </div>
       <div>
@@ -430,7 +430,7 @@
           <UInput
             v-model="addressStreet"
             :class="inputClass"
-            placeholder="Street address, Apt/Unit"
+            placeholder="Street Address, Apt/Unit"
           />
         </div>
         <div
@@ -440,7 +440,7 @@
           <div class="grid gap-4 sm:grid-cols-3">
             <UInput v-model="addressCity" :class="inputClass" placeholder="City" />
             <UInput v-model="addressState" :class="inputClass" placeholder="State" />
-            <UInput v-model="addressZip" :class="inputClass" placeholder="Zip code" />
+            <UInput v-model="addressZip" :class="inputClass" placeholder="Zip Code" />
           </div>
         </div>
       </div>
@@ -450,11 +450,11 @@
     <template v-else-if="step === 2">
       <div>
         <label class="text-sm font-semibold text-gray-200">8. Child's First Name</label>
-        <UInput v-model="form.q9" :class="inputClass" placeholder="Child's first name" />
+        <UInput v-model="form.q9" :class="inputClass" placeholder="Child's First Name" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">9. Child's Last Name</label>
-        <UInput v-model="form.q10" :class="inputClass" placeholder="Child's last name" />
+        <UInput v-model="form.q10" :class="inputClass" placeholder="Child's Last Name" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">10. Child's Date of Birth</label>
@@ -470,11 +470,11 @@
       </div>
       <div class="space-y-4">
         <div>
-          <label class="text-sm font-semibold text-gray-200">12. Child's address</label>
+          <label class="text-sm font-semibold text-gray-200">12. Child's Address</label>
           <UInput
             v-model="childAddressStreet"
             :class="inputClass"
-            placeholder="Street address, Apt/Unit"
+            placeholder="Street Address, Apt/Unit"
           />
         </div>
         <div
@@ -484,7 +484,7 @@
           <div class="grid gap-4 sm:grid-cols-3">
             <UInput v-model="childAddressCity" :class="inputClass" placeholder="City" />
             <UInput v-model="childAddressState" :class="inputClass" placeholder="State" />
-            <UInput v-model="childAddressZip" :class="inputClass" placeholder="Zip code" />
+            <UInput v-model="childAddressZip" :class="inputClass" placeholder="Zip Code" />
           </div>
         </div>
       </div>
@@ -493,7 +493,7 @@
         <UInput
           v-model="form.q14"
           :class="inputClass"
-          placeholder="e.g. type of cancer or condition"
+          placeholder="E.g. type of cancer or condition"
         />
       </div>
       <div>
@@ -514,7 +514,7 @@
           >
             <div class="mb-3 flex items-center justify-between">
               <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Add members
+                Add Members
               </p>
               <UButton
                 icon="i-heroicons-plus-20-solid"
@@ -527,16 +527,16 @@
             </div>
             <div class="flex flex-wrap items-end gap-3">
               <div class="min-w-[100px] flex-1">
-                <label class="text-xs text-gray-500 dark:text-gray-400">First name</label>
+                <label class="text-xs text-gray-500 dark:text-gray-400">First Name</label>
                 <UInput
                   v-model="newMember.firstName"
                   :class="inputClass"
-                  placeholder="First name"
+                  placeholder="First Name"
                   size="sm"
                 />
               </div>
               <div class="w-20">
-                <label class="text-xs text-gray-500 dark:text-gray-400">Middle initial</label>
+                <label class="text-xs text-gray-500 dark:text-gray-400">Middle Initial</label>
                 <UInput
                   v-model="newMember.middleInitial"
                   :class="inputClass"
@@ -546,11 +546,11 @@
                 />
               </div>
               <div class="min-w-[100px] flex-1">
-                <label class="text-xs text-gray-500 dark:text-gray-400">Last name</label>
+                <label class="text-xs text-gray-500 dark:text-gray-400">Last Name</label>
                 <UInput
                   v-model="newMember.lastName"
                   :class="inputClass"
-                  placeholder="Last name"
+                  placeholder="Last Name"
                   size="sm"
                 />
               </div>
@@ -569,7 +569,7 @@
                 <UInput
                   v-model="newMember.relationship"
                   :class="inputClass"
-                  placeholder="e.g. Parent, Sibling"
+                  placeholder="E.g. Parent, Sibling"
                   size="sm"
                 />
               </div>
@@ -585,7 +585,7 @@
           </div>
           <div v-if="houseMembers.length > 0" class="space-y-2">
             <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
-              {{ houseMembers.length }} member(s) added
+              {{ houseMembers.length }} Member(s) Added
             </p>
             <ul class="space-y-1.5">
               <li
@@ -609,7 +609,7 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >16. Does child reside with both biological parents?</label
+          >16. Does the Child Reside with Both Biological Parents?</label
         >
         <URadioGroup v-model="form.q17" :class="groupClass" :items="YES_NO_OTHER_OPTIONS" />
         <UInput
@@ -617,18 +617,18 @@
           v-model="form.q17Text"
           :class="inputClass"
           class="mt-2"
-          placeholder="(please specify)"
+          placeholder="(Please Specify)"
         />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">17. Who has custody of the child?</label>
+        <label class="text-sm font-semibold text-gray-200">17. Who Has Custody of the Child?</label>
         <UCheckboxGroup v-model="form.q18" :class="groupClass" :items="CUSTODY_OPTIONS" />
         <UInput
           v-if="form.q18.includes('other')"
           v-model="form.q18Other"
           :class="inputClass"
           class="mt-2"
-          placeholder="(please specify)"
+          placeholder="(Please Specify)"
         />
       </div>
     </template>
@@ -636,7 +636,7 @@
     <!-- Step 3: Guardian (Q19–36) -->
     <template v-else-if="step === 3">
       <div>
-        <label class="text-sm font-semibold text-gray-200">18. Are you the primary contact?</label>
+        <label class="text-sm font-semibold text-gray-200">18. Are You the Primary Contact?</label>
         <URadioGroup v-model="form.q19" :class="groupClass" :items="YES_NO_OPTIONS" />
       </div>
       <h3 class="mb-2 border-b border-gray-600 pb-2 text-base font-semibold text-gray-100">
@@ -653,7 +653,7 @@
       <div class="space-y-4">
         <div>
           <label class="text-sm font-semibold text-gray-200">21. Legal Mother's Address</label>
-          <UInput v-model="form.q22" :class="inputClass" placeholder="Street address" />
+          <UInput v-model="form.q22" :class="inputClass" placeholder="Street Address" />
         </div>
         <div
           class="rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
@@ -676,7 +676,7 @@
                 inputmode="numeric"
                 pattern="[0-9]*"
                 :class="inputClass"
-                placeholder="Zip code"
+                placeholder="Zip Code"
                 @keydown="blockNonNumericInput"
               />
             </div>
@@ -716,7 +716,7 @@
       <div class="space-y-4">
         <div>
           <label class="text-sm font-semibold text-gray-200">30. Legal Father's Address</label>
-          <UInput v-model="form.q31" :class="inputClass" placeholder="Street address" />
+          <UInput v-model="form.q31" :class="inputClass" placeholder="Street Address" />
         </div>
         <div
           class="rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
@@ -739,7 +739,7 @@
                 inputmode="numeric"
                 pattern="[0-9]*"
                 :class="inputClass"
-                placeholder="Zip code"
+                placeholder="Zip Code"
                 @keydown="blockNonNumericInput"
               />
             </div>
@@ -771,7 +771,7 @@
           v-model="form.q37Other"
           :class="inputClass"
           class="mt-2"
-          placeholder="(please specify)"
+          placeholder="(Please Specify)"
         />
       </div>
       <div>
@@ -792,19 +792,19 @@
         <label class="text-sm font-semibold text-gray-200"
           >39. Who was responsible for medical decisions?</label
         >
-        <UInput v-model="form.q40" :class="inputClass" placeholder="Name or relationship" />
+        <UInput v-model="form.q40" :class="inputClass" placeholder="Name or Relationship" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
           >40. Who was primarily at the hospital during treatment?</label
         >
-        <UInput v-model="form.q41" :class="inputClass" placeholder="Name or relationship" />
+        <UInput v-model="form.q41" :class="inputClass" placeholder="Name or Relationship" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
           >41. How long was the child in treatment?</label
         >
-        <UInput v-model="form.q42" :class="inputClass" placeholder="e.g. 6 months, 1 year" />
+        <UInput v-model="form.q42" :class="inputClass" placeholder="E.g. 6 Months, 1 Year" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">42. Were there any ICU visits?</label>
@@ -814,7 +814,7 @@
         <label class="text-sm font-semibold text-gray-200"
           >43. Were there any extended hospital admissions? If so, how long?</label
         >
-        <UInput v-model="form.q44" :class="inputClass" placeholder="e.g. 2 weeks, 1 month" />
+        <UInput v-model="form.q44" :class="inputClass" placeholder="E.g. 2 Weeks, 1 Month" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
@@ -832,7 +832,7 @@
           v-model="form.q46Other"
           :class="inputClass"
           class="mt-2"
-          placeholder="(please specify)"
+          placeholder="(Please Specify)"
         />
       </div>
     </template>
@@ -860,7 +860,7 @@
         <UInput
           v-model="form.q49"
           :class="inputClass"
-          placeholder="Name of person seeking therapy"
+          placeholder="Name of Person Seeking Therapy"
         />
       </div>
       <div>
