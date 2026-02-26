@@ -43,6 +43,7 @@
           q7: responses.value[6],
           q8: responses.value[7],
           q9: responses.value[8],
+          difficulty: difficulty.value,
         },
       })
 
@@ -75,6 +76,7 @@
           data.answers.q7 ?? -1,
           data.answers.q8 ?? -1,
           data.answers.q9 ?? -1,
+          difficulty.value = data.answers.difficulty ?? -1
         ]
       }
     } catch (error) {

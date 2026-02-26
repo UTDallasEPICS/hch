@@ -12,6 +12,7 @@ type AnswersBody = {
   q7?: number
   q8?: number
   q9?: number
+  difficulty?: number
 }
 
 const TOTAL_QUESTIONS = 9
@@ -76,6 +77,7 @@ export default defineEventHandler(async (event) => {
     const payloadKey = `q${index}` as keyof AnswersBody
     const value = body?.[payloadKey]
     data[dbKey] = typeof value === 'number' ? value : null
+    data["difficulty"] = typeof body?.difficulty === "number" ? body.difficulty : null
   }
 
   await prisma.phqQuestion.update({
