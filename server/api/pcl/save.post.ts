@@ -92,7 +92,10 @@ export default defineEventHandler(async (event) => {
 
   await prisma.pclQuestion.update({
     where: { id: existingQuestions.id },
-    data,
+    data: {
+      ...data,
+      worstEvent: body?.worstEvent ?? null,
+    }
   })
 
   await prisma.pclForm.update({

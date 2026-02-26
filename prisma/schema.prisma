@@ -313,6 +313,8 @@ model PclQuestion {
   formId Int    @unique
   userId String
 
+  worstEvent String?
+
   q01 Int?
   q02 Int?
   q03 Int?

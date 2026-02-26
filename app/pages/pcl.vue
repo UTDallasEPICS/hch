@@ -80,6 +80,8 @@
             responses.value[i - 1] = val
           }
         }
+
+        worstEvent.value = data.answers.worstEvent ?? ''
       }
     } catch (error: any) {
       toast.add({
@@ -131,7 +133,12 @@
         <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
           Your worst event:
         </label>
-        <UInput v-model="worstEvent" placeholder="Describe your worst event" class="w-full" />
+        <textarea
+          v-model="worstEvent"
+          placeholder="Describe your worst event"
+          rows="4"
+          class="w-full rounded-lg p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+        ></textarea>
       </div>
 
       <div class="mt-6 flex flex-col gap-4" :inert="isReadOnly">
