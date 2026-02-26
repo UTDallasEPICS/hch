@@ -4,45 +4,74 @@
   const submitted = ref(false)
   const aceAnswered = ref(0)
   const aceTotal = ref(0)
+  const aceSubmitted = ref(false)
   const gadAnswered = ref(0)
   const gadTotal = ref(7)
   const gadScore = ref<number | null>(null)
   const gadSeverity = ref<string | null>(null)
+  const gadSubmitted = ref(false)
   const phqAnswered = ref(0)
   const phqTotal = ref(10)
   const phqSubmitted = ref(false)
-  const isSubmitting = ref(false)
-  const toast = useToast()
   const pclAnswered = ref(0)
   const pclTotal = ref(20)
   const pclSubmitted = ref(false)
+  const toast = useToast()
+  const submittingForm = ref<string | null>(null)
 
   const isApplicationComplete = computed(() => answered.value === total.value)
   const isAceComplete = computed(() => aceTotal.value > 0 && aceAnswered.value === aceTotal.value)
-  const canSubmit = computed(
-    () => isApplicationComplete.value && isAceComplete.value && !submitted.value
-  )
+  const isGadComplete = computed(() => gadAnswered.value === gadTotal.value)
+  const isPhqComplete = computed(() => phqAnswered.value === phqTotal.value)
+  const isPclComplete = computed(() => pclAnswered.value === pclTotal.value)
+
   const aceTarget = computed(() =>
-    submitted.value ? '/forms/ace-form-results' : '/forms/ace-form'
+    aceSubmitted.value ? '/forms/ace-form-results' : '/forms/ace-form'
   )
-  const aceProgressLabel = computed(() =>
-    submitted.value ? 'Submitted' : `${aceAnswered.value}/${aceTotal.value}`
+
+  const showApplicationSubmit = computed(
+    () => isApplicationComplete.value && !submitted.value
+  )
+  const showAceSubmit = computed(
+    () => isAceComplete.value && !aceSubmitted.value
+  )
+  const showGadSubmit = computed(
+    () => isGadComplete.value && !gadSubmitted.value
+  )
+  const showPhqSubmit = computed(
+    () => isPhqComplete.value && !phqSubmitted.value
+  )
+  const showPclSubmit = computed(
+    () => isPclComplete.value && !pclSubmitted.value
   )
 
   async function loadProgress() {
-    const [appResult, aceFormResult, aceResponsesResult, gadResult, phqResult, pclResult] =
-      await Promise.allSettled([
-      $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/application/progress'),
-      $fetch<{ questions: Array<{ id: string }> }>('/api/forms/ace-form'),
-      $fetch<Record<string, string>>('/api/forms/ace-form/responses'),
+    const [
+      appResult,
+      aceProgressResult,
+      gadResult,
+      phqResult,
+      pclResult,
+    ] = await Promise.allSettled([
+      $fetch<{ answered: number; total: number; submitted?: boolean }>(
+        '/api/application/progress'
+      ),
+      $fetch<{ answered: number; total: number; submitted?: boolean }>(
+        '/api/forms/ace-form/progress'
+      ),
       $fetch<{
         answered: number
         total: number
         totalScore: number | null
         severity: string | null
+        submitted?: boolean
       }>('/api/gad/progress'),
-      $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/phq/progress'),
-      $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/pcl/progress'),
+      $fetch<{ answered: number; total: number; submitted?: boolean }>(
+        '/api/phq/progress'
+      ),
+      $fetch<{ answered: number; total: number; submitted?: boolean }>(
+        '/api/pcl/progress'
+      ),
     ])
 
     if (appResult.status === 'fulfilled') {
@@ -51,14 +80,10 @@
       submitted.value = Boolean(appResult.value.submitted)
     }
 
-    if (aceFormResult.status === 'fulfilled') {
-      aceTotal.value = aceFormResult.value.questions.length
-    }
-
-    if (aceResponsesResult.status === 'fulfilled') {
-      aceAnswered.value = Object.values(aceResponsesResult.value).filter(
-        (value) => typeof value === 'string' && value.trim().length > 0
-      ).length
+    if (aceProgressResult.status === 'fulfilled') {
+      aceAnswered.value = aceProgressResult.value.answered
+      aceTotal.value = aceProgressResult.value.total
+      aceSubmitted.value = Boolean(aceProgressResult.value.submitted)
     }
 
     if (gadResult.status === 'fulfilled') {
@@ -66,6 +91,7 @@
       gadTotal.value = gadResult.value.total
       gadScore.value = gadResult.value.totalScore
       gadSeverity.value = gadResult.value.severity
+      gadSubmitted.value = Boolean(gadResult.value.submitted)
     }
 
     if (phqResult.status === 'fulfilled') {
@@ -81,32 +107,133 @@
     }
   }
 
-  async function submitForms() {
-    if (!canSubmit.value) return
-
+  async function submitApplication() {
+    if (!showApplicationSubmit.value) return
     try {
-      isSubmitting.value = true
+      submittingForm.value = 'application'
       await $fetch('/api/application/submit', { method: 'POST' })
       submitted.value = true
       toast.add({
-        title: 'Forms submitted',
-        description: 'Your application has been submitted successfully.',
+        title: 'Application submitted',
+        description: 'Your application form has been submitted successfully.',
         color: 'success',
       })
     } catch (error: any) {
-      const description =
-        error?.data?.statusMessage ||
-        error?.statusMessage ||
-        'Unable to submit forms. Please try again.'
-
       toast.add({
         title: 'Submission failed',
-        description,
+        description:
+          error?.data?.statusMessage ||
+          error?.statusMessage ||
+          'Unable to submit. Please try again.',
         color: 'error',
       })
       await loadProgress()
     } finally {
-      isSubmitting.value = false
+      submittingForm.value = null
+    }
+  }
+
+  async function submitAce() {
+    if (!showAceSubmit.value) return
+    try {
+      submittingForm.value = 'ace'
+      await $fetch('/api/forms/ace-form/submit', { method: 'POST' })
+      aceSubmitted.value = true
+      toast.add({
+        title: 'ACE Form submitted',
+        description: 'Your ACE form has been submitted successfully.',
+        color: 'success',
+      })
+    } catch (error: any) {
+      toast.add({
+        title: 'Submission failed',
+        description:
+          error?.data?.statusMessage ||
+          error?.statusMessage ||
+          'Unable to submit. Please try again.',
+        color: 'error',
+      })
+      await loadProgress()
+    } finally {
+      submittingForm.value = null
+    }
+  }
+
+  async function submitGad() {
+    if (!showGadSubmit.value) return
+    try {
+      submittingForm.value = 'gad'
+      await $fetch('/api/gad/submit', { method: 'POST' })
+      gadSubmitted.value = true
+      toast.add({
+        title: 'GAD-7 Form submitted',
+        description: 'Your GAD-7 form has been submitted successfully.',
+        color: 'success',
+      })
+    } catch (error: any) {
+      toast.add({
+        title: 'Submission failed',
+        description:
+          error?.data?.statusMessage ||
+          error?.statusMessage ||
+          'Unable to submit. Please try again.',
+        color: 'error',
+      })
+      await loadProgress()
+    } finally {
+      submittingForm.value = null
+    }
+  }
+
+  async function submitPhq() {
+    if (!showPhqSubmit.value) return
+    try {
+      submittingForm.value = 'phq'
+      await $fetch('/api/phq/submit', { method: 'POST' })
+      phqSubmitted.value = true
+      toast.add({
+        title: 'PHQ-9 Form submitted',
+        description: 'Your PHQ-9 form has been submitted successfully.',
+        color: 'success',
+      })
+    } catch (error: any) {
+      toast.add({
+        title: 'Submission failed',
+        description:
+          error?.data?.statusMessage ||
+          error?.statusMessage ||
+          'Unable to submit. Please try again.',
+        color: 'error',
+      })
+      await loadProgress()
+    } finally {
+      submittingForm.value = null
+    }
+  }
+
+  async function submitPcl() {
+    if (!showPclSubmit.value) return
+    try {
+      submittingForm.value = 'pcl'
+      await $fetch('/api/pcl/submit', { method: 'POST' })
+      pclSubmitted.value = true
+      toast.add({
+        title: 'PCL-5 Form submitted',
+        description: 'Your PCL-5 form has been submitted successfully.',
+        color: 'success',
+      })
+    } catch (error: any) {
+      toast.add({
+        title: 'Submission failed',
+        description:
+          error?.data?.statusMessage ||
+          error?.statusMessage ||
+          'Unable to submit. Please try again.',
+        color: 'error',
+      })
+      await loadProgress()
+    } finally {
+      submittingForm.value = null
     }
   }
 
@@ -119,10 +246,12 @@
       submitted.value = false
       aceAnswered.value = 0
       aceTotal.value = 0
+      aceSubmitted.value = false
       gadAnswered.value = 0
       gadTotal.value = 7
       gadScore.value = null
       gadSeverity.value = null
+      gadSubmitted.value = false
       phqAnswered.value = 0
       phqTotal.value = 10
       phqSubmitted.value = false
@@ -149,70 +278,73 @@
       <span>Form</span>
       <span>Progress</span>
     </div>
-    <UButton
-      class="mt-3 w-full justify-between rounded-xl px-5 py-4 text-sm font-semibold"
-      color="primary"
-      variant="soft"
-      to="/application"
-    >
-      <span>Application Form</span>
-      <span>{{ submitted ? 'Submitted' : `${answered}/${total}` }}</span>
-    </UButton>
 
-    <UButton
-      class="mt-3 w-full justify-between rounded-xl px-5 py-4 text-sm font-semibold"
-      color="primary"
-      variant="soft"
-      :to="aceTarget"
+    <div
+      v-for="form in [
+        {
+          name: 'Application Form',
+          to: '/application',
+          progress: submitted ? 'Submitted' : `${answered}/${total}`,
+          showSubmit: showApplicationSubmit,
+          onSubmit: submitApplication,
+          key: 'application',
+        },
+        {
+          name: 'ACE Form',
+          to: aceTarget,
+          progress: aceSubmitted ? 'Submitted' : `${aceAnswered}/${aceTotal}`,
+          showSubmit: showAceSubmit,
+          onSubmit: submitAce,
+          key: 'ace',
+        },
+        {
+          name: 'GAD-7 Form',
+          to: '/gad',
+          progress: gadSubmitted
+            ? 'Submitted'
+            : `${gadAnswered}/${gadTotal}${gadScore !== null ? ` • ${gadSeverity}` : ''}`,
+          showSubmit: showGadSubmit,
+          onSubmit: submitGad,
+          key: 'gad',
+        },
+        {
+          name: 'PHQ-9 Form',
+          to: '/phq',
+          progress: phqSubmitted ? 'Submitted' : `${phqAnswered}/${phqTotal}`,
+          showSubmit: showPhqSubmit,
+          onSubmit: submitPhq,
+          key: 'phq',
+        },
+        {
+          name: 'PCL-5 Form',
+          to: '/pcl',
+          progress: pclSubmitted ? 'Submitted' : `${pclAnswered}/${pclTotal}`,
+          showSubmit: showPclSubmit,
+          onSubmit: submitPcl,
+          key: 'pcl',
+        },
+      ]"
+      :key="form.key"
+      class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
     >
-      <span>ACE Form</span>
-      <span>{{ aceProgressLabel }}</span>
-    </UButton>
-
-    <UButton
-      class="mt-3 w-full justify-between rounded-xl px-5 py-4 text-sm font-semibold"
-      color="primary"
-      variant="soft"
-      to="/gad"
-    >
-      <span>GAD-7 Form</span>
-      <span>
-        {{ gadAnswered }}/{{ gadTotal }}
-        <template v-if="gadScore !== null"> • {{ gadSeverity }}</template>
-      </span>
-    </UButton>
-
-    <UButton
-      class="mt-3 w-full justify-between rounded-xl px-5 py-4 text-sm font-semibold"
-      color="primary"
-      variant="soft"
-      to="/phq"
-    >
-      <span>PHQ-9 Form</span>
-      <span>{{ phqSubmitted ? 'Submitted' : `${phqAnswered}/${phqTotal}` }}</span>
-    </UButton>
-
-    <UButton
-      class="mt-3 w-full justify-between rounded-xl px-5 py-4 text-sm font-semibold"
-      color="primary"
-      variant="soft"
-      to="/pcl"
-    >
-      <span>PCL-5 Form</span>
-      <span>{{ pclSubmitted ? 'Submitted' : `${pclAnswered}/${pclTotal}` }}</span>
-    </UButton>
-
-    <div class="mt-8 flex justify-end">
-      <div v-if="canSubmit" class="flex flex-col items-end gap-2">
-        <p class="text-right text-sm text-gray-600 dark:text-gray-400">
-          Please verify your answers on the forms are accurate before submission.
-        </p>
+      <NuxtLink
+        :to="form.to"
+        class="min-w-0 flex-1 font-semibold text-gray-900 hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
+      >
+        {{ form.name }}
+      </NuxtLink>
+      <div class="flex shrink-0 items-center gap-3">
+        <span class="text-sm text-gray-600 dark:text-gray-400">
+          {{ form.progress }}
+        </span>
         <UButton
-          label="Submit Forms"
+          v-if="form.showSubmit"
+          label="Submit"
           color="primary"
           variant="solid"
-          :loading="isSubmitting"
-          @click="submitForms"
+          size="sm"
+          :loading="submittingForm === form.key"
+          @click="form.onSubmit"
         />
       </div>
     </div>
