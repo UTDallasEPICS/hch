@@ -142,6 +142,14 @@
   const pendingClient = ref<Client | null>(null)
   const pendingNextStatus = ref<ClientStatus | null>(null)
 
+  const clientDetailModalOpen = ref(false)
+  const selectedClientId = ref<string | null>(null)
+
+  function openClientDetail(client: Client) {
+    selectedClientId.value = client.id
+    clientDetailModalOpen.value = true
+  }
+
   function openConfirmModal(client: Client, nextStatus: ClientStatus) {
     pendingClient.value = client
     pendingNextStatus.value = nextStatus
@@ -295,7 +303,8 @@
               <tr
                 v-for="client in clients"
                 :key="client.id"
-                class="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                class="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                @click="openClientDetail(client)"
               >
                 <td class="py-4 pr-4">
                   <div class="flex flex-col gap-1.5">
@@ -317,7 +326,7 @@
                     </span>
                   </div>
                 </td>
-                <td class="py-4 pr-4 text-base font-medium text-gray-900 dark:text-white">
+                <td class="py-4 pr-4 font-medium text-gray-900 dark:text-white">
                   {{ displayName(client) }}
                 </td>
                 <td class="py-4 pr-4 text-base text-gray-600 dark:text-gray-400">
@@ -346,7 +355,7 @@
                         : ''
                   }}
                 </td>
-                <td class="py-4 pr-4 text-right">
+                <td class="py-4 pr-4 text-right" @click.stop>
                   <UButton
                     v-if="getNextStatus(client) && updatingId !== client.id"
                     size="md"
@@ -387,5 +396,12 @@
         />
       </template>
     </UModal>
+
+    <ClientDetailModal
+      :client-id="selectedClientId"
+      :open="clientDetailModalOpen"
+      @close="clientDetailModalOpen = false"
+      @refreshed="refresh()"
+    />
   </main>
 </template>

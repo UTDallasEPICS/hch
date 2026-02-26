@@ -26,9 +26,46 @@ model Client {
   therapyWeek    Int?         // 0-26, max weeks of therapy
   missedSessions Int          @default(0) // count of missed therapy sessions
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permissions    ClientPermission?
+  sessionNotes   SessionNote[]
+  plan           ClientPlan?
 
   @@index([status])
   @@map("client")
+}
+
+// Controls what clients can see on their dashboard
+model ClientPermission {
+  id              String   @id @default(cuid())
+  clientId        String   @unique
+  canViewScores   Boolean  @default(false)
+  canViewNotes    Boolean  @default(false)
+  canViewPlan     Boolean  @default(false)
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("client_permission")
+}
+
+model SessionNote {
+  id        String   @id @default(cuid())
+  clientId  String
+  content   String
+  createdAt DateTime @default(now())
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@map("session_note")
+}
+
+model ClientPlan {
+  id        String   @id @default(cuid())
+  clientId  String   @unique
+  content   String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("client_plan")
 }
 
 model User {

@@ -4,7 +4,7 @@
 
   const isTasksPage = computed(() => route.path === '/taskPage')
   const isDashboardPage = computed(() => route.path === '/')
-  const isClientsPage = computed(() => route.path === '/clients')
+  const isClientsPage = computed(() => route.path === '/clients' || route.path.startsWith('/clients/'))
 
   function goTo(path: string) {
     if (route.path !== path) {
