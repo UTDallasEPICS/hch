@@ -66,6 +66,24 @@ export default defineEventHandler(async (event) => {
         })
       }
     }
+    if (body.status === 'ACTIVE') {
+      const currentStatus = user.client?.status ?? 'INCOMPLETE'
+      if (currentStatus !== 'WAITLIST') {
+        throw createError({
+          statusCode: 400,
+          statusMessage: 'Client must be on waitlist before they can be marked active',
+        })
+      }
+    }
+    if (body.status === 'ARCHIVED') {
+      const currentStatus = user.client?.status ?? 'INCOMPLETE'
+      if (currentStatus !== 'ACTIVE') {
+        throw createError({
+          statusCode: 400,
+          statusMessage: 'Client must be active before they can be archived',
+        })
+      }
+    }
   }
 
   let therapyWeek: number | null | undefined = body.therapyWeek

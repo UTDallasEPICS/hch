@@ -1,6 +1,14 @@
 <script setup lang="ts">
   type ClientStatus = 'INCOMPLETE' | 'WAITLIST' | 'ACTIVE' | 'ARCHIVED'
 
+  const FORM_LABELS: Record<string, string> = {
+    application: 'Application',
+    ace: 'ACE',
+    gad: 'GAD-7',
+    phq: 'PHQ-9',
+    pcl: 'PCL-5',
+  }
+
   type Client = {
     id: string
     fname: string
@@ -10,6 +18,7 @@
     status: ClientStatus
     allFormsComplete: boolean
     therapyWeek: number | null
+    incompleteForms: string[]
   }
 
   const statusFilter = ref<string>('')
@@ -65,15 +74,40 @@
     return ''
   }
 
+  const showFormsRemainingColumn = computed(
+    () => clients.value?.some((c) => c.status === 'INCOMPLETE') ?? false
+  )
+
+  const showWeekNoColumn = computed(
+    () => clients.value?.some((c) => c.status === 'ACTIVE') ?? false
+  )
+
+  function formatIncompleteForms(c: Client): string {
+    if (c.status !== 'INCOMPLETE' || !c.incompleteForms?.length) return ''
+    const count = c.incompleteForms.length
+    const names = c.incompleteForms.map((k) => FORM_LABELS[k] ?? k).join(', ')
+    return `${count} remaining: ${names}`
+  }
+
   const toast = useToast()
   const updatingId = ref<string | null>(null)
 
-  const statusUpdateOptions: { label: string; value: ClientStatus }[] = [
-    { label: 'Incomplete', value: 'INCOMPLETE' },
-    { label: 'Waitlist', value: 'WAITLIST' },
-    { label: 'Active', value: 'ACTIVE' },
-    { label: 'Archived', value: 'ARCHIVED' },
-  ]
+  function statusUpdateOptionsFor(client: Client) {
+    return [
+      { label: 'Incomplete', value: 'INCOMPLETE' as ClientStatus },
+      { label: 'Waitlist', value: 'WAITLIST' as ClientStatus },
+      {
+        label: 'Active',
+        value: 'ACTIVE' as ClientStatus,
+        disabled: client.status !== 'WAITLIST',
+      },
+      {
+        label: 'Archived',
+        value: 'ARCHIVED' as ClientStatus,
+        disabled: client.status !== 'ACTIVE',
+      },
+    ]
+  }
 
   async function updateStatus(clientId: string, newStatus: ClientStatus) {
     if (updatingId.value) return
@@ -184,6 +218,13 @@
                   Email
                 </th>
                 <th
+                  v-if="showFormsRemainingColumn"
+                  class="pb-3 pr-4 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400"
+                >
+                  Forms remaining
+                </th>
+                <th
+                  v-if="showWeekNoColumn"
                   class="pb-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400"
                 >
                   Week no
@@ -200,7 +241,7 @@
                   <div class="flex flex-col gap-1">
                     <USelect
                       :model-value="client.status"
-                      :items="statusUpdateOptions"
+                      :items="statusUpdateOptionsFor(client)"
                       value-key="value"
                       size="xs"
                       class="w-28"
@@ -221,8 +262,17 @@
                 <td class="py-4 pr-4 text-sm text-gray-600 dark:text-gray-400">
                   {{ client.email }}
                 </td>
-                <td class="py-4 text-sm text-gray-600 dark:text-gray-400">
-                  {{ client.therapyWeek !== null ? `${client.therapyWeek} / 26` : '—' }}
+                <td
+                  v-if="showFormsRemainingColumn"
+                  class="py-4 pr-4 text-sm text-amber-600 dark:text-amber-400"
+                >
+                  {{ formatIncompleteForms(client) }}
+                </td>
+                <td
+                  v-if="showWeekNoColumn"
+                  class="py-4 pr-4 text-sm text-gray-600 dark:text-gray-400"
+                >
+                  {{ client.status === 'ACTIVE' && client.therapyWeek !== null ? `${client.therapyWeek} / 26` : (client.status === 'ACTIVE' ? '—' : '') }}
                 </td>
               </tr>
             </tbody>
