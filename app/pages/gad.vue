@@ -27,8 +27,15 @@
     { label: 'Extremely difficult', value: 3 },
   ]
 
-  const questionKeys = ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7'] as const
-
+  const questions = [
+    'Feeling nervous, anxious, or on edge',
+    'Not being able to stop or control worrying',
+    'Worrying too much about different things',
+    'Trouble relaxing',
+    'Being so restless that it is hard to sit still',
+    'Becoming easily annoyed or irritable',
+    'Feeling afraid, as if something awful might happen',
+  ]
   const totalScore = computed(() => {
     return (
       (form.g1 ?? 0) +
@@ -110,21 +117,10 @@
       </p>
     </UCard>
 
-    <UCard class="mt-6 space-y-6">
-      <!-- Question Component -->
-      <div v-for="(questionKey, index) in questionKeys" :key="questionKey" class="space-y-3">
-        <label class="font-medium text-gray-200">
-          {{
-            [
-              'Feeling nervous, anxious, or on edge',
-              'Not being able to stop or control worrying',
-              'Worrying too much about different things',
-              'Trouble relaxing',
-              'Being so restless that it is hard to sit still',
-              'Becoming easily annoyed or irritable',
-              'Feeling afraid, as if something awful might happen',
-            ][index]
-          }}
+    <div class="mt-6 space-y-6">
+      <UCard v-for="(question, index) in questions" :key="index" class="space-y-4">
+        <label class="text-default font-medium">
+          {{ question }}
         </label>
 
         <div class="space-y-2">
@@ -136,20 +132,20 @@
             <input
               type="radio"
               :value="opt.value"
-              v-model="form[questionKey as keyof typeof form]"
+              v-model="form['g' + (index + 1)]"
               class="accent-primary-500 h-4 w-4"
             />
 
-            <span class="text-sm text-gray-300">
+            <span class="text-muted text-sm">
               {{ opt.label }}
             </span>
           </label>
         </div>
-      </div>
+      </UCard>
 
-      <!-- Difficulty Question -->
-      <div class="space-y-3">
-        <label class="font-medium text-gray-200">
+      <!-- Difficulty -->
+      <UCard class="space-y-4">
+        <label class="text-default font-medium">
           If you checked any problems, how difficult have they made it for you?
         </label>
 
@@ -166,20 +162,19 @@
               class="accent-primary-500 h-4 w-4"
             />
 
-            <span class="text-sm text-gray-300">
+            <span class="text-muted text-sm">
               {{ opt.label }}
             </span>
           </label>
         </div>
-      </div>
+      </UCard>
 
       <!-- Score -->
       <UCard>
-        <div class="text-lg font-semibold text-white">Total Score: {{ totalScore }}</div>
-
-        <div class="text-sm text-gray-400">Severity: {{ severity }}</div>
+        <div class="text-lg font-semibold">Total Score: {{ totalScore }}</div>
+        <div class="text-muted text-sm">Severity: {{ severity }}</div>
       </UCard>
-    </UCard>
+    </div>
 
     <div class="mt-8">
       <UButton label="Save and Exit" :loading="isSaving" @click="saveAndExit" />
