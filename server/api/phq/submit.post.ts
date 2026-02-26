@@ -2,7 +2,7 @@ import { createError, defineEventHandler, getHeaders } from 'h3'
 import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
 
-const TOTAL_QUESTIONS = 9
+const TOTAL_QUESTIONS = 10
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()

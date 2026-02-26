@@ -9,7 +9,7 @@
   const gadScore = ref<number | null>(null)
   const gadSeverity = ref<string | null>(null)
   const phqAnswered = ref(0)
-  const phqTotal = ref(9)
+  const phqTotal = ref(10)
   const phqSubmitted = ref(false)
   const isSubmitting = ref(false)
   const toast = useToast()
@@ -124,7 +124,7 @@
       gadScore.value = null
       gadSeverity.value = null
       phqAnswered.value = 0
-      phqTotal.value = 9
+      phqTotal.value = 10
       phqSubmitted.value = false
       pclAnswered.value = 0
       pclTotal.value = 20

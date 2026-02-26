@@ -12,9 +12,10 @@ type AnswersBody = {
   q7?: number
   q8?: number
   q9?: number
+  q10?: number
 }
 
-const TOTAL_QUESTIONS = 9
+const TOTAL_QUESTIONS = 10
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
