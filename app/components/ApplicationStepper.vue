@@ -4,6 +4,14 @@
     currentStep: number
     stepStates?: Array<'upcoming' | 'current' | 'completed' | 'incomplete'>
   }>()
+
+  const emit = defineEmits<{
+    'step-click': [step: number]
+  }>()
+
+  function goToStep(step: number) {
+    emit('step-click', step)
+  }
 </script>
 
 <template>
@@ -14,7 +22,11 @@
     >
       <li v-for="(step, index) in steps" :key="index" class="relative min-w-0" role="listitem">
         <template v-if="stepStates">
-          <div class="relative z-10 flex w-full items-center justify-center">
+          <button
+            type="button"
+            class="relative z-10 flex w-full cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:hover:bg-gray-800 dark:focus:ring-offset-gray-900"
+            @click="goToStep(index + 1)"
+          >
             <div
               class="flex flex-col items-center gap-1 text-center sm:flex-row sm:gap-2 sm:text-left"
             >
@@ -56,10 +68,14 @@
                 {{ step.shortLabel ?? step.label }}
               </span>
             </div>
-          </div>
+          </button>
         </template>
         <template v-else>
-          <div class="relative z-10 flex w-full items-center justify-center">
+          <button
+            type="button"
+            class="relative z-10 flex w-full cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:hover:bg-gray-800 dark:focus:ring-offset-gray-900"
+            @click="goToStep(index + 1)"
+          >
             <div
               class="flex flex-col items-center gap-1 text-center sm:flex-row sm:gap-2 sm:text-left"
             >
@@ -99,7 +115,7 @@
                 {{ step.shortLabel ?? step.label }}
               </span>
             </div>
-          </div>
+          </button>
         </template>
       </li>
     </ol>

@@ -36,6 +36,11 @@ const progressPercent = computed(() =>
   TOTAL_QUESTIONS ? Math.round((completedCount.value / TOTAL_QUESTIONS) * 100) : 0
 )
 
+function clearForm() {
+  responses.value = Array(questions.length).fill(-1)
+  worstEvent.value = ''
+}
+
 function buildPayload() {
   const body: Record<string, number | string | null> = { worstEvent: worstEvent.value }
   responses.value.forEach((val, i) => {
@@ -156,7 +161,16 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div class="mt-12 flex justify-end">
+    <div class="mt-12 flex justify-end gap-3">
+      <UButton
+        v-if="!isReadOnly"
+        label="Clear Form"
+        variant="outline"
+        color="neutral"
+        size="lg"
+        :disabled="isSaving"
+        @click="clearForm"
+      />
       <UButton
         :label="isReadOnly ? 'Back to Tasks' : 'Save and Exit'"
         color="error"

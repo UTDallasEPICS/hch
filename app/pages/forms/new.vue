@@ -11,6 +11,15 @@
   const creating = ref(false)
   const createError = ref<string | null>(null)
 
+  function clearForm() {
+    formTitle.value = ''
+    formDescription.value = ''
+    formSlug.value = ''
+    selectedQuestionIds.value = []
+    newQuestionText.value = ''
+    createError.value = null
+  }
+
   const slugFromTitle = computed(() =>
     formTitle.value
       .toLowerCase()
@@ -167,7 +176,16 @@
           :title="createError"
           class="mt-4"
         />
-        <div class="mt-6">
+        <div class="mt-6 flex gap-3">
+          <UButton
+            type="button"
+            label="Clear Form"
+            variant="outline"
+            color="neutral"
+            size="lg"
+            :disabled="creating"
+            @click="clearForm"
+          />
           <UButton
             :loading="creating"
             :disabled="!formTitle.trim() || !formSlug.trim()"

@@ -155,6 +155,11 @@ export async function useFormBySlug(slug: Ref<string> | ComputedRef<string>) {
 
   const submitting = ref(false)
   const submitError = ref<string | null>(null)
+
+  function clearResponses() {
+    responses.value = {}
+  }
+
   async function submit() {
     if (!form.value) {
       submitError.value = 'Form not loaded'
@@ -191,6 +196,7 @@ export async function useFormBySlug(slug: Ref<string> | ComputedRef<string>) {
     totalCount,
     progressPercent,
     setResponse,
+    clearResponses,
     submitting,
     submitError,
     submit,

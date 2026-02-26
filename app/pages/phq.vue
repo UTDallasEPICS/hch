@@ -28,6 +28,11 @@
     responses.value.reduce((sum, val) => sum + (val >= 0 ? val : 0), 0)
   )
 
+  function clearForm() {
+    responses.value = Array(questions.length).fill(-1)
+    difficulty.value = null
+  }
+
   async function saveForm() {
   try {
     isSaving.value = true
@@ -207,7 +212,15 @@ onMounted(async () => {
     </div>
 
     <!-- Save and Exit Button -->
-    <div class="mt-auto pt-6 flex justify-end">
+    <div class="mt-auto pt-6 flex justify-end gap-3">
+      <UButton
+        label="Clear Form"
+        variant="outline"
+        color="neutral"
+        size="lg"
+        :disabled="isSaving"
+        @click="clearForm"
+      />
       <UButton
         label="Save and Exit"
         color="error"

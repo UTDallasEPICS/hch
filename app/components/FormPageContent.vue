@@ -11,6 +11,7 @@
     totalCount,
     progressPercent,
     setResponse,
+    clearResponses,
     submitting,
     submitError,
     submit,
@@ -130,6 +131,15 @@
           />
 
           <div class="flex justify-end gap-3">
+            <UButton
+              type="button"
+              variant="outline"
+              color="neutral"
+              size="lg"
+              label="Clear Form"
+              :disabled="submitting"
+              @click="clearResponses"
+            />
             <UButton
               type="submit"
               size="lg"

@@ -185,6 +185,10 @@
     currentStep.value += 1
   }
 
+  function clearForm() {
+    applySavedAnswers()
+  }
+
   async function goPrev() {
     if (currentStep.value <= 1) return
 
@@ -193,6 +197,12 @@
     }
     currentStep.value -= 1
   }
+
+  watch(currentStep, () => {
+    nextTick(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
+  })
 
   onBeforeRouteLeave(async () => {
     if (isReadOnly.value) {
@@ -261,6 +271,7 @@
         :steps="wizardSteps"
         :current-step="currentStep"
         :step-states="stepStates"
+        @step-click="currentStep = $event"
       />
 
       <UCard
@@ -289,6 +300,15 @@
             class="flex flex-col gap-3 border-t border-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800"
           >
             <div class="flex flex-wrap items-center gap-2">
+              <UButton
+                v-if="!isReadOnly"
+                label="Clear Form"
+                variant="outline"
+                color="neutral"
+                size="md"
+                class="min-w-[100px] justify-center text-center"
+                @click="clearForm"
+              />
               <UButton
                 v-if="currentStep > 1"
                 label="Previous"

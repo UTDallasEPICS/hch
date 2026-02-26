@@ -76,6 +76,17 @@
     applySavedAnswers(res?.answers)
   })
 
+  function clearForm() {
+    form.g1 = null
+    form.g2 = null
+    form.g3 = null
+    form.g4 = null
+    form.g5 = null
+    form.g6 = null
+    form.g7 = null
+    form.g8 = null
+  }
+
   async function saveAndExit() {
     try {
       isSaving.value = true
@@ -209,7 +220,16 @@
           >
         </div>
 
-        <div class="flex justify-end">
+        <div class="flex justify-end gap-3">
+          <UButton
+            type="button"
+            label="Clear Form"
+            variant="outline"
+            color="neutral"
+            size="lg"
+            :disabled="isSaving"
+            @click="clearForm"
+          />
           <UButton
             type="submit"
             label="Save and Exit"
