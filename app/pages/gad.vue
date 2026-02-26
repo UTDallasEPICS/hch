@@ -28,6 +28,16 @@
   ]
 
   const questionKeys = ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7'] as const
+  const TOTAL_QUESTIONS = 8 // 7 main + 1 difficulty
+
+  const completedCount = computed(
+    () => [form.g1, form.g2, form.g3, form.g4, form.g5, form.g6, form.g7, form.g8].filter(
+      (v) => v !== null && v !== undefined
+    ).length
+  )
+  const progressPercent = computed(() =>
+    TOTAL_QUESTIONS ? Math.round((completedCount.value / TOTAL_QUESTIONS) * 100) : 0
+  )
 
   const totalScore = computed(() => {
     return (
@@ -101,6 +111,22 @@
 
 <template>
   <UContainer class="max-w-3xl py-10">
+    <div class="mb-6">
+      <div class="flex items-center justify-between text-sm">
+        <span class="font-medium text-gray-700 dark:text-gray-300"
+          >{{ progressPercent }}% Complete</span
+        >
+        <span class="text-gray-500 dark:text-gray-400"
+          >{{ completedCount }} of {{ TOTAL_QUESTIONS }} answered</span
+        >
+      </div>
+      <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+        <div
+          class="bg-primary-500 h-full rounded-full transition-all duration-300"
+          :style="{ width: `${progressPercent}%` }"
+        />
+      </div>
+    </div>
     <h1 class="text-2xl font-semibold text-white">GAD-7 Anxiety Assessment</h1>
 
     <UCard class="mt-4">

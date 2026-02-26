@@ -28,6 +28,13 @@ const questions = [
 ]
 
 const responses = ref<number[]>(Array(questions.length).fill(-1))
+const TOTAL_QUESTIONS = 20
+const completedCount = computed(
+  () => responses.value.filter((v) => v !== -1).length
+)
+const progressPercent = computed(() =>
+  TOTAL_QUESTIONS ? Math.round((completedCount.value / TOTAL_QUESTIONS) * 100) : 0
+)
 
 function buildPayload() {
   const body: Record<string, number | string | null> = { worstEvent: worstEvent.value }
@@ -84,6 +91,22 @@ onMounted(async () => {
 
 <template>
   <UContainer class="py-10">
+    <div class="mb-6" v-if="!isReadOnly">
+      <div class="flex items-center justify-between text-sm">
+        <span class="font-medium text-gray-700 dark:text-gray-300"
+          >{{ progressPercent }}% Complete</span
+        >
+        <span class="text-gray-500 dark:text-gray-400"
+          >{{ completedCount }} of {{ TOTAL_QUESTIONS }} answered</span
+        >
+      </div>
+      <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+        <div
+          class="bg-primary-500 h-full rounded-full transition-all duration-300"
+          :style="{ width: `${progressPercent}%` }"
+        />
+      </div>
+    </div>
     <div class="mb-8">
       <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">PCL-5</h1>
       <p v-if="!isReadOnly" class="mt-1 text-sm text-gray-500 dark:text-gray-400 mb-3">

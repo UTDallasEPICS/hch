@@ -16,6 +16,14 @@
 
   const responses = ref<number[]>(Array(questions.length).fill(-1))
   const difficulty = ref<number | null>(null)
+  const TOTAL_ITEMS = 10 // 9 questions + difficulty
+  const completedCount = computed(
+    () =>
+      responses.value.filter((v) => v >= 0).length + (difficulty.value !== null ? 1 : 0)
+  )
+  const progressPercent = computed(() =>
+    TOTAL_ITEMS ? Math.round((completedCount.value / TOTAL_ITEMS) * 100) : 0
+  )
   const totalScore = computed(() =>
     responses.value.reduce((sum, val) => sum + (val >= 0 ? val : 0), 0)
   )
@@ -79,6 +87,22 @@ onMounted(async () => {
 
 <template>
   <UContainer class="flex flex-col py-10 gap-6">
+    <div class="mb-2">
+      <div class="flex items-center justify-between text-sm">
+        <span class="font-medium text-gray-700 dark:text-gray-300"
+          >{{ progressPercent }}% Complete</span
+        >
+        <span class="text-gray-500 dark:text-gray-400"
+          >{{ completedCount }} of {{ TOTAL_ITEMS }} answered</span
+        >
+      </div>
+      <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+        <div
+          class="bg-primary-500 h-full rounded-full transition-all duration-300"
+          :style="{ width: `${progressPercent}%` }"
+        />
+      </div>
+    </div>
     <!-- Title -->
     <h1 class="text-2xl font-semibold text-center text-gray-900 dark:text-white">
       PHQ-9 - Patient Health Questionnaire-9

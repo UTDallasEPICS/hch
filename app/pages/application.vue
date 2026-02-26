@@ -100,6 +100,13 @@
     })
   })
 
+  const completedStepsCount = computed(
+    () => sectionState.value.filter((s) => s.completed).length
+  )
+  const progressPercent = computed(() =>
+    TOTAL_STEPS ? Math.round((completedStepsCount.value / TOTAL_STEPS) * 100) : 0
+  )
+
   const stepStates = computed<StepState[]>(() => {
     return wizardSteps.map((_, index) => {
       const stepNumber = index + 1
@@ -223,6 +230,22 @@
   >
     <UContainer class="max-w-3xl">
       <div class="mb-6 sm:mb-8">
+        <div v-if="!isReadOnly" class="mb-4">
+          <div class="flex items-center justify-between text-sm">
+            <span class="font-medium text-gray-700 dark:text-gray-300"
+              >{{ progressPercent }}% Complete</span
+            >
+            <span class="text-gray-500 dark:text-gray-400"
+              >{{ completedStepsCount }} of {{ TOTAL_STEPS }} sections</span
+            >
+          </div>
+          <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+            <div
+              class="bg-primary-500 h-full rounded-full transition-all duration-300"
+              :style="{ width: `${progressPercent}%` }"
+            />
+          </div>
+        </div>
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Application</h1>
         <p v-if="!isReadOnly" class="mt-1 text-sm text-gray-600 dark:text-gray-400">
           Please complete all required questions.
