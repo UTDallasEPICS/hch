@@ -261,6 +261,121 @@
   const inputClass = 'mt-2 w-full'
   const groupClass =
     'mt-2 !group:border-gray-300 !group:bg-white dark:!group:border-gray-600 dark:!group:bg-gray-800'
+
+  // Household members (Q16)
+  type HouseMember = {
+    firstName: string
+    middleInitial: string
+    lastName: string
+    age: string
+    relationship: string
+  }
+
+  function parseMembersFromQ16(): HouseMember[] {
+    const raw = form.value.q16 || ''
+    if (!raw.trim()) return []
+    try {
+      const parsed = JSON.parse(raw) as HouseMember[]
+      if (Array.isArray(parsed)) {
+        return parsed.map((m) => ({
+          firstName: String(m?.firstName ?? '').trim(),
+          middleInitial: String(m?.middleInitial ?? '').trim().slice(0, 1),
+          lastName: String(m?.lastName ?? '').trim(),
+          age: String(m?.age ?? '').trim(),
+          relationship: String(m?.relationship ?? '').trim(),
+        }))
+      }
+    } catch {
+      // Legacy format: "Name, age" per line or "Name" per line
+    }
+    return raw
+      .split(/\n+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const m = line.match(/^(.+?)(?:\s*,\s*(\d+)(?:\s*-\s*(.+))?)?\s*$/)
+        const namePart = m ? m[1] ?? line : line
+        const agePart = m?.[2] ?? ''
+        const relPart = m?.[3] ?? ''
+        const nameParts = namePart.split(/\s+/).filter(Boolean)
+        const firstName = nameParts[0] ?? ''
+        const lastName = nameParts.length > 1 ? (nameParts[nameParts.length - 1] ?? '') : ''
+        const middleInitial =
+          nameParts.length >= 3 ? (nameParts[1] ?? '').replace(/\.$/, '').slice(0, 1) : ''
+        return {
+          firstName,
+          middleInitial,
+          lastName,
+          age: agePart,
+          relationship: relPart,
+        }
+      })
+  }
+
+  const houseMembers = ref<HouseMember[]>([])
+  const newMember = ref<HouseMember>({
+    firstName: '',
+    middleInitial: '',
+    lastName: '',
+    age: '',
+    relationship: '',
+  })
+
+  function syncMembersToForm() {
+    form.value.q16 =
+      houseMembers.value.length > 0 ? JSON.stringify(houseMembers.value) : ''
+  }
+
+  watch(
+    () => form.value.q16,
+    (val) => {
+      const parsed = parseMembersFromQ16()
+      if (val && val.trim().startsWith('[')) {
+        houseMembers.value = parsed
+      } else if (!val || !val.trim()) {
+        houseMembers.value = []
+      }
+    },
+    { immediate: true }
+  )
+
+  function addCurrentMember() {
+    const m = newMember.value
+    if (!m.firstName.trim() && !m.lastName.trim()) return
+    houseMembers.value = [
+      ...houseMembers.value,
+      {
+        firstName: m.firstName.trim(),
+        middleInitial: m.middleInitial.trim().slice(0, 1),
+        lastName: m.lastName.trim(),
+        age: m.age.trim(),
+        relationship: m.relationship.trim(),
+      },
+    ]
+    newMember.value = {
+      firstName: '',
+      middleInitial: '',
+      lastName: '',
+      age: '',
+      relationship: '',
+    }
+    syncMembersToForm()
+  }
+
+  function removeMember(index: number) {
+    houseMembers.value = houseMembers.value.filter((_, i) => i !== index)
+    syncMembersToForm()
+  }
+
+  function formatMemberLabel(m: HouseMember): string {
+    const parts = [m.firstName, m.middleInitial ? `${m.middleInitial}.` : '', m.lastName].filter(
+      Boolean
+    )
+    let s = parts.join(' ')
+    if (m.age) s += `, ${m.age}`
+    if (m.relationship) s += ` (${m.relationship})`
+    return s
+  }
 </script>
 
 <template>
@@ -391,14 +506,106 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >15. Please list all members who live in the home (first name, last name, and age)</label
+          >15. Please list all members who live in the home</label
         >
-        <UTextarea
-          v-model="form.q16"
-          :class="inputClass"
-          :rows="3"
-          placeholder="First name, last name, and age for each member"
-        />
+        <div class="mt-2 space-y-4">
+          <div
+            class="rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
+          >
+            <div class="mb-3 flex items-center justify-between">
+              <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                Add members
+              </p>
+              <UButton
+                icon="i-heroicons-plus-20-solid"
+                color="primary"
+                variant="soft"
+                size="sm"
+                aria-label="Add member"
+                @click="addCurrentMember"
+              />
+            </div>
+            <div class="flex flex-wrap items-end gap-3">
+              <div class="min-w-[100px] flex-1">
+                <label class="text-xs text-gray-500 dark:text-gray-400">First name</label>
+                <UInput
+                  v-model="newMember.firstName"
+                  :class="inputClass"
+                  placeholder="First name"
+                  size="sm"
+                />
+              </div>
+              <div class="w-20">
+                <label class="text-xs text-gray-500 dark:text-gray-400">Middle initial</label>
+                <UInput
+                  v-model="newMember.middleInitial"
+                  :class="inputClass"
+                  placeholder="M.I."
+                  size="sm"
+                  maxlength="1"
+                />
+              </div>
+              <div class="min-w-[100px] flex-1">
+                <label class="text-xs text-gray-500 dark:text-gray-400">Last name</label>
+                <UInput
+                  v-model="newMember.lastName"
+                  :class="inputClass"
+                  placeholder="Last name"
+                  size="sm"
+                />
+              </div>
+              <div class="w-16">
+                <label class="text-xs text-gray-500 dark:text-gray-400">Age</label>
+                <UInput
+                  v-model="newMember.age"
+                  :class="inputClass"
+                  placeholder="Age"
+                  size="sm"
+                  inputmode="numeric"
+                />
+              </div>
+              <div class="min-w-[120px] flex-1">
+                <label class="text-xs text-gray-500 dark:text-gray-400">Relationship</label>
+                <UInput
+                  v-model="newMember.relationship"
+                  :class="inputClass"
+                  placeholder="e.g. Parent, Sibling"
+                  size="sm"
+                />
+              </div>
+              <UButton
+                icon="i-heroicons-check-20-solid"
+                color="primary"
+                variant="soft"
+                size="lg"
+                aria-label="Add member"
+                @click="addCurrentMember"
+              />
+            </div>
+          </div>
+          <div v-if="houseMembers.length > 0" class="space-y-2">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+              {{ houseMembers.length }} member(s) added
+            </p>
+            <ul class="space-y-1.5">
+              <li
+                v-for="(m, idx) in houseMembers"
+                :key="idx"
+                class="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800"
+              >
+                <span>{{ formatMemberLabel(m) }}</span>
+                <UButton
+                  icon="i-heroicons-x-mark-20-solid"
+                  color="error"
+                  variant="ghost"
+                  size="xs"
+                  aria-label="Remove"
+                  @click="removeMember(idx)"
+                />
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
