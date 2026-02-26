@@ -32,18 +32,21 @@
   async function loadProgress() {
     const [appResult, aceFormResult, aceResponsesResult, gadResult, phqResult, pclResult] =
       await Promise.allSettled([
-      $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/application/progress'),
-      $fetch<{ questions: Array<{ id: string }> }>('/api/forms/ace-form'),
-      $fetch<Record<string, string>>('/api/forms/ace-form/responses'),
-      $fetch<{
-        answered: number
-        total: number
-        totalScore: number | null
-        severity: string | null
-      }>('/api/gad/progress'),
-      $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/phq/progress'),
-      $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/pcl/progress'),
-    ])
+        $fetch<{ answered: number; total: number; submitted?: boolean }>(
+          '/api/application/progress'
+        ),
+        $fetch<{ questions: Array<{ id: string }> }>('/api/forms/ace-form'),
+        $fetch<Record<string, string>>('/api/forms/ace-form/responses'),
+        $fetch<{
+          answered: number
+          total: number
+          totalScore: number | null
+          severity: string | null
+          status?: string | null
+        }>('/api/gad/progress'),
+        $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/phq/progress'),
+        $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/pcl/progress'),
+      ])
 
     if (appResult.status === 'fulfilled') {
       answered.value = appResult.value.answered
@@ -177,8 +180,8 @@
     >
       <span>GAD-7 Form</span>
       <span>
-        {{ gadAnswered }}/{{ gadTotal }}
-        <template v-if="gadScore !== null"> • {{ gadSeverity }}</template>
+        <template v-if="gadScore !== null"> Submitted • {{ gadSeverity }} </template>
+        <template v-else> {{ gadAnswered }}/{{ gadTotal }} </template>
       </span>
     </UButton>
 

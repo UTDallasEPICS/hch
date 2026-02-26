@@ -1,6 +1,8 @@
 <script setup lang="ts">
   const toast = useToast()
   const isSaving = ref(false)
+  const isSubmitted = ref(false)
+  const isComplete = computed(() => completedCount.value === TOTAL_QUESTIONS)
 
   const form = reactive({
     g1: null as number | null,
@@ -28,7 +30,7 @@
   ]
 
   const questionKeys = ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7'] as const
-  const TOTAL_QUESTIONS = 8 // 7 main + 1 difficulty
+  const TOTAL_QUESTIONS = 8
 
   const completedCount = computed(
     () =>
@@ -36,6 +38,7 @@
         (v) => v !== null && v !== undefined
       ).length
   )
+
   const progressPercent = computed(() =>
     TOTAL_QUESTIONS ? Math.round((completedCount.value / TOTAL_QUESTIONS) * 100) : 0
   )
@@ -74,33 +77,57 @@
 
   onMounted(async () => {
     const res = await $fetch('/api/gad/start', { method: 'POST' })
+
     applySavedAnswers(res?.answers)
+
+    if (res?.status === 'SUBMITTED') {
+      isSubmitted.value = true
+    }
   })
 
-  async function saveAndExit() {
+  async function submitForm() {
     try {
+      if (!isComplete.value) {
+        toast.add({
+          title: 'Incomplete',
+          description: 'Please answer all questions before submitting.',
+          color: 'error',
+        })
+        return
+      }
+
+      if (isSubmitted.value) {
+        await navigateTo('/taskPage')
+        return
+      }
+
       isSaving.value = true
 
-      await $fetch('/api/gad/save', {
+      await $fetch('/api/gad/submit', {
         method: 'POST',
-        body: form,
+        body: {
+          answers: form,
+          totalScore: totalScore.value,
+          severity: severity.value,
+        },
       })
 
       toast.add({
-        title: 'Saved',
+        title: 'Assessment completed',
         color: 'success',
       })
 
+      isSubmitted.value = true
       await navigateTo('/taskPage')
     } catch (error: any) {
       const description =
         error?.data?.statusMessage ||
         error?.data?.message ||
         error?.statusMessage ||
-        'Unable to save your responses. Please try again.'
+        'Unable to submit your responses.'
 
       toast.add({
-        title: 'Save failed',
+        title: 'Submission failed',
         description,
         color: 'error',
       })
@@ -113,15 +140,26 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
     <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+      ```
+      <!-- Already Submitted Message -->
+      <div
+        v-if="isSubmitted"
+        class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-green-800"
+      >
+        You have already completed this assessment.
+      </div>
+
+      <!-- Progress -->
       <div class="mb-6">
         <div class="flex items-center justify-between text-sm">
-          <span class="font-medium text-gray-700 dark:text-gray-300"
-            >{{ progressPercent }}% Complete</span
-          >
-          <span class="text-gray-500 dark:text-gray-400"
-            >{{ completedCount }} of {{ TOTAL_QUESTIONS }} answered</span
-          >
+          <span class="font-medium text-gray-700 dark:text-gray-300">
+            {{ progressPercent }}% Complete
+          </span>
+          <span class="text-gray-500 dark:text-gray-400">
+            {{ completedCount }} of {{ TOTAL_QUESTIONS }} answered
+          </span>
         </div>
+
         <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
           <div
             class="bg-primary-500 h-full rounded-full transition-all duration-300"
@@ -130,6 +168,7 @@
         </div>
       </div>
 
+      <!-- Header -->
       <div class="mb-8">
         <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
           GAD-7 Anxiety Assessment
@@ -140,83 +179,91 @@
         </p>
       </div>
 
-      <form class="space-y-8" @submit.prevent="saveAndExit">
-        <!-- Questions - each in its own card -->
-        <div
-          v-for="(questionKey, index) in questionKeys"
-          :key="questionKey"
-          class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-        >
-          <p class="mb-3 font-medium text-gray-900 dark:text-white">
-            {{ index + 1 }}.
-            {{
-              [
-                'Feeling nervous, anxious, or on edge',
-                'Not being able to stop or control worrying',
-                'Worrying too much about different things',
-                'Trouble relaxing',
-                'Being so restless that it is hard to sit still',
-                'Becoming easily annoyed or irritable',
-                'Feeling afraid, as if something awful might happen',
-              ][index]
-            }}
-          </p>
-          <div class="mt-4 space-y-3">
-            <label v-for="opt in options" :key="opt.value" class="flex items-center gap-3">
-              <input
-                type="radio"
-                :value="opt.value"
-                v-model="form[questionKey as keyof typeof form]"
-                class="accent-primary-500 mt-1"
-              />
-              <span class="text-sm text-gray-700 dark:text-gray-300">{{ opt.label }}</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Difficulty Question -->
-        <div
-          class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-        >
-          <p class="mb-3 font-medium text-gray-900 dark:text-white">
-            If you checked any problems, how difficult have they made it for you?
-          </p>
-          <div class="mt-4 space-y-3">
-            <label
-              v-for="opt in difficultyOptions"
-              :key="opt.value"
-              class="flex items-center gap-3"
-            >
-              <input
-                type="radio"
-                :value="opt.value"
-                v-model="form.g8"
-                class="accent-primary-500 mt-1"
-              />
-              <span class="text-sm text-gray-700 dark:text-gray-300">{{ opt.label }}</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Total Score -->
-        <div class="text-lg font-semibold text-gray-900 dark:text-white">
-          Total Score: {{ totalScore }}
-          <span class="ml-2 text-sm font-normal text-gray-600 dark:text-gray-400"
-            >({{ severity }})</span
+      <form @submit.prevent="submitForm">
+        <fieldset :disabled="isSubmitted" class="space-y-8">
+          <!-- Questions -->
+          <div
+            v-for="(questionKey, index) in questionKeys"
+            :key="questionKey"
+            class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
           >
-        </div>
+            <p class="mb-3 font-medium text-gray-900 dark:text-white">
+              {{ index + 1 }}.
+              {{
+                [
+                  'Feeling nervous, anxious, or on edge',
+                  'Not being able to stop or control worrying',
+                  'Worrying too much about different things',
+                  'Trouble relaxing',
+                  'Being so restless that it is hard to sit still',
+                  'Becoming easily annoyed or irritable',
+                  'Feeling afraid, as if something awful might happen',
+                ][index]
+              }}
+            </p>
 
-        <div class="flex justify-end">
-          <UButton
-            type="submit"
-            label="Save and Exit"
-            color="error"
-            variant="soft"
-            size="lg"
-            :loading="isSaving"
-          />
-        </div>
+            <div class="mt-4 space-y-3">
+              <label v-for="opt in options" :key="opt.value" class="flex items-center gap-3">
+                <input
+                  type="radio"
+                  :value="opt.value"
+                  v-model="form[questionKey as keyof typeof form]"
+                  class="accent-primary-500 mt-1"
+                />
+                <span class="text-sm text-gray-700 dark:text-gray-300">
+                  {{ opt.label }}
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Difficulty -->
+          <div
+            class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+          >
+            <p class="mb-3 font-medium text-gray-900 dark:text-white">
+              If you checked any problems, how difficult have they made it for you?
+            </p>
+
+            <div class="mt-4 space-y-3">
+              <label
+                v-for="opt in difficultyOptions"
+                :key="opt.value"
+                class="flex items-center gap-3"
+              >
+                <input
+                  type="radio"
+                  :value="opt.value"
+                  v-model="form.g8"
+                  class="accent-primary-500 mt-1"
+                />
+                <span class="text-sm text-gray-700 dark:text-gray-300">
+                  {{ opt.label }}
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Submit -->
+          <div
+            v-if="!isComplete"
+            class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800"
+          >
+            Please answer all questions before submitting.
+          </div>
+          <div class="flex justify-end">
+            <UButton
+              type="submit"
+              label="Submit Assessment"
+              color="primary"
+              size="lg"
+              :loading="isSaving"
+              :disabled="!isComplete"
+            />
+          </div>
+        </fieldset>
       </form>
     </main>
+    ```
   </div>
 </template>
