@@ -16,6 +16,14 @@
 
   const responses = ref<number[]>(Array(questions.length).fill(-1))
   const difficulty = ref<number | null>(null)
+  const TOTAL_ITEMS = 10 // 9 questions + difficulty
+  const completedCount = computed(
+    () =>
+      responses.value.filter((v) => v >= 0).length + (difficulty.value !== null ? 1 : 0)
+  )
+  const progressPercent = computed(() =>
+    TOTAL_ITEMS ? Math.round((completedCount.value / TOTAL_ITEMS) * 100) : 0
+  )
   const totalScore = computed(() =>
     responses.value.reduce((sum, val) => sum + (val >= 0 ? val : 0), 0)
   )
@@ -78,13 +86,30 @@ onMounted(async () => {
 </script>
 
 <template>
-  <UContainer class="flex flex-col py-10 gap-6">
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <UContainer class="flex flex-col py-10 gap-6 max-w-3xl">
+    <div class="mb-2">
+      <div class="flex items-center justify-between text-sm">
+        <span class="font-medium text-gray-700 dark:text-gray-300"
+          >{{ progressPercent }}% Complete</span
+        >
+        <span class="text-gray-500 dark:text-gray-400"
+          >{{ completedCount }} of {{ TOTAL_ITEMS }} answered</span
+        >
+      </div>
+      <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+        <div
+          class="bg-primary-500 h-full rounded-full transition-all duration-300"
+          :style="{ width: `${progressPercent}%` }"
+        />
+      </div>
+    </div>
     <!-- Title -->
-    <h1 class="text-2xl font-semibold text-center text-gray-900 dark:text-white">
+    <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
       PHQ-9 - Patient Health Questionnaire-9
     </h1>
 
-    <p class="font-semibold text-sm text-gray-700 dark:text-white">
+    <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
       Over the last 2 weeks, how often have you been bothered by any of the following problems?
     </p>
 
@@ -92,77 +117,105 @@ onMounted(async () => {
     <div
       v-for="(question, index) in questions"
       :key="index"
-      class="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 shadow-sm"
+      class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
     >
-      <p class="font-medium mb-3">
+      <p class="font-medium text-gray-900 dark:text-white mb-3">
         {{ index + 1 }}. {{ question }}
       </p>
 
       <!-- Answer options -->
-      <div class="flex justify-between">
-        <label class="flex flex-col items-center">
-          <span class="text-sm">Not at all</span>
-          <input type="radio" :name="'q' + index" :value="0" v-model="responses[index]" />
+      <div class="flex justify-between mt-4">
+        <label class="flex flex-col items-center gap-1">
+          <span class="text-sm text-gray-700 dark:text-gray-300">Not at all</span>
+          <input
+            type="radio"
+            :name="'q' + index"
+            :value="0"
+            v-model="responses[index]"
+            class="accent-primary-500 mt-1"
+          />
         </label>
 
-        <label class="flex flex-col items-center">
-          <span class="text-sm">Several days</span>
-          <input type="radio" :name="'q' + index" :value="1" v-model="responses[index]" />
+        <label class="flex flex-col items-center gap-1">
+          <span class="text-sm text-gray-700 dark:text-gray-300">Several days</span>
+          <input
+            type="radio"
+            :name="'q' + index"
+            :value="1"
+            v-model="responses[index]"
+            class="accent-primary-500 mt-1"
+          />
         </label>
 
-        <label class="flex flex-col items-center">
-          <span class="text-sm">More than half</span>
-          <input type="radio" :name="'q' + index" :value="2" v-model="responses[index]" />
+        <label class="flex flex-col items-center gap-1">
+          <span class="text-sm text-gray-700 dark:text-gray-300">More than half</span>
+          <input
+            type="radio"
+            :name="'q' + index"
+            :value="2"
+            v-model="responses[index]"
+            class="accent-primary-500 mt-1"
+          />
         </label>
 
-        <label class="flex flex-col items-center">
-          <span class="text-sm">Nearly every day</span>
-          <input type="radio" :name="'q' + index" :value="3" v-model="responses[index]" />
+        <label class="flex flex-col items-center gap-1">
+          <span class="text-sm text-gray-700 dark:text-gray-300">Nearly every day</span>
+          <input
+            type="radio"
+            :name="'q' + index"
+            :value="3"
+            v-model="responses[index]"
+            class="accent-primary-500 mt-1"
+          />
         </label>
       </div>
     </div>
 
     <!-- Total Score -->
-    <div class="text-lg font-medium mt-4">
+    <div class="text-lg font-semibold text-gray-900 dark:text-white mt-4">
       Total Score: {{ totalScore }}
     </div>
 
     <!-- Difficulty Question -->
-    <div class="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 shadow-sm mt-4">
-      <p class="font-medium mb-3">
+    <div
+      class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+    >
+      <p class="font-medium text-gray-900 dark:text-white mb-3">
         If you checked off any problems, how difficult have these problems made it for you
         to do your work, take care of things at home, or get along with other people?
       </p>
-      <div class="flex justify-between">
-        <label class="flex flex-col items-center">
-          <span class="text-sm">Not difficult at all</span>
-          <input type="radio" :value="0" v-model="difficulty" />
+      <div class="flex justify-between mt-4">
+        <label class="flex flex-col items-center gap-1">
+          <span class="text-sm text-gray-700 dark:text-gray-300">Not difficult at all</span>
+          <input type="radio" :value="0" v-model="difficulty" class="accent-primary-500 mt-1" />
         </label>
-        <label class="flex flex-col items-center">
-          <span class="text-sm">Somewhat difficult</span>
-          <input type="radio" :value="1" v-model="difficulty" />
+        <label class="flex flex-col items-center gap-1">
+          <span class="text-sm text-gray-700 dark:text-gray-300">Somewhat difficult</span>
+          <input type="radio" :value="1" v-model="difficulty" class="accent-primary-500 mt-1" />
         </label>
-        <label class="flex flex-col items-center">
-          <span class="text-sm">Very difficult</span>
-          <input type="radio" :value="2" v-model="difficulty" />
+        <label class="flex flex-col items-center gap-1">
+          <span class="text-sm text-gray-700 dark:text-gray-300">Very difficult</span>
+          <input type="radio" :value="2" v-model="difficulty" class="accent-primary-500 mt-1" />
         </label>
-        <label class="flex flex-col items-center">
-          <span class="text-sm">Extremely difficult</span>
-          <input type="radio" :value="3" v-model="difficulty" />
+        <label class="flex flex-col items-center gap-1">
+          <span class="text-sm text-gray-700 dark:text-gray-300">Extremely difficult</span>
+          <input type="radio" :value="3" v-model="difficulty" class="accent-primary-500 mt-1" />
         </label>
       </div>
     </div>
 
     <!-- Save and Exit Button -->
-    <div class="mt-auto pt-6">
+    <div class="mt-auto pt-6 flex justify-end">
       <UButton
         label="Save and Exit"
-        color="success"
+        color="error"
         variant="soft"
+        size="lg"
         :loading="isSaving"
         @click="saveForm"
       />
     </div>
 
   </UContainer>
+  </div>
 </template>

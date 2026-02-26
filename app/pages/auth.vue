@@ -53,11 +53,14 @@ async function handleSubmit(event: FormSubmitEvent<any>) {
 </script>
 
 <template>
-  <div class="flex h-full w-full items-center justify-center py-12">
-    <UCard class="w-full max-w-md">
-      <template #header>
-        <div class="flex items-center justify-center text-xl font-bold">Login</div>
-      </template>
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center px-4 py-12">
+    <div
+      class="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+    >
+      <div class="mb-6 text-center">
+        <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Login</h1>
+        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Sign in with your email</p>
+      </div>
 
       <UForm :schema="schema" :state="state" @submit="handleSubmit" class="space-y-5">
         <UFormField name="email" v-if="!isEmailSent">
@@ -74,10 +77,10 @@ async function handleSubmit(event: FormSubmitEvent<any>) {
           />
         </UFormField>
 
-        <UButton loading-auto type="submit" class="w-full justify-center">
+        <UButton loading-auto type="submit" class="w-full justify-center" color="primary">
           {{ isEmailSent ? 'Login' : 'Send OTP' }}
         </UButton>
       </UForm>
-    </UCard>
+    </div>
   </div>
 </template>

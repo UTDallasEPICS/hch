@@ -134,10 +134,17 @@
 </script>
 
 <template>
-  <UContainer class="py-10">
-    <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Tasks to complete:</h1>
+  <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="mb-8">
+      <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
+        Tasks to complete
+      </h1>
+      <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        Complete each form to submit your application.
+      </p>
+    </div>
     <div
-      class="mt-6 flex items-center justify-between px-5 text-sm font-medium text-gray-600 dark:text-gray-300"
+      class="mb-6 flex items-center justify-between px-1 text-sm font-medium text-gray-700 dark:text-gray-300"
     >
       <span>Form</span>
       <span>Progress</span>
@@ -195,9 +202,9 @@
       <span>{{ pclSubmitted ? 'Submitted' : `${pclAnswered}/${pclTotal}` }}</span>
     </UButton>
 
-    <div class="mt-6 flex justify-end">
+    <div class="mt-8 flex justify-end">
       <div v-if="canSubmit" class="flex flex-col items-end gap-2">
-        <p class="text-right text-sm text-red-500">
+        <p class="text-right text-sm text-gray-600 dark:text-gray-400">
           Please verify your answers on the forms are accurate before submission.
         </p>
         <UButton
@@ -209,5 +216,5 @@
         />
       </div>
     </div>
-  </UContainer>
+  </main>
 </template>

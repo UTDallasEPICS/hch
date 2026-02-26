@@ -2,7 +2,7 @@
 @import '@nuxt/ui';
 
 @theme static {
-  /* Primary: #213C4E and palette (light mode) */
+  /* Primary: #213C4E and palette (light mode) — matches forms */
   --color-primary-50: #e8ecef;
   --color-primary-100: #d1d9df;
   --color-primary-200: #a3b3bf;
@@ -16,7 +16,7 @@
   --color-primary-950: #070c12;
 }
 
-/* Dark mode: lighter slate-blue variation of #213C4E for contrast on dark backgrounds */
+/* Dark mode: same palette as forms */
 .dark {
   --color-primary-50: #e2eef5;
   --color-primary-100: #c5dceb;

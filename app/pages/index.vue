@@ -10,11 +10,13 @@
 </script>
 
 <template>
-  <UContainer class="py-10">
+  <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
     <div class="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Dashboard</h1>
-        <p class="mt-1 text-gray-500 dark:text-gray-400">
+        <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
+          Dashboard
+        </h1>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
           Manage your application users and settings.
         </p>
       </div>
@@ -27,18 +29,18 @@
       />
     </div>
 
-    <UCard class="w-full">
-      <template #header>
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <UIcon name="i-heroicons-users-20-solid" class="h-5 w-5 text-gray-500" />
-            <h2 class="text-base leading-7 font-semibold text-gray-900 dark:text-white">
-              Registered Users
-            </h2>
-          </div>
-          <UBadge variant="subtle" color="primary" size="md">{{ users?.length || 0 }} Users</UBadge>
+    <div
+      class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+    >
+      <div class="mb-6 flex items-center justify-between border-b border-gray-200 pb-4 dark:border-gray-800">
+        <div class="flex items-center gap-2">
+          <UIcon name="i-heroicons-users-20-solid" class="h-5 w-5 text-gray-500 dark:text-gray-400" />
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">
+            Registered Users
+          </h2>
         </div>
-      </template>
+        <UBadge variant="subtle" color="primary" size="md">{{ users?.length || 0 }} Users</UBadge>
+      </div>
 
       <div v-if="pending" class="space-y-4">
         <div v-for="i in 3" :key="i" class="flex items-center justify-between py-2">
@@ -80,8 +82,10 @@
           </UBadge>
         </div>
 
-        <div v-if="users?.length === 0" class="py-8 text-center text-gray-500">No users found.</div>
+        <div v-if="users?.length === 0" class="py-8 text-center text-gray-500 dark:text-gray-400">
+          No users found.
+        </div>
       </div>
-    </UCard>
-  </UContainer>
+    </div>
+  </main>
 </template>
