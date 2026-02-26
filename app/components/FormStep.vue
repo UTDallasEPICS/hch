@@ -376,6 +376,60 @@
     if (m.relationship) s += ` (${m.relationship})`
     return s
   }
+
+  // Therapy scholarship person (Q49) - single person, same format as household members
+  const therapyPerson = ref<HouseMember>({
+    firstName: '',
+    middleInitial: '',
+    lastName: '',
+    age: '',
+    relationship: '',
+  })
+
+  function parseTherapyPersonFromQ49(): HouseMember {
+    const raw = form.value.q49 || ''
+    if (!raw.trim()) {
+      return { firstName: '', middleInitial: '', lastName: '', age: '', relationship: '' }
+    }
+    try {
+      const parsed = JSON.parse(raw) as HouseMember
+      if (parsed && typeof parsed === 'object') {
+        return {
+          firstName: String(parsed?.firstName ?? '').trim(),
+          middleInitial: String(parsed?.middleInitial ?? '').trim().slice(0, 1),
+          lastName: String(parsed?.lastName ?? '').trim(),
+          age: String(parsed?.age ?? '').trim(),
+          relationship: String(parsed?.relationship ?? '').trim(),
+        }
+      }
+    } catch {
+      return { firstName: raw, middleInitial: '', lastName: '', age: '', relationship: '' }
+    }
+    return { firstName: '', middleInitial: '', lastName: '', age: '', relationship: '' }
+  }
+
+  function syncTherapyPersonToForm() {
+    const p = therapyPerson.value
+    const hasAny = [p.firstName, p.middleInitial, p.lastName, p.age, p.relationship].some(
+      (s) => (s || '').trim().length > 0
+    )
+    const next = hasAny ? JSON.stringify(therapyPerson.value) : ''
+    if (form.value.q49 !== next) form.value.q49 = next
+  }
+
+  watch(
+    () => form.value.q49,
+    (val) => {
+      therapyPerson.value = parseTherapyPersonFromQ49()
+    },
+    { immediate: true }
+  )
+
+  watch(
+    therapyPerson,
+    () => syncTherapyPersonToForm(),
+    { deep: true }
+  )
 </script>
 
 <template>
@@ -857,11 +911,59 @@
           >48. If seeking scholarship for individual therapy, who are you seeking therapy
           scholarship for?</label
         >
-        <UInput
-          v-model="form.q49"
-          :class="inputClass"
-          placeholder="Name of Person Seeking Therapy"
-        />
+        <div
+          class="mt-2 rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
+        >
+          <div class="flex flex-wrap items-end gap-3">
+            <div class="min-w-[100px] flex-1">
+              <label class="text-xs text-gray-500 dark:text-gray-400">First Name</label>
+              <UInput
+                v-model="therapyPerson.firstName"
+                :class="inputClass"
+                placeholder="First Name"
+                size="sm"
+              />
+            </div>
+            <div class="w-20">
+              <label class="text-xs text-gray-500 dark:text-gray-400">Middle Initial</label>
+              <UInput
+                v-model="therapyPerson.middleInitial"
+                :class="inputClass"
+                placeholder="M.I."
+                size="sm"
+                maxlength="1"
+              />
+            </div>
+            <div class="min-w-[100px] flex-1">
+              <label class="text-xs text-gray-500 dark:text-gray-400">Last Name</label>
+              <UInput
+                v-model="therapyPerson.lastName"
+                :class="inputClass"
+                placeholder="Last Name"
+                size="sm"
+              />
+            </div>
+            <div class="w-16">
+              <label class="text-xs text-gray-500 dark:text-gray-400">Age</label>
+              <UInput
+                v-model="therapyPerson.age"
+                :class="inputClass"
+                placeholder="Age"
+                size="sm"
+                inputmode="numeric"
+              />
+            </div>
+            <div class="min-w-[120px] flex-1">
+              <label class="text-xs text-gray-500 dark:text-gray-400">Relationship</label>
+              <UInput
+                v-model="therapyPerson.relationship"
+                :class="inputClass"
+                placeholder="E.g. Self, Child"
+                size="sm"
+              />
+            </div>
+          </div>
+        </div>
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
