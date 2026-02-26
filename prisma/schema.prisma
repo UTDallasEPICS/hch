@@ -12,6 +12,24 @@ enum Role {
   CLIENT
 }
 
+enum ClientStatus {
+  INCOMPLETE
+  WAITLIST
+  ACTIVE
+  ARCHIVED
+}
+
+model Client {
+  id          String       @id @default(cuid())
+  userId      String       @unique
+  status      ClientStatus @default(INCOMPLETE)
+  therapyWeek Int?         // 0-26, max weeks of therapy
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("client")
+}
+
 model User {
   id              String           @id
   name            String
@@ -35,6 +53,7 @@ model User {
 
   PclForms       PclForm[]
   PclQuestions   PclQuestion[]
+  client         Client?
 
   @@unique([email])
   @@map("user")
