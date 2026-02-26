@@ -5,6 +5,13 @@
   const isTasksPage = computed(() => route.path === '/taskPage')
   const isDashboardPage = computed(() => route.path === '/')
   const isClientsPage = computed(() => route.path === '/clients')
+
+  function goTo(path: string) {
+    if (route.path !== path) {
+      reloadNuxtApp({ path })
+    }
+  }
+
   const isDark = computed({
     get() {
       return colorMode.value === 'dark'
@@ -50,21 +57,21 @@
           <div class="flex items-center gap-2">
             <UButton
               label="Dashboard"
-              to="/"
               color="primary"
               :variant="isDashboardPage ? 'solid' : 'soft'"
+              @click="goTo('/')"
             />
             <UButton
               label="Tasks"
-              to="/taskPage"
               color="primary"
               :variant="isTasksPage ? 'solid' : 'soft'"
+              @click="goTo('/taskPage')"
             />
             <UButton
               label="Clients"
-              to="/clients"
               color="primary"
               :variant="isClientsPage ? 'solid' : 'soft'"
+              @click="goTo('/clients')"
             />
             <UButton
               :icon="isDark ? 'i-heroicons-moon-20-solid' : 'i-heroicons-sun-20-solid'"
@@ -78,7 +85,7 @@
       </header>
 
       <main class="flex-1">
-        <NuxtPage />
+        <NuxtPage :page-key="(r) => r.fullPath" />
       </main>
     </div>
   </UApp>

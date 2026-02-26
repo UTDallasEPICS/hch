@@ -21,10 +21,11 @@
     incompleteForms: string[]
   }
 
-  const statusFilter = ref<string>('')
+  const ALL_STATUS = '__all__'
+  const statusFilter = ref<string>(ALL_STATUS)
 
   const statusOptions = [
-    { label: 'All', value: '' },
+    { label: 'All', value: ALL_STATUS },
     { label: 'Incomplete', value: 'INCOMPLETE' },
     { label: 'Waitlist', value: 'WAITLIST' },
     { label: 'Active', value: 'ACTIVE' },
@@ -33,13 +34,14 @@
 
   const queryParams = computed(() => {
     const params: Record<string, string> = {}
-    if (statusFilter.value) params.status = statusFilter.value
+    if (statusFilter.value && statusFilter.value !== ALL_STATUS) params.status = statusFilter.value
     return params
   })
 
   const { data: clients, pending, error, refresh } = await useFetch<Client[]>('/api/clients', {
     query: queryParams,
     watch: [queryParams],
+    getCachedData: () => undefined,
   })
 
   function displayName(c: Client) {

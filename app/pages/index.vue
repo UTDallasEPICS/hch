@@ -1,7 +1,9 @@
 <script setup lang="ts">
   import { authClient } from '../utils/auth-client'
 
-  const { data: users, pending, error } = await useFetch('/api/get/users')
+  const { data: users, pending, error } = await useFetch('/api/get/users', {
+    getCachedData: () => undefined,
+  })
 
   async function logout() {
     await authClient.signOut()
