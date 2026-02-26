@@ -31,9 +31,10 @@
   const TOTAL_QUESTIONS = 8 // 7 main + 1 difficulty
 
   const completedCount = computed(
-    () => [form.g1, form.g2, form.g3, form.g4, form.g5, form.g6, form.g7, form.g8].filter(
-      (v) => v !== null && v !== undefined
-    ).length
+    () =>
+      [form.g1, form.g2, form.g3, form.g4, form.g5, form.g6, form.g7, form.g8].filter(
+        (v) => v !== null && v !== undefined
+      ).length
   )
   const progressPercent = computed(() =>
     TOTAL_QUESTIONS ? Math.round((completedCount.value / TOTAL_QUESTIONS) * 100) : 0
@@ -127,7 +128,7 @@
             :style="{ width: `${progressPercent}%` }"
           />
         </div>
-      </UCard>
+      </div>
 
       <div class="mb-8">
         <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
@@ -146,7 +147,7 @@
           :key="questionKey"
           class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
         >
-          <p class="font-medium text-gray-900 dark:text-white mb-3">
+          <p class="mb-3 font-medium text-gray-900 dark:text-white">
             {{ index + 1 }}.
             {{
               [
@@ -160,19 +161,15 @@
               ][index]
             }}
           </p>
-          <div class="flex justify-between mt-4">
-            <label
-              v-for="opt in options"
-              :key="opt.value"
-              class="flex flex-col items-center gap-1"
-            >
-              <span class="text-sm text-gray-700 dark:text-gray-300">{{ opt.label }}</span>
+          <div class="mt-4 space-y-3">
+            <label v-for="opt in options" :key="opt.value" class="flex items-center gap-3">
               <input
                 type="radio"
                 :value="opt.value"
                 v-model="form[questionKey as keyof typeof form]"
                 class="accent-primary-500 mt-1"
               />
+              <span class="text-sm text-gray-700 dark:text-gray-300">{{ opt.label }}</span>
             </label>
           </div>
         </div>
@@ -181,22 +178,22 @@
         <div
           class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
         >
-          <p class="font-medium text-gray-900 dark:text-white mb-3">
+          <p class="mb-3 font-medium text-gray-900 dark:text-white">
             If you checked any problems, how difficult have they made it for you?
           </p>
-          <div class="flex justify-between mt-4">
+          <div class="mt-4 space-y-3">
             <label
               v-for="opt in difficultyOptions"
               :key="opt.value"
-              class="flex flex-col items-center gap-1"
+              class="flex items-center gap-3"
             >
-              <span class="text-sm text-gray-700 dark:text-gray-300">{{ opt.label }}</span>
               <input
                 type="radio"
                 :value="opt.value"
                 v-model="form.g8"
                 class="accent-primary-500 mt-1"
               />
+              <span class="text-sm text-gray-700 dark:text-gray-300">{{ opt.label }}</span>
             </label>
           </div>
         </div>
