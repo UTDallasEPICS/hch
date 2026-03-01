@@ -46,6 +46,21 @@
     return 'error'
   }
 
+  function buildPayload() {
+    return {
+      q1: responses.value[0],
+      q2: responses.value[1],
+      q3: responses.value[2],
+      q4: responses.value[3],
+      q5: responses.value[4],
+      q6: responses.value[5],
+      q7: responses.value[6],
+      q8: responses.value[7],
+      q9: responses.value[8],
+      difficulty: difficulty.value,
+    }
+  }
+
   async function saveAndExit() {
     if (isSubmitted.value) {
       await navigateTo('/taskPage')
@@ -57,18 +72,7 @@
 
       await $fetch('/api/phq/save', {
         method: 'POST',
-        body: {
-          q1: responses.value[0],
-          q2: responses.value[1],
-          q3: responses.value[2],
-          q4: responses.value[3],
-          q5: responses.value[4],
-          q6: responses.value[5],
-          q7: responses.value[6],
-          q8: responses.value[7],
-          q9: responses.value[8],
-          difficulty: difficulty.value,
-        },
+        body: buildPayload(),
       })
 
       await navigateTo('/taskPage')
@@ -100,6 +104,12 @@
 
     try {
       isSaving.value = true
+
+      await $fetch('/api/phq/save', {
+        method: 'POST',
+        body: buildPayload(),
+      })
+
       await $fetch('/api/phq/submit', { method: 'POST' })
       isSubmitted.value = true
       toast.add({
@@ -108,10 +118,15 @@
       })
       await navigateTo('/taskPage')
     } catch (error: any) {
+      const isSubmitError =
+        error?.data?.statusMessage === 'Please complete all required questions before submitting'
+
       toast.add({
-        title: 'Submission failed',
+        title: isSubmitError ? 'Incomplete' : 'Submission failed',
         description:
-          error?.data?.statusMessage || error?.statusMessage || 'Could not submit your responses.',
+          error?.data?.statusMessage ||
+          error?.statusMessage ||
+          'Could not save or submit your responses.',
         color: 'error',
       })
     } finally {
@@ -263,11 +278,6 @@
               <span class="text-sm text-gray-700 dark:text-gray-300"> Nearly every day </span>
             </label>
           </div>
-        </div>
-
-        <!-- Total Score -->
-        <div class="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
-          Total Score: {{ totalScore }}
         </div>
 
         <!-- Difficulty Question -->

@@ -203,6 +203,11 @@ export function useFormBySlug(slug: Ref<string> | ComputedRef<string>) {
       return
     }
 
+    if (totalCount.value === 0 || completedCount.value !== totalCount.value) {
+      submitError.value = 'Please complete all questions before submitting.'
+      return
+    }
+
     submitting.value = true
     submitError.value = null
 
@@ -210,7 +215,7 @@ export function useFormBySlug(slug: Ref<string> | ComputedRef<string>) {
       await flushPendingSave()
       await persistResponses()
 
-      await navigateTo(`/forms/${slugValue.value}-results`)
+      await navigateTo('/taskPage')
     } catch (e: unknown) {
       if (e && typeof e === 'object' && 'data' in e) {
         const errorData = e.data as { message?: string }

@@ -114,7 +114,10 @@
         Tasks to complete
       </h1>
       <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-        Complete each form to submit your application.
+        Complete all forms to enter the waitlist.
+      </p>
+      <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+        Once submitted, you can review your responses and results at any time.
       </p>
     </div>
     <div

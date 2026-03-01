@@ -88,6 +88,14 @@
     form.g8 = a.g08
   }
 
+  function buildPayload() {
+    return {
+      answers: form,
+      totalScore: totalScore.value,
+      severity: severity.value,
+    }
+  }
+
   onMounted(async () => {
     const res = await $fetch('/api/gad/start', { method: 'POST' })
 
@@ -118,13 +126,14 @@
 
       isSaving.value = true
 
+      await $fetch('/api/gad/save', {
+        method: 'POST',
+        body: buildPayload(),
+      })
+
       await $fetch('/api/gad/submit', {
         method: 'POST',
-        body: {
-          answers: form,
-          totalScore: totalScore.value,
-          severity: severity.value,
-        },
+        body: buildPayload(),
       })
 
       toast.add({
@@ -137,14 +146,17 @@
       submittedSeverity.value = severity.value
       await navigateTo('/taskPage')
     } catch (error: any) {
+      const isIncompleteError =
+        error?.data?.statusMessage === 'Please complete all required questions before submitting'
+
       const description =
         error?.data?.statusMessage ||
         error?.data?.message ||
         error?.statusMessage ||
-        'Unable to submit your responses.'
+        'Unable to save or submit your responses.'
 
       toast.add({
-        title: 'Submission failed',
+        title: isIncompleteError ? 'Incomplete' : 'Submission failed',
         description,
         color: 'error',
       })
@@ -164,11 +176,7 @@
 
       await $fetch('/api/gad/save', {
         method: 'POST',
-        body: {
-          answers: form,
-          totalScore: totalScore.value,
-          severity: severity.value,
-        },
+        body: buildPayload(),
       })
 
       await navigateTo('/taskPage')

@@ -88,6 +88,9 @@
 
     try {
       isSaving.value = true
+
+      await $fetch('/api/pcl/save', { method: 'POST', body: buildPayload() })
+
       await $fetch('/api/pcl/submit', { method: 'POST' })
       isReadOnly.value = true
       toast.add({
@@ -96,12 +99,15 @@
       })
       await navigateTo('/taskPage')
     } catch (error: any) {
+      const isIncompleteError =
+        error?.data?.statusMessage === 'Please complete all required questions before submitting'
+
       toast.add({
-        title: 'Submission failed',
+        title: isIncompleteError ? 'Incomplete' : 'Submission failed',
         description:
           error?.data?.statusMessage ||
           error?.statusMessage ||
-          'Your answers could not be submitted. Please try again.',
+          'Your answers could not be saved or submitted. Please try again.',
         color: 'error',
       })
     } finally {
