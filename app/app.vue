@@ -2,6 +2,11 @@
   const route = useRoute()
   const colorMode = useColorMode()
 
+  const { data: adminData } = await useFetch<{ isAdmin: boolean }>('/api/user/is-admin', {
+    getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
+  })
+  const isAdmin = computed(() => adminData.value?.isAdmin ?? false)
+
   const isTasksPage = computed(() => route.path === '/taskPage')
   const isDashboardPage = computed(() => route.path === '/')
   const isClientsPage = computed(() => route.path === '/clients' || route.path.startsWith('/clients/'))
@@ -62,6 +67,7 @@
               @click="goTo('/')"
             />
             <UButton
+              v-if="!isAdmin"
               label="Tasks"
               color="primary"
               :variant="isTasksPage ? 'solid' : 'soft'"

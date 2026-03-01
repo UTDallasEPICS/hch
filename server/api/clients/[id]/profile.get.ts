@@ -1,6 +1,7 @@
 import { createError, defineEventHandler, getHeaders, getRouterParam } from 'h3'
 import { auth } from '../../../utils/auth'
 import { prisma } from '../../../utils/prisma'
+import { isAdmin } from '../../../utils/is-admin'
 import {
   isAllFormsComplete,
   getIncompleteForms,
@@ -33,9 +34,13 @@ export default defineEventHandler(async (event) => {
   }
 
   // Allow admin to view any client, or client to view their own (limited)
+  const currentUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true, email: true },
+  })
   const isOwnProfile = session.user.id === clientUserId
-  const isAdmin = session.user.role === 'ADMIN'
-  if (!isOwnProfile && !isAdmin) {
+  const hasAdminAccess = isAdmin(currentUser?.role ?? null, currentUser?.email ?? null)
+  if (!isOwnProfile && !hasAdminAccess) {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 

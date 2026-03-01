@@ -38,7 +38,11 @@
     () => [props.open, props.clientId] as const,
     ([open, id]) => {
       if (open && id) loadProfile()
-      else profile.value = null
+      else {
+        profile.value = null
+        expandedFormKey.value = null
+        formAnswers.value = null
+      }
     }
   )
 
@@ -142,6 +146,40 @@
   }
 
   const absencesEditing = ref(false)
+  const expandedFormKey = ref<string | null>(null)
+  const formAnswers = ref<{
+    formKey: string
+    formName: string
+    questions: { label: string; answer: string }[]
+    submitted?: boolean
+    score?: number | null
+    severity?: string | null
+  } | null>(null)
+  const formAnswersLoading = ref(false)
+
+  async function toggleFormAnswers(formKey: string) {
+    if (expandedFormKey.value === formKey) {
+      expandedFormKey.value = null
+      formAnswers.value = null
+      return
+    }
+    if (!props.clientId) return
+    formAnswersLoading.value = true
+    expandedFormKey.value = formKey
+    try {
+      formAnswers.value = await $fetch(`/api/clients/${props.clientId}/forms/${formKey}`)
+    } catch (e) {
+      toast.add({
+        title: 'Error loading answers',
+        description: (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to load form answers',
+        color: 'error',
+      })
+      formAnswers.value = null
+    } finally {
+      formAnswersLoading.value = false
+    }
+  }
+
   const absencesValue = ref(0)
   const absencesSaving = ref(false)
   watch(
@@ -175,29 +213,15 @@
 <template>
   <UModal
     :open="open"
+    :title="displayName() || 'Client Details'"
     :ui="{
-      width: 'max-w-3xl',
-      body: 'max-h-[80vh] overflow-y-auto p-6',
+      content: 'max-w-3xl w-full',
+      body: 'max-h-[70vh] overflow-y-auto p-6',
     }"
     @update:open="(v: boolean) => !v && emit('close')"
   >
-    <template #header>
-      <div class="flex items-center justify-between">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-          {{ displayName() || 'Client Details' }}
-        </h2>
-        <UButton
-          icon="i-heroicons-x-mark"
-          color="neutral"
-          variant="ghost"
-          size="sm"
-          aria-label="Close"
-          @click="emit('close')"
-        />
-      </div>
-    </template>
-
-    <div v-if="!clientId" class="py-8 text-center text-gray-500">
+    <template #body>
+      <div v-if="!clientId" class="py-8 text-center text-gray-500">
       No client selected.
     </div>
     <div v-else-if="pending" class="space-y-4 py-4">
@@ -246,17 +270,59 @@
           <UIcon name="i-heroicons-clipboard-document-list" class="h-4 w-4" />
           Client Tasks
         </h3>
-        <div class="space-y-2">
+        <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+          Click a form to view the client's answers.
+        </p>
+        <div class="space-y-1">
           <div
             v-for="task in profile.tasks"
             :key="task.key"
-            class="flex justify-between rounded border border-gray-200 px-3 py-2 dark:border-gray-700"
+            class="rounded border border-gray-200 dark:border-gray-700"
           >
-            <span class="font-medium">{{ task.name }}</span>
-            <span class="text-sm text-gray-600">
-              {{ task.submitted ? 'Submitted' : `${task.answered}/${task.total}` }}
-              <span v-if="task.submitted && task.severity"> • {{ task.severity }}</span>
-            </span>
+            <button
+              type="button"
+              class="flex w-full items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+              @click="toggleFormAnswers(task.key)"
+            >
+              <span class="font-medium">{{ task.name }}</span>
+              <span class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                {{ task.submitted ? 'Submitted' : `${task.answered}/${task.total}` }}
+                <span v-if="task.submitted && task.severity"> • {{ task.severity }}</span>
+                <UIcon
+                  :name="expandedFormKey === task.key ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'"
+                  class="h-4 w-4 shrink-0"
+                />
+              </span>
+            </button>
+            <div
+              v-if="expandedFormKey === task.key"
+              class="border-t border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
+            >
+              <div v-if="formAnswersLoading" class="flex justify-center py-4">
+                <UIcon name="i-heroicons-arrow-path" class="h-6 w-6 animate-spin text-gray-400" />
+              </div>
+              <div v-else-if="formAnswers" class="space-y-3">
+                <div v-if="formAnswers.score != null || formAnswers.severity" class="mb-3 flex gap-3 text-sm">
+                  <span v-if="formAnswers.score != null" class="font-medium">
+                    Score: {{ formAnswers.score }}
+                  </span>
+                  <span v-if="formAnswers.severity" class="text-gray-600 dark:text-gray-400">
+                    {{ formAnswers.severity }}
+                  </span>
+                </div>
+                <div v-if="formAnswers.questions?.length" class="max-h-64 space-y-2 overflow-y-auto">
+                  <div
+                    v-for="(q, i) in formAnswers.questions"
+                    :key="i"
+                    class="rounded border border-gray-200 bg-white p-3 text-sm dark:border-gray-700 dark:bg-gray-900"
+                  >
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ q.label }}</p>
+                    <p class="mt-1 text-gray-900 dark:text-gray-100">{{ q.answer || '—' }}</p>
+                  </div>
+                </div>
+                <p v-else class="text-sm text-gray-500">No answers yet.</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -355,5 +421,6 @@
         </template>
       </section>
     </div>
+    </template>
   </UModal>
 </template>

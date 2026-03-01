@@ -1,5 +1,13 @@
 <script setup lang="ts">
   import { useFormStore } from '~/stores/formStore'
+
+  const { data: adminData } = await useFetch<{ isAdmin: boolean }>('/api/user/is-admin', {
+    getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
+  })
+  if (adminData.value?.isAdmin) {
+    await navigateTo('/', { replace: true })
+  }
+
   const { form } = useFormStore()
   const answered = ref(0)
   const total = ref(50)

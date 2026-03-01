@@ -1,6 +1,7 @@
 import { createError, defineEventHandler, getHeaders, getRouterParam, readBody } from 'h3'
 import { auth } from '../../../utils/auth'
 import { prisma } from '../../../utils/prisma'
+import { isAdmin } from '../../../utils/is-admin'
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
@@ -12,7 +13,11 @@ export default defineEventHandler(async (event) => {
   if (!session?.user?.id) {
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
   }
-  if (session.user.role !== 'ADMIN') {
+  const currentUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true, email: true },
+  })
+  if (!isAdmin(currentUser?.role ?? null, currentUser?.email ?? null)) {
     throw createError({ statusCode: 403, statusMessage: 'Admin only' })
   }
 
