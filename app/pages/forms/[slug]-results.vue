@@ -1,8 +1,34 @@
 <script setup lang="ts">
+  type ResultQuestion = {
+    id: string
+    text: string
+    type: string
+    alias: string
+    order: number
+  }
+
+  type ResultsPayload = {
+    form: {
+      id: string
+      title: string
+      description: string | null
+      slug: string
+      questions: ResultQuestion[]
+    }
+    responses: Record<string, string>
+    score: number
+    completedAt: string | null
+    totalQuestions: number
+  }
+
   const route = useRoute()
   const slug = computed(() => route.params.slug as string)
 
-  const { data: result, pending, error } = await useFetch(() => `/api/forms/${slug.value}/results`)
+  const {
+    data: result,
+    pending,
+    error,
+  } = await useFetch<ResultsPayload>(() => `/api/forms/${slug.value}/results`)
 
   const form = computed(() => result.value?.form)
   const responses = computed(() => result.value?.responses || {})
@@ -18,33 +44,33 @@
   function getScoreInterpretation(aceScore: number): {
     level: string
     description: string
-    color: string
+    color: 'success' | 'warning' | 'error'
   } {
     if (aceScore === 0) {
       return {
         level: 'Low Risk',
         description: 'No adverse childhood experiences reported.',
-        color: 'emerald',
+        color: 'success',
       }
     } else if (aceScore >= 1 && aceScore <= 3) {
       return {
         level: 'Moderate Risk',
         description: 'Some adverse childhood experiences reported. Consider support resources.',
-        color: 'amber',
+        color: 'warning',
       }
     } else if (aceScore >= 4 && aceScore <= 6) {
       return {
         level: 'High Risk',
         description:
           'Multiple adverse childhood experiences reported. Professional support recommended.',
-        color: 'orange',
+        color: 'warning',
       }
     } else {
       return {
         level: 'Very High Risk',
         description:
           'Many adverse childhood experiences reported. Strongly recommend professional support.',
-        color: 'red',
+        color: 'error',
       }
     }
   }
@@ -77,6 +103,13 @@
 
       <template v-else-if="form">
         <!-- Header -->
+        <div
+          v-if="form.slug === 'ace-form'"
+          class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-green-800"
+        >
+          You have already completed this assessment.
+        </div>
+
         <div class="mb-8">
           <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
             {{ form.title }} - Results
@@ -144,10 +177,10 @@
                     <UBadge
                       :color="
                         getAnswerText(q.alias) === 'Yes'
-                          ? 'emerald'
+                          ? 'success'
                           : getAnswerText(q.alias) === 'No'
-                            ? 'gray'
-                            : 'amber'
+                            ? 'neutral'
+                            : 'warning'
                       "
                       variant="subtle"
                       size="sm"

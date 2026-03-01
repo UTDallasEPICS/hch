@@ -2,6 +2,8 @@
   const toast = useToast()
   const isSaving = ref(false)
   const isSubmitted = ref(false)
+  const submittedScore = ref<number | null>(null)
+  const submittedSeverity = ref<string | null>(null)
   const isComplete = computed(() => completedCount.value === TOTAL_QUESTIONS)
 
   const form = reactive({
@@ -63,6 +65,17 @@
     return 'Severe'
   })
 
+  const resultScore = computed(() => submittedScore.value ?? totalScore.value)
+  const resultSeverity = computed(() => submittedSeverity.value ?? severity.value)
+
+  function getSeverityColor(level: string | null) {
+    if (level === 'Minimal') return 'success'
+    if (level === 'Mild') return 'warning'
+    if (level === 'Moderate') return 'warning'
+    if (level === 'Severe') return 'error'
+    return 'neutral'
+  }
+
   function applySavedAnswers(a: any) {
     if (!a) return
     form.g1 = a.g01
@@ -82,6 +95,8 @@
 
     if (res?.status === 'SUBMITTED') {
       isSubmitted.value = true
+      submittedScore.value = typeof res?.totalScore === 'number' ? res.totalScore : null
+      submittedSeverity.value = typeof res?.severity === 'string' ? res.severity : null
     }
   })
 
@@ -118,6 +133,8 @@
       })
 
       isSubmitted.value = true
+      submittedScore.value = totalScore.value
+      submittedSeverity.value = severity.value
       await navigateTo('/taskPage')
     } catch (error: any) {
       const description =
@@ -135,12 +152,47 @@
       isSaving.value = false
     }
   }
+
+  async function saveAndExit() {
+    if (isSubmitted.value) {
+      await navigateTo('/taskPage')
+      return
+    }
+
+    try {
+      isSaving.value = true
+
+      await $fetch('/api/gad/save', {
+        method: 'POST',
+        body: {
+          answers: form,
+          totalScore: totalScore.value,
+          severity: severity.value,
+        },
+      })
+
+      await navigateTo('/taskPage')
+    } catch (error: any) {
+      const description =
+        error?.data?.statusMessage ||
+        error?.data?.message ||
+        error?.statusMessage ||
+        'Unable to save your responses.'
+
+      toast.add({
+        title: 'Save failed',
+        description,
+        color: 'error',
+      })
+    } finally {
+      isSaving.value = false
+    }
+  }
 </script>
 
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
     <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-      ```
       <!-- Already Submitted Message -->
       <div
         v-if="isSubmitted"
@@ -150,7 +202,7 @@
       </div>
 
       <!-- Progress -->
-      <div class="mb-6">
+      <div v-if="!isSubmitted" class="mb-6">
         <div class="flex items-center justify-between text-sm">
           <span class="font-medium text-gray-700 dark:text-gray-300">
             {{ progressPercent }}% Complete
@@ -177,6 +229,33 @@
           Over the last <span class="font-medium">two weeks</span>, how often have you been bothered
           by the following problems?
         </p>
+      </div>
+
+      <div
+        v-if="isSubmitted"
+        class="mb-8 rounded-xl border border-gray-200 bg-white p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+      >
+        <div class="text-center">
+          <div class="mb-4">
+            <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Your Score</span>
+          </div>
+          <div class="mb-4">
+            <span class="text-primary-600 dark:text-primary-400 text-6xl font-bold">
+              {{ resultScore }}
+            </span>
+            <span class="ml-2 text-2xl text-gray-500 dark:text-gray-400">/ 21</span>
+          </div>
+          <div class="mt-6">
+            <UBadge
+              :color="getSeverityColor(resultSeverity)"
+              size="lg"
+              variant="subtle"
+              class="mb-2"
+            >
+              {{ resultSeverity }} Anxiety
+            </UBadge>
+          </div>
+        </div>
       </div>
 
       <form @submit.prevent="submitForm">
@@ -243,27 +322,42 @@
               </label>
             </div>
           </div>
-
-          <!-- Submit -->
-          <div
-            v-if="!isComplete"
-            class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800"
-          >
-            Please answer all questions before submitting.
-          </div>
-          <div class="flex justify-end">
-            <UButton
-              type="submit"
-              label="Submit Assessment"
-              color="primary"
-              size="lg"
-              :loading="isSaving"
-              :disabled="!isComplete"
-            />
-          </div>
         </fieldset>
+
+        <!-- Submit -->
+        <div
+          v-if="!isSubmitted && !isComplete"
+          class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800"
+        >
+          Please answer all questions before submitting.
+        </div>
+        <div class="mt-8 flex justify-end gap-3">
+          <UButton
+            v-if="isSubmitted"
+            label="Back to Tasks"
+            variant="outline"
+            size="lg"
+            @click="saveAndExit"
+          />
+          <UButton
+            v-else
+            label="Save and Exit"
+            color="error"
+            variant="soft"
+            size="lg"
+            :loading="isSaving"
+            @click="saveAndExit"
+          />
+          <UButton
+            v-if="!isSubmitted && isComplete"
+            type="submit"
+            label="Submit"
+            color="primary"
+            size="lg"
+            :loading="isSaving"
+          />
+        </div>
       </form>
     </main>
-    ```
   </div>
 </template>

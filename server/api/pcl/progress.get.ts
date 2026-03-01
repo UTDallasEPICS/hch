@@ -3,6 +3,7 @@ import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
 
 const TOTAL_QUESTIONS = 20
+const TOTAL_ITEMS = 21
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
@@ -34,7 +35,7 @@ export default defineEventHandler(async (event) => {
   if (!questions) {
     return {
       answered: 0,
-      total: TOTAL_QUESTIONS,
+      total: TOTAL_ITEMS,
       submitted: false,
     }
   }
@@ -48,9 +49,13 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  if (typeof questions.worstEvent === 'string' && questions.worstEvent.trim().length > 0) {
+    answered += 1
+  }
+
   return {
     answered,
-    total: TOTAL_QUESTIONS,
+    total: TOTAL_ITEMS,
     submitted: form.status === 'COMPLETE',
   }
 })

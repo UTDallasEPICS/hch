@@ -1,6 +1,7 @@
 <script setup lang="ts">
   const toast = useToast()
   const isSaving = ref(false)
+  const isSubmitted = ref(false)
 
   const questions = [
     'Little interest or pleasure in doing things',
@@ -26,8 +27,31 @@
   const totalScore = computed(() =>
     responses.value.reduce((sum, val) => sum + (val >= 0 ? val : 0), 0)
   )
+  const isComplete = computed(() => completedCount.value === TOTAL_ITEMS)
 
-  async function saveForm() {
+  const severity = computed(() => {
+    const s = totalScore.value
+    if (s <= 4) return 'Minimal'
+    if (s <= 9) return 'Mild'
+    if (s <= 14) return 'Moderate'
+    if (s <= 19) return 'Moderately Severe'
+    return 'Severe'
+  })
+
+  function getSeverityColor(level: string) {
+    if (level === 'Minimal') return 'success'
+    if (level === 'Mild') return 'warning'
+    if (level === 'Moderate') return 'warning'
+    if (level === 'Moderately Severe') return 'error'
+    return 'error'
+  }
+
+  async function saveAndExit() {
+    if (isSubmitted.value) {
+      await navigateTo('/taskPage')
+      return
+    }
+
     try {
       isSaving.value = true
 
@@ -59,6 +83,42 @@
     }
   }
 
+  async function submitForm() {
+    if (isSubmitted.value) {
+      await navigateTo('/taskPage')
+      return
+    }
+
+    if (!isComplete.value) {
+      toast.add({
+        title: 'Incomplete',
+        description: 'Please answer all questions before submitting.',
+        color: 'error',
+      })
+      return
+    }
+
+    try {
+      isSaving.value = true
+      await $fetch('/api/phq/submit', { method: 'POST' })
+      isSubmitted.value = true
+      toast.add({
+        title: 'Assessment completed',
+        color: 'success',
+      })
+      await navigateTo('/taskPage')
+    } catch (error: any) {
+      toast.add({
+        title: 'Submission failed',
+        description:
+          error?.data?.statusMessage || error?.statusMessage || 'Could not submit your responses.',
+        color: 'error',
+      })
+    } finally {
+      isSaving.value = false
+    }
+  }
+
   onMounted(async () => {
     try {
       const data = await $fetch('/api/phq/start', {
@@ -76,9 +136,13 @@
           data.answers.q7 ?? -1,
           data.answers.q8 ?? -1,
           data.answers.q9 ?? -1,
-          difficulty.value = data.answers.difficulty ?? -1
         ]
+
+        difficulty.value =
+          typeof data.answers.difficulty === 'number' ? data.answers.difficulty : null
       }
+
+      isSubmitted.value = Boolean(data?.submitted)
     } catch (error) {
       console.error('Failed to load saved answers')
     }
@@ -88,7 +152,14 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
     <UContainer class="flex max-w-3xl flex-col gap-6 py-10">
-      <div class="mb-2">
+      <div
+        v-if="isSubmitted"
+        class="mt-4 rounded-lg border border-green-200 bg-green-50 p-4 text-green-800"
+      >
+        You have already completed this assessment.
+      </div>
+
+      <div v-if="!isSubmitted" class="mb-2">
         <div class="flex items-center justify-between text-sm">
           <span class="font-medium text-gray-700 dark:text-gray-300"
             >{{ progressPercent }}% Complete</span
@@ -109,113 +180,160 @@
         PHQ-9 - Patient Health Questionnaire-9
       </h1>
 
+      <div
+        v-if="isSubmitted"
+        class="rounded-xl border border-gray-200 bg-white p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+      >
+        <div class="text-center">
+          <div class="mb-4">
+            <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Your Score</span>
+          </div>
+          <div class="mb-4">
+            <span class="text-primary-600 dark:text-primary-400 text-6xl font-bold">
+              {{ totalScore }}
+            </span>
+            <span class="ml-2 text-2xl text-gray-500 dark:text-gray-400">/ 27</span>
+          </div>
+          <div class="mt-6">
+            <UBadge :color="getSeverityColor(severity)" size="lg" variant="subtle" class="mb-2">
+              {{ severity }} Depression
+            </UBadge>
+          </div>
+        </div>
+      </div>
+
       <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
         Over the last 2 weeks, how often have you been bothered by any of the following problems?
       </p>
 
       <!-- Questions -->
-      <div
-        v-for="(question, index) in questions"
-        :key="index"
-        class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-      >
-        <p class="mb-3 font-medium text-gray-900 dark:text-white">
-          {{ index + 1 }}. {{ question }}
-        </p>
+      <fieldset :disabled="isSubmitted" class="contents">
+        <div
+          v-for="(question, index) in questions"
+          :key="index"
+          class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+        >
+          <p class="mb-3 font-medium text-gray-900 dark:text-white">
+            {{ index + 1 }}. {{ question }}
+          </p>
 
-        <!-- Answer options -->
-        <div class="mt-4 space-y-3">
-          <label class="flex items-center gap-3">
-            <input
-              type="radio"
-              :name="'q' + index"
-              :value="0"
-              v-model="responses[index]"
-              class="accent-primary-500"
-            />
-            <span class="text-sm text-gray-700 dark:text-gray-300"> Not at all </span>
-          </label>
+          <!-- Answer options -->
+          <div class="mt-4 space-y-3">
+            <label class="flex items-center gap-3">
+              <input
+                type="radio"
+                :name="'q' + index"
+                :value="0"
+                v-model="responses[index]"
+                class="accent-primary-500"
+              />
+              <span class="text-sm text-gray-700 dark:text-gray-300"> Not at all </span>
+            </label>
 
-          <label class="flex items-center gap-3">
-            <input
-              type="radio"
-              :name="'q' + index"
-              :value="1"
-              v-model="responses[index]"
-              class="accent-primary-500"
-            />
-            <span class="text-sm text-gray-700 dark:text-gray-300"> Several days </span>
-          </label>
+            <label class="flex items-center gap-3">
+              <input
+                type="radio"
+                :name="'q' + index"
+                :value="1"
+                v-model="responses[index]"
+                class="accent-primary-500"
+              />
+              <span class="text-sm text-gray-700 dark:text-gray-300"> Several days </span>
+            </label>
 
-          <label class="flex items-center gap-3">
-            <input
-              type="radio"
-              :name="'q' + index"
-              :value="2"
-              v-model="responses[index]"
-              class="accent-primary-500"
-            />
-            <span class="text-sm text-gray-700 dark:text-gray-300"> More than half </span>
-          </label>
+            <label class="flex items-center gap-3">
+              <input
+                type="radio"
+                :name="'q' + index"
+                :value="2"
+                v-model="responses[index]"
+                class="accent-primary-500"
+              />
+              <span class="text-sm text-gray-700 dark:text-gray-300"> More than half </span>
+            </label>
 
-          <label class="flex items-center gap-3">
-            <input
-              type="radio"
-              :name="'q' + index"
-              :value="3"
-              v-model="responses[index]"
-              class="accent-primary-500"
-            />
-            <span class="text-sm text-gray-700 dark:text-gray-300"> Nearly every day </span>
-          </label>
+            <label class="flex items-center gap-3">
+              <input
+                type="radio"
+                :name="'q' + index"
+                :value="3"
+                v-model="responses[index]"
+                class="accent-primary-500"
+              />
+              <span class="text-sm text-gray-700 dark:text-gray-300"> Nearly every day </span>
+            </label>
+          </div>
         </div>
-      </div>
 
-      <!-- Total Score -->
-      <div class="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
-        Total Score: {{ totalScore }}
-      </div>
-
-      <!-- Difficulty Question -->
-      <div
-        class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-      >
-        <p class="mb-3 font-medium text-gray-900 dark:text-white">
-          If you checked off any problems, how difficult have these problems made it for you to do
-          your work, take care of things at home, or get along with other people?
-        </p>
-        <div class="mt-4 space-y-3">
-          <label class="flex items-center gap-3">
-            <input type="radio" :value="0" v-model="difficulty" class="accent-primary-500" />
-            <span class="text-sm text-gray-700 dark:text-gray-300"> Not difficult at all </span>
-          </label>
-
-          <label class="flex items-center gap-3">
-            <input type="radio" :value="1" v-model="difficulty" class="accent-primary-500" />
-            <span class="text-sm text-gray-700 dark:text-gray-300"> Somewhat difficult </span>
-          </label>
-
-          <label class="flex items-center gap-3">
-            <input type="radio" :value="2" v-model="difficulty" class="accent-primary-500" />
-            <span class="text-sm text-gray-700 dark:text-gray-300"> Very difficult </span>
-          </label>
-
-          <label class="flex items-center gap-3">
-            <input type="radio" :value="3" v-model="difficulty" class="accent-primary-500" />
-            <span class="text-sm text-gray-700 dark:text-gray-300"> Extremely difficult </span>
-          </label>
+        <!-- Total Score -->
+        <div class="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
+          Total Score: {{ totalScore }}
         </div>
+
+        <!-- Difficulty Question -->
+        <div
+          class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+        >
+          <p class="mb-3 font-medium text-gray-900 dark:text-white">
+            If you checked off any problems, how difficult have these problems made it for you to do
+            your work, take care of things at home, or get along with other people?
+          </p>
+          <div class="mt-4 space-y-3">
+            <label class="flex items-center gap-3">
+              <input type="radio" :value="0" v-model="difficulty" class="accent-primary-500" />
+              <span class="text-sm text-gray-700 dark:text-gray-300"> Not difficult at all </span>
+            </label>
+
+            <label class="flex items-center gap-3">
+              <input type="radio" :value="1" v-model="difficulty" class="accent-primary-500" />
+              <span class="text-sm text-gray-700 dark:text-gray-300"> Somewhat difficult </span>
+            </label>
+
+            <label class="flex items-center gap-3">
+              <input type="radio" :value="2" v-model="difficulty" class="accent-primary-500" />
+              <span class="text-sm text-gray-700 dark:text-gray-300"> Very difficult </span>
+            </label>
+
+            <label class="flex items-center gap-3">
+              <input type="radio" :value="3" v-model="difficulty" class="accent-primary-500" />
+              <span class="text-sm text-gray-700 dark:text-gray-300"> Extremely difficult </span>
+            </label>
+          </div>
+        </div>
+      </fieldset>
+
+      <div
+        v-if="!isSubmitted && !isComplete"
+        class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800"
+      >
+        Please answer all questions before submitting.
       </div>
 
       <!-- Save and Exit Button -->
-      <div class="mt-auto flex justify-end pt-6">
+      <div class="mt-auto flex justify-end gap-3 pt-6">
         <UButton
+          v-if="isSubmitted"
+          label="Back to Tasks"
+          variant="outline"
+          size="lg"
+          @click="saveAndExit"
+        />
+        <UButton
+          v-else
           label="Save and Exit"
           color="error"
           variant="soft"
           size="lg"
           :loading="isSaving"
-          @click="saveForm"
+          @click="saveAndExit"
+        />
+        <UButton
+          v-if="!isSubmitted && isComplete"
+          label="Submit"
+          color="primary"
+          size="lg"
+          :loading="isSaving"
+          @click="submitForm"
         />
       </div>
     </UContainer>

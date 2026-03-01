@@ -100,9 +100,8 @@
     })
   })
 
-  const completedStepsCount = computed(
-    () => sectionState.value.filter((s) => s.completed).length
-  )
+  const completedStepsCount = computed(() => sectionState.value.filter((s) => s.completed).length)
+  const isComplete = computed(() => completedStepsCount.value === TOTAL_STEPS)
   const progressPercent = computed(() =>
     TOTAL_STEPS ? Math.round((completedStepsCount.value / TOTAL_STEPS) * 100) : 0
   )
@@ -176,6 +175,49 @@
     }
   }
 
+  async function submitForm() {
+    if (isReadOnly.value) {
+      await navigateTo('/taskPage')
+      return
+    }
+
+    if (!isComplete.value) {
+      toast.add({
+        title: 'Incomplete',
+        description: 'Please answer all required questions before submitting.',
+        color: 'error',
+      })
+      return
+    }
+
+    try {
+      isSaving.value = true
+      const saved = await persistProgress(true)
+      if (!saved) {
+        return
+      }
+
+      await $fetch('/api/application/submit', { method: 'POST' })
+      isReadOnly.value = true
+      toast.add({
+        title: 'Application submitted',
+        color: 'success',
+      })
+      await navigateTo('/taskPage')
+    } catch (error: any) {
+      toast.add({
+        title: 'Submission failed',
+        description:
+          error?.data?.statusMessage ||
+          error?.statusMessage ||
+          'Your application could not be submitted. Please try again.',
+        color: 'error',
+      })
+    } finally {
+      isSaving.value = false
+    }
+  }
+
   async function goNext() {
     if (currentStep.value >= TOTAL_STEPS) return
 
@@ -192,6 +234,17 @@
       await persistProgress(true)
     }
     currentStep.value -= 1
+  }
+
+  async function goToStep(stepNumber: number) {
+    if (stepNumber < 1 || stepNumber > TOTAL_STEPS) return
+    if (stepNumber === currentStep.value) return
+
+    if (!isReadOnly.value) {
+      await persistProgress(true)
+    }
+
+    currentStep.value = stepNumber
   }
 
   onBeforeRouteLeave(async () => {
@@ -229,6 +282,13 @@
     class="min-h-screen bg-gray-50 py-6 text-gray-900 sm:py-10 dark:bg-gray-950 dark:text-gray-100"
   >
     <UContainer class="max-w-3xl">
+      <div
+        v-if="isReadOnly"
+        class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-green-800"
+      >
+        You have already completed this assessment.
+      </div>
+
       <div class="mb-6 sm:mb-8">
         <div v-if="!isReadOnly" class="mb-4">
           <div class="flex items-center justify-between text-sm">
@@ -261,6 +321,7 @@
         :steps="wizardSteps"
         :current-step="currentStep"
         :step-states="stepStates"
+        @select-step="goToStep"
       />
 
       <UCard
@@ -309,13 +370,31 @@
               />
             </div>
             <UButton
-              :label="isReadOnly ? 'Back to Tasks' : 'Save and Exit'"
+              v-if="isReadOnly"
+              label="Back to Tasks"
+              variant="outline"
+              size="lg"
+              class="min-w-[120px] justify-center text-center"
+              @click="saveAndExit"
+            />
+            <UButton
+              v-else
+              label="Save and Exit"
               color="error"
               variant="soft"
               size="md"
               :loading="isSaving"
               class="min-w-[120px] justify-center text-center"
               @click="saveAndExit"
+            />
+            <UButton
+              v-if="!isReadOnly && isComplete"
+              label="Submit"
+              color="primary"
+              size="md"
+              :loading="isSaving"
+              class="min-w-[120px] justify-center text-center"
+              @click="submitForm"
             />
           </div>
         </template>
