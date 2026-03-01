@@ -46,7 +46,7 @@ async function handleSubmit(event: FormSubmitEvent<any>) {
     if (error) {
       toast.add({ title: 'Error', description: error.message, color: 'error' })
     } else {
-      await navigateTo('/')
+      await navigateTo('/', { external: true })
     }
   }
 }
