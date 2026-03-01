@@ -1,6 +1,7 @@
 import { createError, defineEventHandler, getHeaders, getQuery } from 'h3'
 import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
+import { isAdmin } from '../../utils/is-admin'
 import { isAllFormsComplete, getIncompleteForms } from '../../utils/client-forms'
 import { parseName } from '../../utils/name'
 import type { ClientStatus } from '../../../../prisma/generated/client'
@@ -16,6 +17,17 @@ export default defineEventHandler(async (event) => {
     throw createError({
       statusCode: 401,
       statusMessage: 'Unauthorized',
+    })
+  }
+
+  const currentUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true, email: true },
+  })
+  if (!isAdmin(currentUser?.role ?? null, currentUser?.email ?? null)) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Forbidden',
     })
   }
 

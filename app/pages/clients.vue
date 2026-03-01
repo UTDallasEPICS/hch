@@ -1,4 +1,6 @@
 <script setup lang="ts">
+  definePageMeta({ middleware: 'clients-admin' })
+
   type ClientStatus = 'INCOMPLETE' | 'WAITLIST' | 'ACTIVE' | 'ARCHIVED'
 
   const FORM_LABELS: Record<string, string> = {

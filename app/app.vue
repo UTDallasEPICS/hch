@@ -74,6 +74,7 @@
               @click="goTo('/taskPage')"
             />
             <UButton
+              v-if="isAdmin"
               label="Clients"
               color="primary"
               :variant="isClientsPage ? 'solid' : 'soft'"
