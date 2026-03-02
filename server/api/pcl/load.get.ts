@@ -55,6 +55,8 @@ export default defineEventHandler(async (event) => {
     formId: existingForm.id,
     created,
     submitted: existingForm.status === 'COMPLETE',
+    totalScore: existingForm.totalScore,
+    severity: existingForm.severity,
     answers: existingQuestions,
   }
 })

@@ -131,6 +131,10 @@ export function useFormBySlug(slug: Ref<string> | ComputedRef<string>) {
     }, 500)
   }
 
+  function clearResponses() {
+    responses.value = {}
+  }
+
   onBeforeRouteLeave(async () => {
     await flushPendingSave()
   })
@@ -214,6 +218,9 @@ export function useFormBySlug(slug: Ref<string> | ComputedRef<string>) {
     try {
       await flushPendingSave()
       await persistResponses()
+      await $fetch(`/api/forms/${slugValue.value}/submit`, {
+        method: 'POST',
+      })
 
       await navigateTo('/taskPage')
     } catch (e: unknown) {

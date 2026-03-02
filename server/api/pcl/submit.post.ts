@@ -93,9 +93,9 @@ export default defineEventHandler(async (event) => {
     },
     data: {
       status: 'COMPLETE',
-      submittedAt: new Date(),
       totalScore,
       severity,
+      submittedAt: new Date(),
     },
   })
 

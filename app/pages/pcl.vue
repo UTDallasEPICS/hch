@@ -3,6 +3,8 @@
   const isSaving = ref(false)
   const isReadOnly = ref(false)
   const worstEvent = ref('')
+  const submittedScore = ref<number | null>(null)
+  const submittedSeverity = ref<string | null>(null)
 
   const questions = [
     'Repeated, disturbing, and unwanted memories of the stressful experience?',
@@ -38,6 +40,20 @@
   const progressPercent = computed(() =>
     TOTAL_ITEMS ? Math.round((completedCount.value / TOTAL_ITEMS) * 100) : 0
   )
+
+  const fallbackScore = computed(() =>
+    responses.value.reduce((sum, value) => sum + (value >= 0 ? value : 0), 0)
+  )
+  const resultScore = computed(() => submittedScore.value ?? fallbackScore.value)
+  const resultSeverity = computed(() => submittedSeverity.value ?? 'Minimal')
+
+  function getSeverityColor(level: string | null) {
+    if (level === 'Minimal') return 'success'
+    if (level === 'Mild') return 'warning'
+    if (level === 'Moderate') return 'warning'
+    if (level === 'Severe') return 'error'
+    return 'neutral'
+  }
 
   function buildPayload() {
     const body: Record<string, number | string | null> = { worstEvent: worstEvent.value }
@@ -117,10 +133,15 @@
 
   onMounted(async () => {
     try {
-      const data = await $fetch<{ answers?: Record<string, any>; submitted?: boolean }>(
-        '/api/pcl/load'
-      )
+      const data = await $fetch<{
+        answers?: Record<string, any>
+        submitted?: boolean
+        totalScore?: number | null
+        severity?: string | null
+      }>('/api/pcl/load')
       isReadOnly.value = Boolean(data?.submitted)
+      submittedScore.value = typeof data?.totalScore === 'number' ? data.totalScore : null
+      submittedSeverity.value = typeof data?.severity === 'string' ? data.severity : null
       if (data?.answers) {
         for (let i = 1; i <= 20; i++) {
           const key = `q${String(i).padStart(2, '0')}`
@@ -183,6 +204,33 @@
         <p v-else class="text-primary-600 dark:text-primary-400 mt-1 mb-3 text-sm font-medium">
           Submitted form (view only).
         </p>
+      </div>
+
+      <div
+        v-if="isReadOnly"
+        class="mb-8 rounded-xl border border-gray-200 bg-white p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+      >
+        <div class="text-center">
+          <div class="mb-4">
+            <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Your Score</span>
+          </div>
+          <div class="mb-4">
+            <span class="text-primary-600 dark:text-primary-400 text-6xl font-bold">
+              {{ resultScore }}
+            </span>
+            <span class="ml-2 text-2xl text-gray-500 dark:text-gray-400">/ 80</span>
+          </div>
+          <div class="mt-6">
+            <UBadge
+              :color="getSeverityColor(resultSeverity)"
+              size="lg"
+              variant="subtle"
+              class="mb-2"
+            >
+              {{ resultSeverity }}
+            </UBadge>
+          </div>
+        </div>
       </div>
 
       <div

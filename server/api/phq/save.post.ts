@@ -15,7 +15,7 @@ type AnswersBody = {
   difficulty?: number
 }
 
-const TOTAL_QUESTIONS = 10
+const TOTAL_QUESTIONS = 9
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
@@ -74,19 +74,19 @@ export default defineEventHandler(async (event) => {
   const data: Record<string, number | null> = {}
   let totalScore = 0
   for (let index = 1; index <= TOTAL_QUESTIONS; index += 1) {
-    const dbKey = `q${(index)}`
+    const dbKey = `q${index}`
     const payloadKey = `q${index}` as keyof AnswersBody
     const value = body?.[payloadKey]
-    data[dbKey] = typeof value === 'number' ? value : null
-    data["difficulty"] = typeof body?.difficulty === "number" ? body.difficulty : null
+    const normalized = typeof value === 'number' && value >= 0 ? value : null
+    data[dbKey] = normalized
+    if (typeof normalized === 'number') {
+      totalScore += normalized
+    }
   }
 
-  let severity: string | null = null
-  if (totalScore <= 4) severity = 'Minimal or None'
-  else if (totalScore <= 9) severity = 'Mild'
-  else if (totalScore <= 14) severity = 'Moderate'
-  else if (totalScore <= 19) severity = 'Moderately Severe'
-  else severity = 'Severe'
+  const normalizedDifficulty =
+    typeof body?.difficulty === 'number' && body.difficulty >= 0 ? body.difficulty : null
+  data.difficulty = normalizedDifficulty
 
   await prisma.phqQuestion.update({
     where: { id: existingQuestions.id },
@@ -99,9 +99,8 @@ export default defineEventHandler(async (event) => {
       status: 'IN_PROGRESS',
       submittedAt: null,
       totalScore,
-      severity,
     },
   })
 
-  return { saved: true } 
+  return { saved: true }
 })
