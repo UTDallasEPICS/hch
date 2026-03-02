@@ -325,6 +325,7 @@ model PhqForm {
   userId      String       @unique
   status      String       @default("IN_PROGRESS")
   totalScore  Int?
+  severity    String?
   submittedAt DateTime?
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   questions   PhqQuestion?
@@ -358,6 +359,8 @@ model PclForm {
   id          Int          @id @default(autoincrement())
   userId      String
   status      String       @default("IN_PROGRESS")
+  totalScore  Int?
+  severity    String?
   submittedAt DateTime?
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   questions   PclQuestion?

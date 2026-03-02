@@ -144,12 +144,17 @@ export default defineEventHandler(async (event) => {
       label: q.text,
       answer: responses[q.alias] ?? '',
     }))
+    const score = Object.values(responses).filter((v) => v === 'Yes' || v === 'true').length
+    const severity =
+      score === 0 ? 'No reported ACEs' : score <= 3 ? 'Intermediate risk' : 'High risk'
     return {
       formKey: 'ace',
       formName: 'ACE',
       questions,
       submitted: !!aceResponse?.responses,
       completedAt: aceResponse?.completedAt,
+      score,
+      severity,
     }
   }
 
@@ -212,9 +217,18 @@ export default defineEventHandler(async (event) => {
     })
     const q = pclForm?.questions
     if (!q) {
-      return { formKey: 'pcl', formName: 'PCL-5', questions: [], submitted: false }
+      return { formKey: 'pcl', formName: 'PCL-5', questions: [], submitted: false, score: null, severity: null }
     }
     const questions: { label: string; answer: string }[] = []
+    let totalScore = pclForm?.totalScore ?? null
+    if (totalScore == null) {
+      totalScore = 0
+      for (let i = 1; i <= 20; i++) {
+        const key = `q${String(i).padStart(2, '0')}` as keyof typeof q
+        const val = q[key]
+        totalScore += typeof val === 'number' ? val : 0
+      }
+    }
     for (let i = 1; i <= 20; i++) {
       const key = `q${String(i).padStart(2, '0')}` as keyof typeof q
       const val = q[key]
@@ -223,12 +237,21 @@ export default defineEventHandler(async (event) => {
         questions.push({ label: `Item ${i}`, answer: String(numVal) })
       }
     }
+    let severity = pclForm?.severity ?? null
+    if (!severity && totalScore > 0) {
+      if (totalScore > 60) severity = 'Severe'
+      else if (totalScore > 40) severity = 'Moderate'
+      else if (totalScore > 20) severity = 'Mild'
+      else severity = 'Minimal'
+    }
     return {
       formKey: 'pcl',
       formName: 'PCL-5',
       questions,
       submitted: pclForm?.status === 'COMPLETE',
       submittedAt: pclForm?.submittedAt,
+      score: pclForm?.status === 'COMPLETE' ? totalScore : null,
+      severity,
     }
   }
 

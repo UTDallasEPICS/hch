@@ -67,6 +67,19 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  let totalScore = 0
+  for (let index = 1; index <= 9; index += 1) {
+    const key = `q${index}` as keyof typeof form.questions
+    const value = form.questions[key]
+    totalScore += typeof value === 'number' ? value : 0
+  }
+
+  let severity = 'Minimal or None'
+  if (totalScore > 19) severity = 'Severe'
+  else if (totalScore > 14) severity = 'Moderately Severe'
+  else if (totalScore > 9) severity = 'Moderate'
+  else if (totalScore > 4) severity = 'Mild'
+
   await prisma.phqForm.update({
     where: {
       id: form.id,
@@ -74,6 +87,8 @@ export default defineEventHandler(async (event) => {
     data: {
       status: 'COMPLETE',
       submittedAt: new Date(),
+      totalScore,
+      severity,
     },
   })
 

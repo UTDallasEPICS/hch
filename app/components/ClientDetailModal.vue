@@ -288,6 +288,7 @@
               <span class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 {{ task.submitted ? 'Submitted' : `${task.answered}/${task.total}` }}
                 <span v-if="task.submitted && task.severity"> • {{ task.severity }}</span>
+                <span v-else-if="task.submitted && task.score != null"> • Score: {{ task.score }}</span>
                 <UIcon
                   :name="expandedFormKey === task.key ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'"
                   class="h-4 w-4 shrink-0"

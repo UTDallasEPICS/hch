@@ -316,6 +316,9 @@
                 <span v-if="task.submitted && task.severity" class="ml-1">
                   • {{ task.severity }}
                 </span>
+                <span v-else-if="task.submitted && task.score != null" class="ml-1">
+                  • Score: {{ task.score }}
+                </span>
               </span>
             </div>
           </div>

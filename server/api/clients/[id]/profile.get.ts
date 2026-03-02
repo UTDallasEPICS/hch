@@ -162,6 +162,58 @@ export default defineEventHandler(async (event) => {
   const allFormsComplete = await isAllFormsComplete(prisma, clientUserId)
   const incompleteForms = await getIncompleteForms(prisma, clientUserId)
 
+  // ACE score: count of "Yes" answers; severity per interpretation breakdown
+  const aceScore = aceSubmitted
+    ? Object.values(aceResponses).filter((v) => v === 'Yes' || v === 'true').length
+    : null
+  const aceSeverity =
+    aceScore != null
+      ? aceScore === 0
+        ? 'No reported ACEs'
+        : aceScore <= 3
+          ? 'Intermediate risk'
+          : 'High risk'
+      : null
+
+  // PHQ totalScore: compute from questions if not stored (backward compat)
+  let phqScore = phqForm?.totalScore ?? null
+  let phqSeverity = phqForm?.severity ?? null
+  if (phqScore == null && phqQuestions) {
+    let sum = 0
+    for (let i = 1; i <= 9; i++) {
+      const key = `q${i}` as keyof typeof phqQuestions
+      const v = phqQuestions[key]
+      sum += typeof v === 'number' ? v : 0
+    }
+    phqScore = sum > 0 ? sum : null
+    if (phqScore != null) {
+      if (phqScore > 19) phqSeverity = 'Severe'
+      else if (phqScore > 14) phqSeverity = 'Moderately Severe'
+      else if (phqScore > 9) phqSeverity = 'Moderate'
+      else if (phqScore > 4) phqSeverity = 'Mild'
+      else phqSeverity = 'Minimal or None'
+    }
+  }
+
+  // PCL totalScore: compute from questions if not stored (backward compat)
+  let pclScore = pclForm?.totalScore ?? null
+  let pclSeverity = pclForm?.severity ?? null
+  if (pclScore == null && pclQuestions) {
+    let sum = 0
+    for (let i = 1; i <= PCL_TOTAL; i++) {
+      const key = `q${String(i).padStart(2, '0')}` as keyof typeof pclQuestions
+      const v = pclQuestions[key]
+      sum += typeof v === 'number' ? v : 0
+    }
+    pclScore = sum > 0 ? sum : null
+    if (pclScore != null) {
+      if (pclScore > 60) pclSeverity = 'Severe'
+      else if (pclScore > 40) pclSeverity = 'Moderate'
+      else if (pclScore > 20) pclSeverity = 'Mild'
+      else pclSeverity = 'Minimal'
+    }
+  }
+
   const tasks = [
     {
       key: 'application',
@@ -178,6 +230,8 @@ export default defineEventHandler(async (event) => {
       answered: aceAnswered,
       total: aceQuestions.length,
       submitted: aceSubmitted,
+      score: aceScore,
+      severity: aceSeverity,
     },
     {
       key: 'gad',
@@ -196,7 +250,8 @@ export default defineEventHandler(async (event) => {
       answered: phqAnswered,
       total: PHQ_TOTAL,
       submitted: phqForm?.status === 'COMPLETE',
-      score: phqForm?.totalScore ?? null,
+      score: phqScore,
+      severity: phqSeverity,
     },
     {
       key: 'pcl',
@@ -205,6 +260,8 @@ export default defineEventHandler(async (event) => {
       answered: pclAnswered,
       total: PCL_TOTAL,
       submitted: pclForm?.status === 'COMPLETE',
+      score: pclScore,
+      severity: pclSeverity,
     },
   ]
 

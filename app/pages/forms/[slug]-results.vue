@@ -22,28 +22,20 @@
   } {
     if (aceScore === 0) {
       return {
-        level: 'Low Risk',
+        level: 'No reported ACEs',
         description: 'No adverse childhood experiences reported.',
         color: 'emerald',
       }
     } else if (aceScore >= 1 && aceScore <= 3) {
       return {
-        level: 'Moderate Risk',
-        description: 'Some adverse childhood experiences reported. Consider support resources.',
+        level: 'Intermediate risk',
+        description: 'Intermediate risk for toxic stress.',
         color: 'amber',
-      }
-    } else if (aceScore >= 4 && aceScore <= 6) {
-      return {
-        level: 'High Risk',
-        description:
-          'Multiple adverse childhood experiences reported. Professional support recommended.',
-        color: 'orange',
       }
     } else {
       return {
-        level: 'Very High Risk',
-        description:
-          'Many adverse childhood experiences reported. Strongly recommend professional support.',
+        level: 'High risk',
+        description: 'High risk for toxic stress and negative health outcomes.',
         color: 'red',
       }
     }

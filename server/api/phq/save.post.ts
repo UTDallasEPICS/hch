@@ -72,12 +72,22 @@ export default defineEventHandler(async (event) => {
   const body = await readBody<AnswersBody>(event)
 
   const data: Record<string, number | null> = {}
+  let totalScore = 0
   for (let index = 1; index <= TOTAL_QUESTIONS; index += 1) {
     const dbKey = `q${(index)}`
     const payloadKey = `q${index}` as keyof AnswersBody
     const value = body?.[payloadKey]
-    data[dbKey] = typeof value === 'number' ? value : null
+    const numVal = typeof value === 'number' ? value : null
+    data[dbKey] = numVal
+    if (index <= 9) totalScore += numVal ?? 0
   }
+
+  let severity: string | null = null
+  if (totalScore <= 4) severity = 'Minimal or None'
+  else if (totalScore <= 9) severity = 'Mild'
+  else if (totalScore <= 14) severity = 'Moderate'
+  else if (totalScore <= 19) severity = 'Moderately Severe'
+  else severity = 'Severe'
 
   await prisma.phqQuestion.update({
     where: { id: existingQuestions.id },
@@ -89,6 +99,8 @@ export default defineEventHandler(async (event) => {
     data: {
       status: 'IN_PROGRESS',
       submittedAt: null,
+      totalScore,
+      severity,
     },
   })
 
