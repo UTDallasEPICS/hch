@@ -1,48 +1,20 @@
-import { Param } from '@prisma/client/runtime/client'
 import { prisma } from '../server/utils/prisma'
 
 async function main() {
   console.log('Start seeding...')
 
-  // 1. Create a User with a Password (Local Auth)
+  // Create a User
   const user1 = await prisma.user.create({
     data: {
-      id: 'user_01',
-      name: 'Alice Developer',
-      email: 'alice@a.com',
-      emailVerified: true,
-      accounts: {
-        create: {
-          id: 'acc_01',
-          accountId: 'alice_local_id',
-          providerId: 'credential', // Common for email/password
-          password: 'hashed_password_here', // In a real app, hash this!
-        },
-      },
-    },
+      name: "Sample Name", // modify this fit your needs
+      email: "email@example.com"
+    }
   })
 
-  // 2. Create a User with an OAuth Account (e.g., Google)
-  const user2 = await prisma.user.create({
-    data: {
-      id: 'user_02',
-      name: 'Bob Tester',
-      email: 'bob@b.com',
-      emailVerified: true,
-      accounts: {
-        create: {
-          id: 'acc_02',
-          accountId: 'bob_google_id',
-          providerId: 'google',
-          accessToken: 'mock_access_token',
-        },
-      },
-    },
-  })
-
-  console.log({ user1, user2 })
+  console.log({ user1 })
   console.log('Seeding finished.')
 }
+// You can seed other models in your db as well depending on project needs
 
 main()
   .then(async () => {
