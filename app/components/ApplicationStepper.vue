@@ -8,6 +8,14 @@
     currentStep: number
     stepStates?: Array<'upcoming' | 'current' | 'completed' | 'incomplete'>
   }>()
+
+  const emit = defineEmits<{
+    'step-click': [step: number]
+  }>()
+
+  function goToStep(step: number) {
+    emit('step-click', step)
+  }
 </script>
 
 <template>

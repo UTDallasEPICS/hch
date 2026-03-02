@@ -34,6 +34,7 @@ export default defineEventHandler(async (event) => {
       total: TOTAL,
       totalScore: form?.totalScore ?? null,
       severity: form?.severity ?? null,
+      submitted: false,
     }
   }
 

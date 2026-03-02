@@ -238,6 +238,7 @@ export function useFormBySlug(slug: Ref<string> | ComputedRef<string>) {
     totalCount,
     progressPercent,
     setResponse,
+    clearResponses,
     submitting,
     submitError,
     saveAndExit,

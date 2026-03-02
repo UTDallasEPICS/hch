@@ -11,6 +11,7 @@
     totalCount,
     progressPercent,
     setResponse,
+    clearResponses,
     submitting,
     submitError,
     saveAndExit,
@@ -58,7 +59,7 @@
         icon="i-heroicons-exclamation-triangle-20-solid"
         color="error"
         variant="subtle"
-        title="Form not found"
+        title="Form Not Found"
         :description="
           formError?.message || 'Invalid form URL. Please check the link and try again.'
         "

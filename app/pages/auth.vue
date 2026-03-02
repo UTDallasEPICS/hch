@@ -59,7 +59,7 @@
     >
       <div class="mb-6 text-center">
         <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Login</h1>
-        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Sign in with your email</p>
+        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Sign in with your email.</p>
       </div>
 
       <UForm :schema="schema" :state="state" @submit="handleSubmit" class="space-y-5">

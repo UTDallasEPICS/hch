@@ -12,10 +12,106 @@
 
   const { form, first_name } = useFormStore()
 
+  const ADDRESS_DELIMITER = '|||'
+
   const phoneNumber = computed({
     get: () => form.value.q5,
     set: (value: string) => {
-      form.value.q5 = value.replace(/\D+/g, '')
+      form.value.q5 = value.replace(/\D+/g, '').slice(0, 10)
+    },
+  })
+
+  const phoneDigitsCount = computed(() => (form.value.q5 || '').replace(/\D/g, '').length)
+  const isPhoneValid = computed(() => phoneDigitsCount.value === 10)
+
+  function setAddressParts(street: string, city: string, state: string, zip: string) {
+    const all = [street, city, state, zip].map((s) => (s || '').trim())
+    form.value.q8 = all.every((s) => !s) ? '' : all.join(ADDRESS_DELIMITER)
+  }
+
+  const addressStreet = computed({
+    get: () => {
+      const parts = (form.value.q8 || '').split(ADDRESS_DELIMITER)
+      return parts[0] ?? ''
+    },
+    set: (v: string) => {
+      const parts = (form.value.q8 || '').split(ADDRESS_DELIMITER)
+      setAddressParts(v, parts[1] ?? '', parts[2] ?? '', parts[3] ?? '')
+    },
+  })
+  const addressCity = computed({
+    get: () => {
+      const parts = (form.value.q8 || '').split(ADDRESS_DELIMITER)
+      return parts[1] ?? ''
+    },
+    set: (v: string) => {
+      const parts = (form.value.q8 || '').split(ADDRESS_DELIMITER)
+      setAddressParts(parts[0] ?? '', v, parts[2] ?? '', parts[3] ?? '')
+    },
+  })
+  const addressState = computed({
+    get: () => {
+      const parts = (form.value.q8 || '').split(ADDRESS_DELIMITER)
+      return parts[2] ?? ''
+    },
+    set: (v: string) => {
+      const parts = (form.value.q8 || '').split(ADDRESS_DELIMITER)
+      setAddressParts(parts[0] ?? '', parts[1] ?? '', v, parts[3] ?? '')
+    },
+  })
+  const addressZip = computed({
+    get: () => {
+      const parts = (form.value.q8 || '').split(ADDRESS_DELIMITER)
+      return parts[3] ?? ''
+    },
+    set: (v: string) => {
+      const parts = (form.value.q8 || '').split(ADDRESS_DELIMITER)
+      setAddressParts(parts[0] ?? '', parts[1] ?? '', parts[2] ?? '', v)
+    },
+  })
+
+  function setChildAddressParts(street: string, city: string, state: string, zip: string) {
+    const all = [street, city, state, zip].map((s) => (s || '').trim())
+    form.value.q13 = all.every((s) => !s) ? '' : all.join(ADDRESS_DELIMITER)
+  }
+  const childAddressStreet = computed({
+    get: () => {
+      const parts = (form.value.q13 || '').split(ADDRESS_DELIMITER)
+      return parts[0] ?? ''
+    },
+    set: (v: string) => {
+      const parts = (form.value.q13 || '').split(ADDRESS_DELIMITER)
+      setChildAddressParts(v, parts[1] ?? '', parts[2] ?? '', parts[3] ?? '')
+    },
+  })
+  const childAddressCity = computed({
+    get: () => {
+      const parts = (form.value.q13 || '').split(ADDRESS_DELIMITER)
+      return parts[1] ?? ''
+    },
+    set: (v: string) => {
+      const parts = (form.value.q13 || '').split(ADDRESS_DELIMITER)
+      setChildAddressParts(parts[0] ?? '', v, parts[2] ?? '', parts[3] ?? '')
+    },
+  })
+  const childAddressState = computed({
+    get: () => {
+      const parts = (form.value.q13 || '').split(ADDRESS_DELIMITER)
+      return parts[2] ?? ''
+    },
+    set: (v: string) => {
+      const parts = (form.value.q13 || '').split(ADDRESS_DELIMITER)
+      setChildAddressParts(parts[0] ?? '', parts[1] ?? '', v, parts[3] ?? '')
+    },
+  })
+  const childAddressZip = computed({
+    get: () => {
+      const parts = (form.value.q13 || '').split(ADDRESS_DELIMITER)
+      return parts[3] ?? ''
+    },
+    set: (v: string) => {
+      const parts = (form.value.q13 || '').split(ADDRESS_DELIMITER)
+      setChildAddressParts(parts[0] ?? '', parts[1] ?? '', parts[2] ?? '', v)
     },
   })
 
@@ -165,6 +261,175 @@
   const inputClass = 'mt-2 w-full'
   const groupClass =
     'mt-2 !group:border-gray-300 !group:bg-white dark:!group:border-gray-600 dark:!group:bg-gray-800'
+
+  // Household members (Q16)
+  type HouseMember = {
+    firstName: string
+    middleInitial: string
+    lastName: string
+    age: string
+    relationship: string
+  }
+
+  function parseMembersFromQ16(): HouseMember[] {
+    const raw = form.value.q16 || ''
+    if (!raw.trim()) return []
+    try {
+      const parsed = JSON.parse(raw) as HouseMember[]
+      if (Array.isArray(parsed)) {
+        return parsed.map((m) => ({
+          firstName: String(m?.firstName ?? '').trim(),
+          middleInitial: String(m?.middleInitial ?? '').trim().slice(0, 1),
+          lastName: String(m?.lastName ?? '').trim(),
+          age: String(m?.age ?? '').trim(),
+          relationship: String(m?.relationship ?? '').trim(),
+        }))
+      }
+    } catch {
+      // Legacy format: "Name, age" per line or "Name" per line
+    }
+    return raw
+      .split(/\n+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const m = line.match(/^(.+?)(?:\s*,\s*(\d+)(?:\s*-\s*(.+))?)?\s*$/)
+        const namePart = m ? m[1] ?? line : line
+        const agePart = m?.[2] ?? ''
+        const relPart = m?.[3] ?? ''
+        const nameParts = namePart.split(/\s+/).filter(Boolean)
+        const firstName = nameParts[0] ?? ''
+        const lastName = nameParts.length > 1 ? (nameParts[nameParts.length - 1] ?? '') : ''
+        const middleInitial =
+          nameParts.length >= 3 ? (nameParts[1] ?? '').replace(/\.$/, '').slice(0, 1) : ''
+        return {
+          firstName,
+          middleInitial,
+          lastName,
+          age: agePart,
+          relationship: relPart,
+        }
+      })
+  }
+
+  const houseMembers = ref<HouseMember[]>([])
+  const newMember = ref<HouseMember>({
+    firstName: '',
+    middleInitial: '',
+    lastName: '',
+    age: '',
+    relationship: '',
+  })
+
+  function syncMembersToForm() {
+    form.value.q16 =
+      houseMembers.value.length > 0 ? JSON.stringify(houseMembers.value) : ''
+  }
+
+  watch(
+    () => form.value.q16,
+    (val) => {
+      const parsed = parseMembersFromQ16()
+      if (val && val.trim().startsWith('[')) {
+        houseMembers.value = parsed
+      } else if (!val || !val.trim()) {
+        houseMembers.value = []
+      }
+    },
+    { immediate: true }
+  )
+
+  function addCurrentMember() {
+    const m = newMember.value
+    if (!m.firstName.trim() && !m.lastName.trim()) return
+    houseMembers.value = [
+      ...houseMembers.value,
+      {
+        firstName: m.firstName.trim(),
+        middleInitial: m.middleInitial.trim().slice(0, 1),
+        lastName: m.lastName.trim(),
+        age: m.age.trim(),
+        relationship: m.relationship.trim(),
+      },
+    ]
+    newMember.value = {
+      firstName: '',
+      middleInitial: '',
+      lastName: '',
+      age: '',
+      relationship: '',
+    }
+    syncMembersToForm()
+  }
+
+  function removeMember(index: number) {
+    houseMembers.value = houseMembers.value.filter((_, i) => i !== index)
+    syncMembersToForm()
+  }
+
+  function formatMemberLabel(m: HouseMember): string {
+    const parts = [m.firstName, m.middleInitial ? `${m.middleInitial}.` : '', m.lastName].filter(
+      Boolean
+    )
+    let s = parts.join(' ')
+    if (m.age) s += `, ${m.age}`
+    if (m.relationship) s += ` (${m.relationship})`
+    return s
+  }
+
+  // Therapy scholarship person (Q49) - single person, same format as household members
+  const therapyPerson = ref<HouseMember>({
+    firstName: '',
+    middleInitial: '',
+    lastName: '',
+    age: '',
+    relationship: '',
+  })
+
+  function parseTherapyPersonFromQ49(): HouseMember {
+    const raw = form.value.q49 || ''
+    if (!raw.trim()) {
+      return { firstName: '', middleInitial: '', lastName: '', age: '', relationship: '' }
+    }
+    try {
+      const parsed = JSON.parse(raw) as HouseMember
+      if (parsed && typeof parsed === 'object') {
+        return {
+          firstName: String(parsed?.firstName ?? '').trim(),
+          middleInitial: String(parsed?.middleInitial ?? '').trim().slice(0, 1),
+          lastName: String(parsed?.lastName ?? '').trim(),
+          age: String(parsed?.age ?? '').trim(),
+          relationship: String(parsed?.relationship ?? '').trim(),
+        }
+      }
+    } catch {
+      return { firstName: raw, middleInitial: '', lastName: '', age: '', relationship: '' }
+    }
+    return { firstName: '', middleInitial: '', lastName: '', age: '', relationship: '' }
+  }
+
+  function syncTherapyPersonToForm() {
+    const p = therapyPerson.value
+    const hasAny = [p.firstName, p.middleInitial, p.lastName, p.age, p.relationship].some(
+      (s) => (s || '').trim().length > 0
+    )
+    const next = hasAny ? JSON.stringify(therapyPerson.value) : ''
+    if (form.value.q49 !== next) form.value.q49 = next
+  }
+
+  watch(
+    () => form.value.q49,
+    (val) => {
+      therapyPerson.value = parseTherapyPersonFromQ49()
+    },
+    { immediate: true }
+  )
+
+  watch(
+    therapyPerson,
+    () => syncTherapyPersonToForm(),
+    { deep: true }
+  )
 </script>
 
 <template>
@@ -179,23 +444,27 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">2. First Name</label>
-        <UInput v-model="first_name" :class="inputClass" placeholder="First name" />
+        <UInput v-model="first_name" :class="inputClass" placeholder="First Name" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">3. Last Name</label>
-        <UInput v-model="form.q3" :class="inputClass" placeholder="Last name" />
+        <UInput v-model="form.q3" :class="inputClass" placeholder="Last Name" />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">4. Phone number</label>
+        <label class="text-sm font-semibold text-gray-200">4. Phone Number</label>
         <UInput
           v-model="phoneNumber"
           type="text"
           inputmode="numeric"
           pattern="[0-9]*"
+          maxlength="10"
           :class="inputClass"
-          placeholder="Phone number"
+          placeholder="10 digits"
           @keydown="blockNonNumericInput"
         />
+        <p v-if="phoneDigitsCount > 0 && !isPhoneValid" class="mt-1 text-sm text-amber-600 dark:text-amber-400">
+          Phone Number must be exactly 10 digits.
+        </p>
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">5. Gender</label>
@@ -209,16 +478,25 @@
           :class="inputClass + ' [color-scheme:light] dark:[color-scheme:dark]'"
         />
       </div>
-      <div>
-        <label class="text-sm font-semibold text-gray-200"
-          >7. Address (Street, Apt, City, State, Zip)</label
+      <div class="space-y-4">
+        <div>
+          <label class="text-sm font-semibold text-gray-200">7. Address</label>
+          <UInput
+            v-model="addressStreet"
+            :class="inputClass"
+            placeholder="Street Address, Apt/Unit"
+          />
+        </div>
+        <div
+          class="rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
         >
-        <UTextarea
-          v-model="form.q8"
-          :class="inputClass"
-          :rows="3"
-          placeholder="Street address, Apt/Unit, City, State, Zip Code"
-        />
+          <label class="mb-3 block text-sm font-semibold text-gray-200">City, State, Zip</label>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <UInput v-model="addressCity" :class="inputClass" placeholder="City" />
+            <UInput v-model="addressState" :class="inputClass" placeholder="State" />
+            <UInput v-model="addressZip" :class="inputClass" placeholder="Zip Code" />
+          </div>
+        </div>
       </div>
     </template>
 
@@ -226,11 +504,11 @@
     <template v-else-if="step === 2">
       <div>
         <label class="text-sm font-semibold text-gray-200">8. Child's First Name</label>
-        <UInput v-model="form.q9" :class="inputClass" placeholder="Child's first name" />
+        <UInput v-model="form.q9" :class="inputClass" placeholder="Child's First Name" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">9. Child's Last Name</label>
-        <UInput v-model="form.q10" :class="inputClass" placeholder="Child's last name" />
+        <UInput v-model="form.q10" :class="inputClass" placeholder="Child's Last Name" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">10. Child's Date of Birth</label>
@@ -244,21 +522,32 @@
         <label class="text-sm font-semibold text-gray-200">11. Gender (Child)</label>
         <URadioGroup v-model="form.q12" :class="groupClass" :items="GENDER_OPTIONS" />
       </div>
-      <div>
-        <label class="text-sm font-semibold text-gray-200">12. Child's address</label>
-        <UTextarea
-          v-model="form.q13"
-          :class="inputClass"
-          :rows="3"
-          placeholder="Street address, City, State, Zip"
-        />
+      <div class="space-y-4">
+        <div>
+          <label class="text-sm font-semibold text-gray-200">12. Child's Address</label>
+          <UInput
+            v-model="childAddressStreet"
+            :class="inputClass"
+            placeholder="Street Address, Apt/Unit"
+          />
+        </div>
+        <div
+          class="rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
+        >
+          <label class="mb-3 block text-sm font-semibold text-gray-200">City, State, Zip</label>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <UInput v-model="childAddressCity" :class="inputClass" placeholder="City" />
+            <UInput v-model="childAddressState" :class="inputClass" placeholder="State" />
+            <UInput v-model="childAddressZip" :class="inputClass" placeholder="Zip Code" />
+          </div>
+        </div>
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">13. Medical Diagnosis</label>
         <UInput
           v-model="form.q14"
           :class="inputClass"
-          placeholder="e.g. type of cancer or condition"
+          placeholder="E.g. type of cancer or condition"
         />
       </div>
       <div>
@@ -271,18 +560,110 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >15. Please list all members who live in the home (first name, last name, and age)</label
+          >15. Please list all members who live in the home</label
         >
-        <UTextarea
-          v-model="form.q16"
-          :class="inputClass"
-          :rows="3"
-          placeholder="First name, last name, and age for each member"
-        />
+        <div class="mt-2 space-y-4">
+          <div
+            class="rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
+          >
+            <div class="mb-3 flex items-center justify-between">
+              <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                Add Members
+              </p>
+              <UButton
+                icon="i-heroicons-plus-20-solid"
+                color="primary"
+                variant="soft"
+                size="sm"
+                aria-label="Add member"
+                @click="addCurrentMember"
+              />
+            </div>
+            <div class="flex flex-wrap items-end gap-3">
+              <div class="min-w-[100px] flex-1">
+                <label class="text-xs text-gray-500 dark:text-gray-400">First Name</label>
+                <UInput
+                  v-model="newMember.firstName"
+                  :class="inputClass"
+                  placeholder="First Name"
+                  size="sm"
+                />
+              </div>
+              <div class="w-20">
+                <label class="text-xs text-gray-500 dark:text-gray-400">Middle Initial</label>
+                <UInput
+                  v-model="newMember.middleInitial"
+                  :class="inputClass"
+                  placeholder="M.I."
+                  size="sm"
+                  maxlength="1"
+                />
+              </div>
+              <div class="min-w-[100px] flex-1">
+                <label class="text-xs text-gray-500 dark:text-gray-400">Last Name</label>
+                <UInput
+                  v-model="newMember.lastName"
+                  :class="inputClass"
+                  placeholder="Last Name"
+                  size="sm"
+                />
+              </div>
+              <div class="w-16">
+                <label class="text-xs text-gray-500 dark:text-gray-400">Age</label>
+                <UInput
+                  v-model="newMember.age"
+                  :class="inputClass"
+                  placeholder="Age"
+                  size="sm"
+                  inputmode="numeric"
+                />
+              </div>
+              <div class="min-w-[120px] flex-1">
+                <label class="text-xs text-gray-500 dark:text-gray-400">Relationship</label>
+                <UInput
+                  v-model="newMember.relationship"
+                  :class="inputClass"
+                  placeholder="E.g. Parent, Sibling"
+                  size="sm"
+                />
+              </div>
+              <UButton
+                icon="i-heroicons-check-20-solid"
+                color="primary"
+                variant="soft"
+                size="lg"
+                aria-label="Add member"
+                @click="addCurrentMember"
+              />
+            </div>
+          </div>
+          <div v-if="houseMembers.length > 0" class="space-y-2">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+              {{ houseMembers.length }} Member(s) Added
+            </p>
+            <ul class="space-y-1.5">
+              <li
+                v-for="(m, idx) in houseMembers"
+                :key="idx"
+                class="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800"
+              >
+                <span>{{ formatMemberLabel(m) }}</span>
+                <UButton
+                  icon="i-heroicons-x-mark-20-solid"
+                  color="error"
+                  variant="ghost"
+                  size="xs"
+                  aria-label="Remove"
+                  @click="removeMember(idx)"
+                />
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >16. Does child reside with both biological parents?</label
+          >16. Does the Child Reside with Both Biological Parents?</label
         >
         <URadioGroup v-model="form.q17" :class="groupClass" :items="YES_NO_OTHER_OPTIONS" />
         <UInput
@@ -290,18 +671,18 @@
           v-model="form.q17Text"
           :class="inputClass"
           class="mt-2"
-          placeholder="(please specify)"
+          placeholder="(Please Specify)"
         />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">17. Who has custody of the child?</label>
+        <label class="text-sm font-semibold text-gray-200">17. Who Has Custody of the Child?</label>
         <UCheckboxGroup v-model="form.q18" :class="groupClass" :items="CUSTODY_OPTIONS" />
         <UInput
           v-if="form.q18.includes('other')"
           v-model="form.q18Other"
           :class="inputClass"
           class="mt-2"
-          placeholder="(please specify)"
+          placeholder="(Please Specify)"
         />
       </div>
     </template>
@@ -309,7 +690,7 @@
     <!-- Step 3: Guardian (Q19–36) -->
     <template v-else-if="step === 3">
       <div>
-        <label class="text-sm font-semibold text-gray-200">18. Are you the primary contact?</label>
+        <label class="text-sm font-semibold text-gray-200">18. Are You the Primary Contact?</label>
         <URadioGroup v-model="form.q19" :class="groupClass" :items="YES_NO_OPTIONS" />
       </div>
       <h3 class="mb-2 border-b border-gray-600 pb-2 text-base font-semibold text-gray-100">
@@ -323,30 +704,37 @@
         <label class="text-sm font-semibold text-gray-200">20. Legal Mother's Last Name</label
         ><UInput v-model="form.q21" :class="inputClass" placeholder="Last name" />
       </div>
-      <div>
-        <label class="text-sm font-semibold text-gray-200">21. Legal Mother's Street Address</label
-        ><UInput v-model="form.q22" :class="inputClass" placeholder="Street address" />
-      </div>
-      <div class="grid gap-4 sm:grid-cols-3">
+      <div class="space-y-4">
         <div>
-          <label class="text-sm font-semibold text-gray-200">22. City</label
-          ><UInput v-model="form.q23" :class="inputClass" placeholder="City" />
+          <label class="text-sm font-semibold text-gray-200">21. Legal Mother's Address</label>
+          <UInput v-model="form.q22" :class="inputClass" placeholder="Street Address" />
         </div>
-        <div>
-          <label class="text-sm font-semibold text-gray-200">23. State</label
-          ><UInput v-model="form.q24" :class="inputClass" placeholder="State" />
-        </div>
-        <div>
-          <label class="text-sm font-semibold text-gray-200">24. Zip Code</label
-          ><UInput
-            v-model="legalMotherZipCode"
-            type="text"
-            inputmode="numeric"
-            pattern="[0-9]*"
-            :class="inputClass"
-            placeholder="Zip code"
-            @keydown="blockNonNumericInput"
-          />
+        <div
+          class="rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
+        >
+          <label class="mb-3 block text-sm font-semibold text-gray-200">City, State, Zip</label>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <div>
+              <label class="text-xs text-gray-500 dark:text-gray-400">City</label>
+              <UInput v-model="form.q23" :class="inputClass" placeholder="City" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 dark:text-gray-400">State</label>
+              <UInput v-model="form.q24" :class="inputClass" placeholder="State" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 dark:text-gray-400">Zip Code</label>
+              <UInput
+                v-model="legalMotherZipCode"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                :class="inputClass"
+                placeholder="Zip Code"
+                @keydown="blockNonNumericInput"
+              />
+            </div>
+          </div>
         </div>
       </div>
       <div>
@@ -379,30 +767,37 @@
         <label class="text-sm font-semibold text-gray-200">29. Legal Father's Last Name</label
         ><UInput v-model="form.q30" :class="inputClass" placeholder="Last name" />
       </div>
-      <div>
-        <label class="text-sm font-semibold text-gray-200">30. Legal Father's Street Address</label
-        ><UInput v-model="form.q31" :class="inputClass" placeholder="Street address" />
-      </div>
-      <div class="grid gap-4 sm:grid-cols-3">
+      <div class="space-y-4">
         <div>
-          <label class="text-sm font-semibold text-gray-200">31. City</label
-          ><UInput v-model="form.q32" :class="inputClass" placeholder="City" />
+          <label class="text-sm font-semibold text-gray-200">30. Legal Father's Address</label>
+          <UInput v-model="form.q31" :class="inputClass" placeholder="Street Address" />
         </div>
-        <div>
-          <label class="text-sm font-semibold text-gray-200">32. State</label
-          ><UInput v-model="form.q33" :class="inputClass" placeholder="State" />
-        </div>
-        <div>
-          <label class="text-sm font-semibold text-gray-200">33. Zip Code</label
-          ><UInput
-            v-model="legalFatherZipCode"
-            type="text"
-            inputmode="numeric"
-            pattern="[0-9]*"
-            :class="inputClass"
-            placeholder="Zip code"
-            @keydown="blockNonNumericInput"
-          />
+        <div
+          class="rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
+        >
+          <label class="mb-3 block text-sm font-semibold text-gray-200">City, State, Zip</label>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <div>
+              <label class="text-xs text-gray-500 dark:text-gray-400">City</label>
+              <UInput v-model="form.q32" :class="inputClass" placeholder="City" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 dark:text-gray-400">State</label>
+              <UInput v-model="form.q33" :class="inputClass" placeholder="State" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 dark:text-gray-400">Zip Code</label>
+              <UInput
+                v-model="legalFatherZipCode"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                :class="inputClass"
+                placeholder="Zip Code"
+                @keydown="blockNonNumericInput"
+              />
+            </div>
+          </div>
         </div>
       </div>
       <div>
@@ -430,7 +825,7 @@
           v-model="form.q37Other"
           :class="inputClass"
           class="mt-2"
-          placeholder="(please specify)"
+          placeholder="(Please Specify)"
         />
       </div>
       <div>
@@ -451,19 +846,19 @@
         <label class="text-sm font-semibold text-gray-200"
           >39. Who was responsible for medical decisions?</label
         >
-        <UInput v-model="form.q40" :class="inputClass" placeholder="Name or relationship" />
+        <UInput v-model="form.q40" :class="inputClass" placeholder="Name or Relationship" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
           >40. Who was primarily at the hospital during treatment?</label
         >
-        <UInput v-model="form.q41" :class="inputClass" placeholder="Name or relationship" />
+        <UInput v-model="form.q41" :class="inputClass" placeholder="Name or Relationship" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
           >41. How long was the child in treatment?</label
         >
-        <UInput v-model="form.q42" :class="inputClass" placeholder="e.g. 6 months, 1 year" />
+        <UInput v-model="form.q42" :class="inputClass" placeholder="E.g. 6 Months, 1 Year" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200">42. Were there any ICU visits?</label>
@@ -473,7 +868,7 @@
         <label class="text-sm font-semibold text-gray-200"
           >43. Were there any extended hospital admissions? If so, how long?</label
         >
-        <UInput v-model="form.q44" :class="inputClass" placeholder="e.g. 2 weeks, 1 month" />
+        <UInput v-model="form.q44" :class="inputClass" placeholder="E.g. 2 Weeks, 1 Month" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
@@ -491,7 +886,7 @@
           v-model="form.q46Other"
           :class="inputClass"
           class="mt-2"
-          placeholder="(please specify)"
+          placeholder="(Please Specify)"
         />
       </div>
     </template>
@@ -516,11 +911,59 @@
           >48. If seeking scholarship for individual therapy, who are you seeking therapy
           scholarship for?</label
         >
-        <UInput
-          v-model="form.q49"
-          :class="inputClass"
-          placeholder="Name of person seeking therapy"
-        />
+        <div
+          class="mt-2 rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
+        >
+          <div class="flex flex-wrap items-end gap-3">
+            <div class="min-w-[100px] flex-1">
+              <label class="text-xs text-gray-500 dark:text-gray-400">First Name</label>
+              <UInput
+                v-model="therapyPerson.firstName"
+                :class="inputClass"
+                placeholder="First Name"
+                size="sm"
+              />
+            </div>
+            <div class="w-20">
+              <label class="text-xs text-gray-500 dark:text-gray-400">Middle Initial</label>
+              <UInput
+                v-model="therapyPerson.middleInitial"
+                :class="inputClass"
+                placeholder="M.I."
+                size="sm"
+                maxlength="1"
+              />
+            </div>
+            <div class="min-w-[100px] flex-1">
+              <label class="text-xs text-gray-500 dark:text-gray-400">Last Name</label>
+              <UInput
+                v-model="therapyPerson.lastName"
+                :class="inputClass"
+                placeholder="Last Name"
+                size="sm"
+              />
+            </div>
+            <div class="w-16">
+              <label class="text-xs text-gray-500 dark:text-gray-400">Age</label>
+              <UInput
+                v-model="therapyPerson.age"
+                :class="inputClass"
+                placeholder="Age"
+                size="sm"
+                inputmode="numeric"
+              />
+            </div>
+            <div class="min-w-[120px] flex-1">
+              <label class="text-xs text-gray-500 dark:text-gray-400">Relationship</label>
+              <UInput
+                v-model="therapyPerson.relationship"
+                :class="inputClass"
+                placeholder="E.g. Self, Child"
+                size="sm"
+              />
+            </div>
+          </div>
+        </div>
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"

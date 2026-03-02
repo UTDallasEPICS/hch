@@ -75,6 +75,18 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  let totalScore = 0
+  for (let index = 1; index <= TOTAL_QUESTIONS; index += 1) {
+    const key = `q${String(index).padStart(2, '0')}` as keyof typeof form.questions
+    const value = form.questions[key]
+    totalScore += typeof value === 'number' ? value : 0
+  }
+
+  let severity = 'Minimal'
+  if (totalScore > 60) severity = 'Severe'
+  else if (totalScore > 40) severity = 'Moderate'
+  else if (totalScore > 20) severity = 'Mild'
+
   await prisma.pclForm.update({
     where: {
       id: form.id,
@@ -82,6 +94,8 @@ export default defineEventHandler(async (event) => {
     data: {
       status: 'COMPLETE',
       submittedAt: new Date(),
+      totalScore,
+      severity,
     },
   })
 

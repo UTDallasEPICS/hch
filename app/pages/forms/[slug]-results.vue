@@ -48,7 +48,7 @@
   } {
     if (aceScore === 0) {
       return {
-        level: 'Low Risk',
+        level: 'No reported ACEs',
         description: 'No adverse childhood experiences reported.',
         color: 'success',
       }

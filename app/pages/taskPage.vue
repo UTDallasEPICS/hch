@@ -1,4 +1,14 @@
 <script setup lang="ts">
+  import { useFormStore } from '~/stores/formStore'
+
+  const { data: adminData } = await useFetch<{ isAdmin: boolean }>('/api/user/is-admin', {
+    getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
+  })
+  if (adminData.value?.isAdmin) {
+    await navigateTo('/', { replace: true })
+  }
+
+  const { form } = useFormStore()
   const answered = ref(0)
   const total = ref(50)
   const submitted = ref(false)
@@ -11,11 +21,13 @@
   const gadSeverity = ref<string | null>(null)
   const gadSubmitted = ref(false)
   const phqAnswered = ref(0)
-  const phqTotal = ref(9)
+  const phqTotal = ref(10)
   const phqSubmitted = ref(false)
   const pclAnswered = ref(0)
   const pclTotal = ref(21)
   const pclSubmitted = ref(false)
+  const toast = useToast()
+  const submittingForm = ref<string | null>(null)
 
   const aceTarget = computed(() =>
     aceSubmitted.value ? '/forms/ace-form-results' : '/forms/ace-form'
@@ -98,7 +110,7 @@
       gadSeverity.value = null
       gadSubmitted.value = false
       phqAnswered.value = 0
-      phqTotal.value = 9
+      phqTotal.value = 10
       phqSubmitted.value = false
       pclAnswered.value = 0
       pclTotal.value = 21
@@ -111,7 +123,7 @@
   <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
     <div class="mb-8">
       <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
-        Tasks to complete
+        Tasks to Complete
       </h1>
       <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
         Complete all forms to enter the waitlist.
@@ -126,21 +138,54 @@
       <span>Form</span>
       <span>Progress</span>
     </div>
-    <UButton
-      class="mt-3 w-full justify-between rounded-xl px-5 py-4 text-sm font-semibold"
-      color="primary"
-      variant="soft"
-      to="/application"
-    >
-      <span>Application Form</span>
-      <span>{{ submitted ? 'Submitted' : `${answered}/${total}` }}</span>
-    </UButton>
 
-    <UButton
-      class="mt-3 w-full justify-between rounded-xl px-5 py-4 text-sm font-semibold"
-      color="primary"
-      variant="soft"
-      :to="aceTarget"
+    <div
+      v-for="form in [
+        {
+          name: 'Application Form',
+          to: '/application',
+          progress: submitted ? 'Submitted' : `${answered}/${total}`,
+          showSubmit: showApplicationSubmit,
+          onSubmit: submitApplication,
+          key: 'application',
+        },
+        {
+          name: 'ACE Form',
+          to: aceTarget,
+          progress: aceSubmitted ? 'Submitted' : `${aceAnswered}/${aceTotal}`,
+          showSubmit: showAceSubmit,
+          onSubmit: submitAce,
+          key: 'ace',
+        },
+        {
+          name: 'GAD-7 Form',
+          to: '/gad',
+          progress: gadSubmitted
+            ? 'Submitted'
+            : `${gadAnswered}/${gadTotal}${gadScore !== null ? ` • ${gadSeverity}` : ''}`,
+          showSubmit: showGadSubmit,
+          onSubmit: submitGad,
+          key: 'gad',
+        },
+        {
+          name: 'PHQ-9 Form',
+          to: '/phq',
+          progress: phqSubmitted ? 'Submitted' : `${phqAnswered}/${phqTotal}`,
+          showSubmit: showPhqSubmit,
+          onSubmit: submitPhq,
+          key: 'phq',
+        },
+        {
+          name: 'PCL-5 Form',
+          to: '/pcl',
+          progress: pclSubmitted ? 'Submitted' : `${pclAnswered}/${pclTotal}`,
+          showSubmit: showPclSubmit,
+          onSubmit: submitPcl,
+          key: 'pcl',
+        },
+      ]"
+      :key="form.key"
+      class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
     >
       <span>ACE Form</span>
       <span>{{ aceProgressLabel }}</span>
