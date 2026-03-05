@@ -1,4 +1,6 @@
 <script setup lang="ts">
+  definePageMeta({ middleware: 'clients-admin' })
+
   type ClientStatus = 'INCOMPLETE' | 'WAITLIST' | 'ACTIVE' | 'ARCHIVED'
 
   type Task = {
@@ -11,21 +13,6 @@
     score?: number | null
     severity?: string | null
   }
-
-  type Metric = {
-    form: string
-    score?: number | null
-    severity?: string | null
-  }
-
-  type Permissions = {
-    canViewScores: boolean
-    canViewNotes: boolean
-    canViewPlan: boolean
-  }
-
-  type SessionNote = { id: string; content: string; createdAt: string }
-  type ClientPlan = { id: string; content: string; updatedAt: string } | null
 
   const route = useRoute()
   const clientId = computed(() => route.params.id as string)
@@ -63,94 +50,38 @@
 
   const toast = useToast()
 
-  // Plan edit
-  const planContent = ref('')
-  const planEditing = ref(false)
-  const planSaving = ref(false)
+  // Expandable form answers
+  const expandedFormKey = ref<string | null>(null)
+  const formAnswers = ref<{
+    formKey: string
+    formName: string
+    questions: { label: string; answer: string }[]
+    submitted?: boolean
+    score?: number | null
+    severity?: string | null
+  } | null>(null)
+  const formAnswersLoading = ref(false)
 
-  watch(
-    () => profile.value?.plan,
-    (plan) => {
-      planContent.value = plan?.content ?? ''
-    },
-    { immediate: true }
-  )
-
-  async function savePlan() {
-    if (!clientId.value || planSaving.value) return
-    try {
-      planSaving.value = true
-      await $fetch(`/api/clients/${clientId.value}/plan`, {
-        method: 'PUT',
-        body: { content: planContent.value },
-      })
-      planEditing.value = false
-      toast.add({ title: 'Plan saved', color: 'success' })
-      await refresh()
-    } catch (e: unknown) {
-      const msg = (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to save plan'
-      toast.add({ title: 'Error', description: msg, color: 'error' })
-    } finally {
-      planSaving.value = false
+  async function toggleFormAnswers(formKey: string) {
+    if (expandedFormKey.value === formKey) {
+      expandedFormKey.value = null
+      formAnswers.value = null
+      return
     }
-  }
-
-  // Permissions
-  const permEditing = ref(false)
-  const permSaving = ref(false)
-  const permForm = ref<Permissions>({
-    canViewScores: false,
-    canViewNotes: false,
-    canViewPlan: false,
-  })
-
-  watch(
-    () => profile.value?.permissions,
-    (p) => {
-      if (p) permForm.value = { ...p }
-    },
-    { immediate: true }
-  )
-
-  async function savePermissions() {
-    if (!clientId.value || permSaving.value) return
+    if (!clientId.value) return
+    formAnswersLoading.value = true
+    expandedFormKey.value = formKey
     try {
-      permSaving.value = true
-      await $fetch(`/api/clients/${clientId.value}/permissions`, {
-        method: 'PATCH',
-        body: permForm.value,
+      formAnswers.value = await $fetch(`/api/clients/${clientId.value}/forms/${formKey}`)
+    } catch (e) {
+      toast.add({
+        title: 'Error loading answers',
+        description: (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to load form answers',
+        color: 'error',
       })
-      permEditing.value = false
-      toast.add({ title: 'Permissions saved', color: 'success' })
-      await refresh()
-    } catch (e: unknown) {
-      const msg = (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to save'
-      toast.add({ title: 'Error', description: msg, color: 'error' })
+      formAnswers.value = null
     } finally {
-      permSaving.value = false
-    }
-  }
-
-  // New session note
-  const newNoteContent = ref('')
-  const addingNote = ref(false)
-
-  async function addNote() {
-    if (!clientId.value || !newNoteContent.value.trim() || addingNote.value) return
-    try {
-      addingNote.value = true
-      await $fetch(`/api/clients/${clientId.value}/notes`, {
-        method: 'POST',
-        body: { content: newNoteContent.value.trim() },
-      })
-      newNoteContent.value = ''
-      toast.add({ title: 'Note added', color: 'success' })
-      await refresh()
-    } catch (e: unknown) {
-      const msg = (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to add note'
-      toast.add({ title: 'Error', description: msg, color: 'error' })
-    } finally {
-      addingNote.value = false
+      formAnswersLoading.value = false
     }
   }
 
@@ -295,132 +226,70 @@
         </div>
       </div>
 
-      <!-- Tasks (what client sees on their task page) -->
+      <!-- Completed forms with scores and answers -->
       <section
         class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
       >
         <h2 class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
           <UIcon name="i-heroicons-clipboard-document-list" class="h-5 w-5" />
-          Client Tasks (what they see)
+          Completed Forms
         </h2>
-        <div class="space-y-3">
+        <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">
+          Click a form to view the client's answers.
+        </p>
+        <div class="space-y-1">
           <div
             v-for="task in profile.tasks"
             :key="task.key"
-            class="flex items-center justify-between rounded-lg border border-gray-100 px-4 py-3 dark:border-gray-800"
+            class="rounded-lg border border-gray-200 dark:border-gray-700"
           >
-            <span class="font-medium text-gray-900 dark:text-white">{{ task.name }}</span>
-            <div class="flex items-center gap-3">
-              <span class="text-sm text-gray-600 dark:text-gray-400">
+            <button
+              type="button"
+              class="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+              @click="toggleFormAnswers(task.key)"
+            >
+              <span class="font-medium text-gray-900 dark:text-white">{{ task.name }}</span>
+              <span class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 {{ task.submitted ? 'Submitted' : `${task.answered}/${task.total}` }}
-                <span v-if="task.submitted && task.severity" class="ml-1">
-                  • {{ task.severity }}
-                </span>
-                <span v-else-if="task.submitted && task.score != null" class="ml-1">
-                  • Score: {{ task.score }}
-                </span>
+                <span v-if="task.submitted && task.severity"> • {{ task.severity }}</span>
+                <span v-else-if="task.submitted && task.score != null"> • Score: {{ task.score }}</span>
+                <UIcon
+                  :name="expandedFormKey === task.key ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'"
+                  class="h-4 w-4 shrink-0"
+                />
               </span>
+            </button>
+            <div
+              v-if="expandedFormKey === task.key"
+              class="border-t border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
+            >
+              <div v-if="formAnswersLoading" class="flex justify-center py-4">
+                <UIcon name="i-heroicons-arrow-path" class="h-6 w-6 animate-spin text-gray-400" />
+              </div>
+              <div v-else-if="formAnswers" class="space-y-3">
+                <div v-if="formAnswers.score != null || formAnswers.severity" class="mb-3 flex gap-3 text-sm">
+                  <span v-if="formAnswers.score != null" class="font-medium">
+                    Score: {{ formAnswers.score }}
+                  </span>
+                  <span v-if="formAnswers.severity" class="text-gray-600 dark:text-gray-400">
+                    {{ formAnswers.severity }}
+                  </span>
+                </div>
+                <div v-if="formAnswers.questions?.length" class="max-h-64 space-y-2 overflow-y-auto">
+                  <div
+                    v-for="(q, i) in formAnswers.questions"
+                    :key="i"
+                    class="rounded border border-gray-200 bg-white p-3 text-sm dark:border-gray-700 dark:bg-gray-900"
+                  >
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ q.label }}</p>
+                    <p class="mt-1 text-gray-900 dark:text-gray-100">{{ q.answer || '—' }}</p>
+                  </div>
+                </div>
+                <p v-else class="text-sm text-gray-500">No answers yet.</p>
+              </div>
             </div>
           </div>
         </div>
-      </section>
-
-      <!-- Form metrics (scores) -->
-      <section
-        v-if="profile.metrics?.length"
-        class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-      >
-        <h2 class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
-          <UIcon name="i-heroicons-chart-bar" class="h-5 w-5" />
-          Form Metrics (scores)
-        </h2>
-        <div class="flex flex-wrap gap-4">
-          <div
-            v-for="m in profile.metrics"
-            :key="m.form"
-            class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800"
-          >
-            <span class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ m.form }}</span>
-            <div class="mt-1 flex items-baseline gap-2">
-              <span
-                v-if="m.score != null"
-                class="text-lg font-bold text-gray-900 dark:text-white"
-              >
-                {{ m.score }}
-              </span>
-              <span
-                v-if="m.severity"
-                class="text-sm text-gray-600 dark:text-gray-400"
-              >
-                {{ m.severity }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Permissions -->
-      <section
-        class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-      >
-        <h2 class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
-          <UIcon name="i-heroicons-shield-check" class="h-5 w-5" />
-          Client Permissions
-        </h2>
-        <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">
-          Control what this client can see on their dashboard.
-        </p>
-        <template v-if="permEditing">
-          <div class="space-y-3">
-            <label class="flex items-center gap-2">
-              <UCheckbox v-model="permForm.canViewScores" />
-              <span class="text-sm">Can view scores</span>
-            </label>
-            <label class="flex items-center gap-2">
-              <UCheckbox v-model="permForm.canViewNotes" />
-              <span class="text-sm">Can view session notes</span>
-            </label>
-            <label class="flex items-center gap-2">
-              <UCheckbox v-model="permForm.canViewPlan" />
-              <span class="text-sm">Can view plan</span>
-            </label>
-          </div>
-          <div class="mt-4 flex gap-2">
-            <UButton
-              color="primary"
-              :loading="permSaving"
-              @click="savePermissions"
-            >
-              Save
-            </UButton>
-            <UButton variant="ghost" @click="permEditing = false">Cancel</UButton>
-          </div>
-        </template>
-        <template v-else>
-          <div class="flex flex-wrap gap-4 text-sm">
-            <UBadge
-              :color="profile.permissions?.canViewScores ? 'success' : 'neutral'"
-              variant="soft"
-            >
-              Scores: {{ profile.permissions?.canViewScores ? 'Yes' : 'No' }}
-            </UBadge>
-            <UBadge
-              :color="profile.permissions?.canViewNotes ? 'success' : 'neutral'"
-              variant="soft"
-            >
-              Notes: {{ profile.permissions?.canViewNotes ? 'Yes' : 'No' }}
-            </UBadge>
-            <UBadge
-              :color="profile.permissions?.canViewPlan ? 'success' : 'neutral'"
-              variant="soft"
-            >
-              Plan: {{ profile.permissions?.canViewPlan ? 'Yes' : 'No' }}
-            </UBadge>
-            <UButton size="sm" variant="outline" @click="permEditing = true">
-              Edit
-            </UButton>
-          </div>
-        </template>
       </section>
 
       <!-- Session notes -->
@@ -431,21 +300,6 @@
           <UIcon name="i-heroicons-document-text" class="h-5 w-5" />
           Session Notes
         </h2>
-        <div class="mb-4 flex gap-2">
-          <UTextarea
-            v-model="newNoteContent"
-            placeholder="Add a session note..."
-            :rows="2"
-            class="flex-1"
-          />
-          <UButton
-            label="Add"
-            color="primary"
-            :loading="addingNote"
-            :disabled="!newNoteContent.trim()"
-            @click="addNote"
-          />
-        </div>
         <div v-if="profile.sessionNotes?.length" class="space-y-3">
           <div
             v-for="note in profile.sessionNotes"
@@ -455,61 +309,23 @@
             <p class="whitespace-pre-wrap text-sm text-gray-900 dark:text-gray-100">
               {{ note.content }}
             </p>
-            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              {{ new Date(note.createdAt).toLocaleString() }}
-            </p>
+            <div class="mt-2 flex items-center justify-between">
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                {{ new Date(note.createdAt).toLocaleString() }}
+              </p>
+              <NuxtLink
+                :to="`/clients/${clientId}/notes/${note.id}`"
+                target="_blank"
+                class="text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
+              >
+                Open in new tab
+              </NuxtLink>
+            </div>
           </div>
         </div>
         <p v-else class="text-sm text-gray-500 dark:text-gray-400">
           No session notes yet.
         </p>
-      </section>
-
-      <!-- Client plan -->
-      <section
-        class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-      >
-        <h2 class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
-          <UIcon name="i-heroicons-clipboard-document-check" class="h-5 w-5" />
-          Client Plan
-        </h2>
-        <template v-if="planEditing">
-          <UTextarea
-            v-model="planContent"
-            placeholder="Enter client plan..."
-            :rows="6"
-            class="mb-4"
-          />
-          <div class="flex gap-2">
-            <UButton
-              color="primary"
-              :loading="planSaving"
-              @click="savePlan"
-            >
-              Save
-            </UButton>
-            <UButton variant="ghost" @click="planEditing = false">Cancel</UButton>
-          </div>
-        </template>
-        <template v-else>
-          <div
-            v-if="profile.plan?.content"
-            class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800"
-          >
-            <p class="whitespace-pre-wrap text-sm text-gray-900 dark:text-gray-100">
-              {{ profile.plan.content }}
-            </p>
-            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              Last updated {{ new Date(profile.plan.updatedAt).toLocaleString() }}
-            </p>
-          </div>
-          <p v-else class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-            No plan yet.
-          </p>
-          <UButton size="sm" variant="outline" @click="planEditing = true">
-            {{ profile.plan ? 'Edit' : 'Create' }} Plan
-          </UButton>
-        </template>
       </section>
     </div>
   </main>
