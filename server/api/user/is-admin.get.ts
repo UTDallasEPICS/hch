@@ -1,7 +1,7 @@
 import { getHeaders } from 'h3'
 import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
-import { isAdmin } from '../../utils/is-admin'
+import { isAdmin, isGuaranteedAdminEmail } from '../../utils/is-admin'
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
@@ -18,6 +18,15 @@ export default defineEventHandler(async (event) => {
     where: { id: session.user.id },
     select: { role: true, email: true },
   })
+
+  // Keep DB role aligned for guaranteed admin emails.
+  if (user?.role !== 'ADMIN' && isGuaranteedAdminEmail(user?.email ?? null)) {
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { role: 'ADMIN' },
+    })
+    return { isAdmin: true }
+  }
 
   return {
     isAdmin: isAdmin(user?.role ?? null, user?.email ?? null),

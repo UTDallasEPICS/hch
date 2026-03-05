@@ -5,13 +5,36 @@
   const colorMode = useColorMode()
   const { data: session } = await authClient.useSession(useFetch)
 
-  const { data: adminData } = await useFetch<{ isAdmin: boolean }>('/api/user/is-admin', {
-    getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
-  })
+  const { data: adminData, refresh: refreshAdminData } = await useFetch<{ isAdmin: boolean }>(
+    '/api/user/is-admin',
+    {
+      server: false,
+      default: () => ({ isAdmin: false }),
+    }
+  )
+
+  watch(
+    () => session.value?.user?.id,
+    () => {
+      refreshAdminData()
+    },
+    { immediate: true }
+  )
+
+  watch(
+    () => route.fullPath,
+    () => {
+      refreshAdminData()
+    }
+  )
+
   const isAdmin = computed(() => adminData.value?.isAdmin ?? false)
 
   const isTasksPage = computed(() => route.path === '/taskPage')
   const isDashboardPage = computed(() => route.path === '/')
+  const isClientsPage = computed(
+    () => route.path === '/clients' || route.path.startsWith('/clients/')
+  )
   const isAuthenticated = computed(() => Boolean(session.value))
   const isDark = computed({
     get() {
@@ -64,10 +87,18 @@
                 :variant="isDashboardPage ? 'solid' : 'soft'"
               />
               <UButton
+                v-if="!isAdmin"
                 label="Tasks"
                 to="/taskPage"
                 color="primary"
                 :variant="isTasksPage ? 'solid' : 'soft'"
+              />
+              <UButton
+                v-if="isAdmin"
+                label="Clients"
+                to="/clients"
+                color="primary"
+                :variant="isClientsPage ? 'solid' : 'soft'"
               />
             </template>
             <UButton

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+  definePageMeta({ middleware: 'non-admin' })
+
   type ClientStatus = 'Prospective' | 'Waitlist' | 'Active' | 'Archived'
 
   const clientStatus = ref<ClientStatus>('Prospective')

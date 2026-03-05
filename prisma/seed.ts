@@ -18,7 +18,22 @@ async function main() {
     })
     if (deleted.count > 0) {
       await prisma.question.deleteMany({
-        where: { alias: { in: ['ace_1', 'ace_2', 'ace_3', 'ace_4', 'ace_5', 'ace_6', 'ace_7', 'ace_8', 'ace_9', 'ace_10'] } },
+        where: {
+          alias: {
+            in: [
+              'ace_1',
+              'ace_2',
+              'ace_3',
+              'ace_4',
+              'ace_5',
+              'ace_6',
+              'ace_7',
+              'ace_8',
+              'ace_9',
+              'ace_10',
+            ],
+          },
+        },
       })
       console.log('Removed old ACE questions from DB (now in front-end)')
     }
@@ -34,8 +49,8 @@ async function main() {
     console.log('Created ACE form (questions in front-end)')
   }
 
-  // Assign roles: alice@a.com and djanjanam@gmail.com = ADMIN, bob@b.com = CLIENT
-  const adminEmails = ['alice@a.com', 'djanjanam@gmail.com']
+  // Assign roles: alice@example.com and djanjanam@gmail.com = ADMIN, bob@b.com = CLIENT
+  const adminEmails = ['alice@example.com', 'alice@a.com', 'djanjanam@gmail.com']
   const clientEmail = 'bob@b.com'
   for (const email of adminEmails) {
     const user = await prisma.user.findUnique({ where: { email } })
