@@ -34,19 +34,16 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const statusFilter = query.status as string | undefined
 
-  const validStatuses = ['INCOMPLETE', 'WAITLIST', 'ACTIVE', 'ARCHIVED']
+  const validStatuses = ['Prospective', 'Waitlist', 'Active', 'Archived']
   const hasStatusFilter = statusFilter && validStatuses.includes(statusFilter)
 
   const users = await prisma.user.findMany({
     where: {
       role: 'CLIENT',
       ...(hasStatusFilter &&
-        (statusFilter === 'INCOMPLETE'
+        (statusFilter === 'Prospective'
           ? {
-              OR: [
-                { client: null },
-                { client: { status: 'INCOMPLETE' as ClientStatus } },
-              ],
+              OR: [{ client: null }, { client: { status: 'Prospective' as ClientStatus } }],
             }
           : {
               client: {
@@ -63,11 +60,12 @@ export default defineEventHandler(async (event) => {
   const clients = await Promise.all(
     users.map(async (user) => {
       const clientProfile = user.client
-      const storedStatus = clientProfile?.status ?? 'INCOMPLETE'
+      const storedStatus = clientProfile?.status ?? 'Prospective'
       const therapyWeek = clientProfile?.therapyWeek ?? null
       const missedSessions = clientProfile?.missedSessions ?? 0
       const allFormsComplete = await isAllFormsComplete(prisma, user.id)
-      const incompleteForms = storedStatus === 'INCOMPLETE' ? await getIncompleteForms(prisma, user.id) : []
+      const incompleteForms =
+        storedStatus === 'Prospective' ? await getIncompleteForms(prisma, user.id) : []
       const { fname, lname } = parseName(user.name)
 
       return {

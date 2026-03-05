@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  type ClientStatus = 'INCOMPLETE' | 'WAITLIST' | 'ACTIVE' | 'ARCHIVED'
+  type ClientStatus = 'Prospective' | 'Waitlist' | 'Active' | 'Archived'
 
   type Task = {
     key: string
@@ -35,14 +35,11 @@
     pending,
     error,
     refresh,
-  } = await useFetch(
-    () => `/api/clients/${clientId.value}/profile`,
-    {
-      key: `client-profile-${clientId.value}`,
-      watch: [clientId],
-      getCachedData: () => undefined,
-    }
-  )
+  } = await useFetch(() => `/api/clients/${clientId.value}/profile`, {
+    key: `client-profile-${clientId.value}`,
+    watch: [clientId],
+    getCachedData: () => undefined,
+  })
 
   function displayName() {
     const p = profile.value
@@ -53,10 +50,10 @@
 
   function statusLabel(status: ClientStatus): string {
     const labels: Record<ClientStatus, string> = {
-      INCOMPLETE: 'Incomplete',
-      WAITLIST: 'Waitlist',
-      ACTIVE: 'Active',
-      ARCHIVED: 'Archived',
+      Prospective: 'Prospective',
+      Waitlist: 'Waitlist',
+      Active: 'Active',
+      Archived: 'Archived',
     }
     return labels[status]
   }
@@ -88,7 +85,8 @@
       toast.add({ title: 'Plan saved', color: 'success' })
       await refresh()
     } catch (e: unknown) {
-      const msg = (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to save plan'
+      const msg =
+        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to save plan'
       toast.add({ title: 'Error', description: msg, color: 'error' })
     } finally {
       planSaving.value = false
@@ -124,7 +122,8 @@
       toast.add({ title: 'Permissions saved', color: 'success' })
       await refresh()
     } catch (e: unknown) {
-      const msg = (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to save'
+      const msg =
+        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to save'
       toast.add({ title: 'Error', description: msg, color: 'error' })
     } finally {
       permSaving.value = false
@@ -147,7 +146,8 @@
       toast.add({ title: 'Note added', color: 'success' })
       await refresh()
     } catch (e: unknown) {
-      const msg = (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to add note'
+      const msg =
+        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to add note'
       toast.add({ title: 'Error', description: msg, color: 'error' })
     } finally {
       addingNote.value = false
@@ -171,16 +171,20 @@
     if (!clientId.value || absencesSaving.value) return
     try {
       absencesSaving.value = true
-      const res = await $fetch<{ missedSessions: number }>(`/api/clients/${clientId.value}/absences`, {
-        method: 'PATCH',
-        body: { missedSessions: absencesValue.value },
-      })
+      const res = await $fetch<{ missedSessions: number }>(
+        `/api/clients/${clientId.value}/absences`,
+        {
+          method: 'PATCH',
+          body: { missedSessions: absencesValue.value },
+        }
+      )
       profile.value && (profile.value.missedSessions = res.missedSessions)
       absencesEditing.value = false
       toast.add({ title: 'Absences updated', color: 'success' })
       await refresh()
     } catch (e: unknown) {
-      const msg = (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to update'
+      const msg =
+        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to update'
       toast.add({ title: 'Error', description: msg, color: 'error' })
     } finally {
       absencesSaving.value = false
@@ -235,11 +239,11 @@
       >
         <UBadge
           :color="
-            profile.status === 'ACTIVE'
+            profile.status === 'Active'
               ? 'success'
-              : profile.status === 'ARCHIVED'
+              : profile.status === 'Archived'
                 ? 'neutral'
-                : profile.status === 'WAITLIST'
+                : profile.status === 'Waitlist'
                   ? 'primary'
                   : 'warning'
           "
@@ -248,36 +252,18 @@
         >
           {{ statusLabel(profile.status as ClientStatus) }}
         </UBadge>
-        <span
-          v-if="profile.therapyWeek !== null"
-          class="text-sm text-gray-600 dark:text-gray-400"
-        >
+        <span v-if="profile.therapyWeek !== null" class="text-sm text-gray-600 dark:text-gray-400">
           Week {{ profile.therapyWeek }} / 26
         </span>
         <!-- Absences counter -->
         <div class="flex items-center gap-2">
-          <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Absences:
-          </span>
+          <span class="text-sm font-medium text-gray-700 dark:text-gray-300"> Absences: </span>
           <template v-if="absencesEditing">
-            <UInput
-              v-model.number="absencesValue"
-              type="number"
-              :min="0"
-              size="sm"
-              class="w-20"
-            />
-            <UButton
-              size="sm"
-              color="primary"
-              :loading="absencesSaving"
-              @click="saveAbsences"
-            >
+            <UInput v-model.number="absencesValue" type="number" :min="0" size="sm" class="w-20" />
+            <UButton size="sm" color="primary" :loading="absencesSaving" @click="saveAbsences">
               Save
             </UButton>
-            <UButton size="sm" variant="ghost" @click="absencesEditing = false">
-              Cancel
-            </UButton>
+            <UButton size="sm" variant="ghost" @click="absencesEditing = false"> Cancel </UButton>
           </template>
           <template v-else>
             <span class="text-base font-semibold text-gray-900 dark:text-white">
@@ -299,7 +285,9 @@
       <section
         class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
       >
-        <h2 class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
+        <h2
+          class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white"
+        >
           <UIcon name="i-heroicons-clipboard-document-list" class="h-5 w-5" />
           Client Tasks (what they see)
         </h2>
@@ -330,7 +318,9 @@
         v-if="profile.metrics?.length"
         class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
       >
-        <h2 class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
+        <h2
+          class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white"
+        >
           <UIcon name="i-heroicons-chart-bar" class="h-5 w-5" />
           Form Metrics (scores)
         </h2>
@@ -342,16 +332,10 @@
           >
             <span class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ m.form }}</span>
             <div class="mt-1 flex items-baseline gap-2">
-              <span
-                v-if="m.score != null"
-                class="text-lg font-bold text-gray-900 dark:text-white"
-              >
+              <span v-if="m.score != null" class="text-lg font-bold text-gray-900 dark:text-white">
                 {{ m.score }}
               </span>
-              <span
-                v-if="m.severity"
-                class="text-sm text-gray-600 dark:text-gray-400"
-              >
+              <span v-if="m.severity" class="text-sm text-gray-600 dark:text-gray-400">
                 {{ m.severity }}
               </span>
             </div>
@@ -363,7 +347,9 @@
       <section
         class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
       >
-        <h2 class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
+        <h2
+          class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white"
+        >
           <UIcon name="i-heroicons-shield-check" class="h-5 w-5" />
           Client Permissions
         </h2>
@@ -386,13 +372,7 @@
             </label>
           </div>
           <div class="mt-4 flex gap-2">
-            <UButton
-              color="primary"
-              :loading="permSaving"
-              @click="savePermissions"
-            >
-              Save
-            </UButton>
+            <UButton color="primary" :loading="permSaving" @click="savePermissions"> Save </UButton>
             <UButton variant="ghost" @click="permEditing = false">Cancel</UButton>
           </div>
         </template>
@@ -416,9 +396,7 @@
             >
               Plan: {{ profile.permissions?.canViewPlan ? 'Yes' : 'No' }}
             </UBadge>
-            <UButton size="sm" variant="outline" @click="permEditing = true">
-              Edit
-            </UButton>
+            <UButton size="sm" variant="outline" @click="permEditing = true"> Edit </UButton>
           </div>
         </template>
       </section>
@@ -427,7 +405,9 @@
       <section
         class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
       >
-        <h2 class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
+        <h2
+          class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white"
+        >
           <UIcon name="i-heroicons-document-text" class="h-5 w-5" />
           Session Notes
         </h2>
@@ -452,7 +432,7 @@
             :key="note.id"
             class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800"
           >
-            <p class="whitespace-pre-wrap text-sm text-gray-900 dark:text-gray-100">
+            <p class="text-sm whitespace-pre-wrap text-gray-900 dark:text-gray-100">
               {{ note.content }}
             </p>
             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
@@ -460,16 +440,16 @@
             </p>
           </div>
         </div>
-        <p v-else class="text-sm text-gray-500 dark:text-gray-400">
-          No session notes yet.
-        </p>
+        <p v-else class="text-sm text-gray-500 dark:text-gray-400">No session notes yet.</p>
       </section>
 
       <!-- Client plan -->
       <section
         class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
       >
-        <h2 class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
+        <h2
+          class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white"
+        >
           <UIcon name="i-heroicons-clipboard-document-check" class="h-5 w-5" />
           Client Plan
         </h2>
@@ -481,13 +461,7 @@
             class="mb-4"
           />
           <div class="flex gap-2">
-            <UButton
-              color="primary"
-              :loading="planSaving"
-              @click="savePlan"
-            >
-              Save
-            </UButton>
+            <UButton color="primary" :loading="planSaving" @click="savePlan"> Save </UButton>
             <UButton variant="ghost" @click="planEditing = false">Cancel</UButton>
           </div>
         </template>
@@ -496,16 +470,14 @@
             v-if="profile.plan?.content"
             class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800"
           >
-            <p class="whitespace-pre-wrap text-sm text-gray-900 dark:text-gray-100">
+            <p class="text-sm whitespace-pre-wrap text-gray-900 dark:text-gray-100">
               {{ profile.plan.content }}
             </p>
             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
               Last updated {{ new Date(profile.plan.updatedAt).toLocaleString() }}
             </p>
           </div>
-          <p v-else class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-            No plan yet.
-          </p>
+          <p v-else class="mb-4 text-sm text-gray-500 dark:text-gray-400">No plan yet.</p>
           <UButton size="sm" variant="outline" @click="planEditing = true">
             {{ profile.plan ? 'Edit' : 'Create' }} Plan
           </UButton>

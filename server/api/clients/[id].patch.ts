@@ -4,7 +4,7 @@ import { prisma } from '../../utils/prisma'
 import { isAllFormsComplete } from '../../utils/client-forms'
 import type { ClientStatus } from '../../../../prisma/generated/client'
 
-const VALID_STATUSES: ClientStatus[] = ['INCOMPLETE', 'WAITLIST', 'ACTIVE', 'ARCHIVED']
+const VALID_STATUSES: ClientStatus[] = ['Prospective', 'Waitlist', 'Active', 'Archived']
 const MAX_THERAPY_WEEKS = 26
 
 export default defineEventHandler(async (event) => {
@@ -35,11 +35,7 @@ export default defineEventHandler(async (event) => {
     missedSessions?: number
   }>(event)
 
-  if (
-    !body?.status &&
-    body?.therapyWeek === undefined &&
-    body?.missedSessions === undefined
-  ) {
+  if (!body?.status && body?.therapyWeek === undefined && body?.missedSessions === undefined) {
     throw createError({
       statusCode: 400,
       statusMessage: 'At least one of status, therapyWeek, or missedSessions is required',
@@ -65,7 +61,7 @@ export default defineEventHandler(async (event) => {
         statusMessage: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`,
       })
     }
-    if (body.status === 'WAITLIST') {
+    if (body.status === 'Waitlist') {
       const allFormsComplete = await isAllFormsComplete(prisma, userId)
       if (!allFormsComplete) {
         throw createError({
@@ -74,18 +70,18 @@ export default defineEventHandler(async (event) => {
         })
       }
     }
-    if (body.status === 'ACTIVE') {
-      const currentStatus = user.client?.status ?? 'INCOMPLETE'
-      if (currentStatus !== 'WAITLIST' && currentStatus !== 'ARCHIVED') {
+    if (body.status === 'Active') {
+      const currentStatus = user.client?.status ?? 'Prospective'
+      if (currentStatus !== 'Waitlist' && currentStatus !== 'Archived') {
         throw createError({
           statusCode: 400,
           statusMessage: 'Client must be on waitlist before they can be marked active',
         })
       }
     }
-    if (body.status === 'ARCHIVED') {
-      const currentStatus = user.client?.status ?? 'INCOMPLETE'
-      if (currentStatus !== 'ACTIVE') {
+    if (body.status === 'Archived') {
+      const currentStatus = user.client?.status ?? 'Prospective'
+      if (currentStatus !== 'Active') {
         throw createError({
           statusCode: 400,
           statusMessage: 'Client must be active before they can be archived',
@@ -117,7 +113,7 @@ export default defineEventHandler(async (event) => {
     client = await prisma.client.create({
       data: {
         userId,
-        status: (body.status as ClientStatus) ?? 'INCOMPLETE',
+        status: (body.status as ClientStatus) ?? 'Prospective',
         therapyWeek: therapyWeek ?? null,
         missedSessions: missedSessions ?? 0,
       },

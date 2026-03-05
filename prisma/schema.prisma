@@ -13,16 +13,16 @@ enum Role {
 }
 
 enum ClientStatus {
-  INCOMPLETE
-  WAITLIST
-  ACTIVE
-  ARCHIVED
+  Prospective
+  Waitlist
+  Active
+  Archived
 }
 
 model Client {
   id             String            @id @default(cuid())
   userId         String            @unique
-  status         ClientStatus      @default(INCOMPLETE)
+  status         ClientStatus      @default(Prospective)
   therapyWeek    Int? // 0-26, max weeks of therapy
   missedSessions Int               @default(0) // count of missed therapy sessions
   user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -89,9 +89,11 @@ model User {
   phqForm         PhqForm[]
   phqQuestions    PhqQuestion[]
 
-  PclForms     PclForm[]
-  PclQuestions PclQuestion[]
-  client       Client?
+  PclForms                          PclForm[]
+  PclQuestions                      PclQuestion[]
+  client                            Client?
+  physicianStatement                PhysicianStatementForm?
+  releaseOfInformationAuthorization ReleaseOfInformationAuthorizationForm?
 
   @@unique([email])
   @@map("user")
@@ -400,4 +402,34 @@ model PclQuestion {
   user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model PhysicianStatementForm {
+  id               Int       @id @default(autoincrement())
+  userId           String    @unique
+  status           String    @default("PENDING")
+  originalFileName String?
+  storedFileName   String?
+  mimeType         String?
+  uploadedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+model ReleaseOfInformationAuthorizationForm {
+  id               Int       @id @default(autoincrement())
+  userId           String    @unique
+  status           String    @default("PENDING")
+  originalFileName String?
+  storedFileName   String?
+  mimeType         String?
+  uploadedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
 }

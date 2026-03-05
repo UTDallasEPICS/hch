@@ -1,7 +1,7 @@
 <script setup lang="ts">
   definePageMeta({ middleware: 'clients-admin' })
 
-  type ClientStatus = 'INCOMPLETE' | 'WAITLIST' | 'ACTIVE' | 'ARCHIVED'
+  type ClientStatus = 'Prospective' | 'Waitlist' | 'Active' | 'Archived'
 
   const FORM_LABELS: Record<string, string> = {
     application: 'Application',
@@ -29,10 +29,10 @@
 
   const statusOptions = [
     { label: 'All', value: ALL_STATUS },
-    { label: 'Incomplete', value: 'INCOMPLETE' },
-    { label: 'Waitlist', value: 'WAITLIST' },
-    { label: 'Active', value: 'ACTIVE' },
-    { label: 'Archived', value: 'ARCHIVED' },
+    { label: 'Prospective', value: 'Prospective' },
+    { label: 'Waitlist', value: 'Waitlist' },
+    { label: 'Active', value: 'Active' },
+    { label: 'Archived', value: 'Archived' },
   ]
 
   const queryParams = computed(() => {
@@ -59,60 +59,55 @@
 
   function statusLabel(status: ClientStatus): string {
     const labels: Record<ClientStatus, string> = {
-      INCOMPLETE: 'Incomplete',
-      WAITLIST: 'Waitlist',
-      ACTIVE: 'Active',
-      ARCHIVED: 'Archived',
+      Prospective: 'Prospective',
+      Waitlist: 'Waitlist',
+      Active: 'Active',
+      Archived: 'Archived',
     }
     return labels[status]
   }
 
-  function statusColor(
-    status: ClientStatus
-  ): 'warning' | 'primary' | 'success' | 'neutral' {
-    const colors: Record<
-      ClientStatus,
-      'warning' | 'primary' | 'success' | 'neutral'
-    > = {
-      INCOMPLETE: 'warning',
-      WAITLIST: 'primary',
-      ACTIVE: 'success',
-      ARCHIVED: 'neutral',
+  function statusColor(status: ClientStatus): 'warning' | 'primary' | 'success' | 'neutral' {
+    const colors: Record<ClientStatus, 'warning' | 'primary' | 'success' | 'neutral'> = {
+      Prospective: 'warning',
+      Waitlist: 'primary',
+      Active: 'success',
+      Archived: 'neutral',
     }
     return colors[status]
   }
 
   function statusVariant(status: ClientStatus): 'soft' | 'outline' {
-    return status === 'ARCHIVED' ? 'outline' : 'soft'
+    return status === 'Archived' ? 'outline' : 'soft'
   }
 
   function statusIcon(status: ClientStatus): string {
     const icons: Record<ClientStatus, string> = {
-      INCOMPLETE: 'i-heroicons-clock',
-      WAITLIST: 'i-heroicons-queue-list',
-      ACTIVE: 'i-heroicons-check-circle',
-      ARCHIVED: 'i-heroicons-archive-box',
+      Prospective: 'i-heroicons-clock',
+      Waitlist: 'i-heroicons-queue-list',
+      Active: 'i-heroicons-check-circle',
+      Archived: 'i-heroicons-archive-box',
     }
     return icons[status]
   }
 
   function statusHint(c: Client): string {
-    if (c.status === 'INCOMPLETE' && !c.allFormsComplete) {
+    if (c.status === 'Prospective' && !c.allFormsComplete) {
       return 'To move to waitlist, need to complete all forms'
     }
     return ''
   }
 
   const showFormsRemainingColumn = computed(
-    () => clients.value?.some((c) => c.status === 'INCOMPLETE') ?? false
+    () => clients.value?.some((c) => c.status === 'Prospective') ?? false
   )
 
   const showWeekNoColumn = computed(
-    () => clients.value?.some((c) => c.status === 'ACTIVE') ?? false
+    () => clients.value?.some((c) => c.status === 'Active') ?? false
   )
 
   function formatIncompleteForms(c: Client): string {
-    if (c.status !== 'INCOMPLETE') return ''
+    if (c.status !== 'Prospective') return ''
     if (!c.incompleteForms?.length || c.allFormsComplete) {
       return 'Congradulations! All Forms Complete'
     }
@@ -124,16 +119,16 @@
   const toast = useToast()
   const updatingId = ref<string | null>(null)
 
-  const STATUS_ORDER: ClientStatus[] = ['INCOMPLETE', 'WAITLIST', 'ACTIVE', 'ARCHIVED']
+  const STATUS_ORDER: ClientStatus[] = ['Prospective', 'Waitlist', 'Active', 'Archived']
 
   function getNextStatus(client: Client): ClientStatus | null {
-    if (client.status === 'ARCHIVED') return 'ACTIVE'
-    if (client.status === 'INCOMPLETE' && !client.allFormsComplete) return null
-    if (client.status === 'ACTIVE') {
+    if (client.status === 'Archived') return 'Active'
+    if (client.status === 'Prospective' && !client.allFormsComplete) return null
+    if (client.status === 'Active') {
       const missedSessions = client.missedSessions ?? 0
       const therapyWeek = client.therapyWeek ?? 0
       const canArchive = missedSessions >= 2 || therapyWeek >= 26
-      return canArchive ? 'ARCHIVED' : null
+      return canArchive ? 'Archived' : null
     }
     const idx = STATUS_ORDER.indexOf(client.status)
     if (idx < 0 || idx >= STATUS_ORDER.length - 1) return null
@@ -295,7 +290,7 @@
                   Week no
                 </th>
                 <th
-                  class="w-0 pb-3 pr-4 text-right text-sm font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
+                  class="w-0 pr-4 pb-3 text-right text-sm font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
                 >
                   Actions
                 </th>
@@ -350,9 +345,9 @@
                   class="py-4 pr-4 text-base text-gray-600 dark:text-gray-400"
                 >
                   {{
-                    client.status === 'ACTIVE' && client.therapyWeek !== null
+                    client.status === 'Active' && client.therapyWeek !== null
                       ? `${client.therapyWeek} / 26`
-                      : client.status === 'ACTIVE'
+                      : client.status === 'Active'
                         ? '—'
                         : ''
                   }}

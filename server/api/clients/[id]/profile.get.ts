@@ -2,11 +2,7 @@ import { createError, defineEventHandler, getHeaders, getRouterParam } from 'h3'
 import { auth } from '../../../utils/auth'
 import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
-import {
-  isAllFormsComplete,
-  getIncompleteForms,
-  FORM_LABELS,
-} from '../../../utils/client-forms'
+import { isAllFormsComplete, getIncompleteForms, FORM_LABELS } from '../../../utils/client-forms'
 import { parseName } from '../../../utils/name'
 import { getAceFormQuestions } from '../../../utils/ace-questions'
 import type { ClientStatus } from '../../../../../prisma/generated/client'
@@ -109,9 +105,7 @@ export default defineEventHandler(async (event) => {
     ? (JSON.parse(aceResponse.responses) as Record<string, string>)
     : {}
   const aceAnswered = aceQuestions.filter(
-    (q) =>
-      aceResponses[q.alias] !== undefined &&
-      String(aceResponses[q.alias]).trim().length > 0
+    (q) => aceResponses[q.alias] !== undefined && String(aceResponses[q.alias]).trim().length > 0
   ).length
   const aceForm = await prisma.form.findUnique({ where: { slug: 'ace-form' } })
   const aceAssignment = aceForm
@@ -279,7 +273,7 @@ export default defineEventHandler(async (event) => {
     lname,
     name: user.name,
     email: user.email,
-    status: (clientProfile?.status ?? 'INCOMPLETE') as ClientStatus,
+    status: (clientProfile?.status ?? 'Prospective') as ClientStatus,
     therapyWeek: clientProfile?.therapyWeek ?? null,
     missedSessions: clientProfile?.missedSessions ?? 0,
     allFormsComplete,

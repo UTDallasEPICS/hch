@@ -1,4 +1,6 @@
 <script setup lang="ts">
+  definePageMeta({ middleware: 'waitlist-forms' })
+
   const toast = useToast()
   const isSaving = ref(false)
   const isSubmitted = ref(false)

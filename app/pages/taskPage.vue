@@ -1,4 +1,7 @@
 <script setup lang="ts">
+  type ClientStatus = 'Prospective' | 'Waitlist' | 'Active' | 'Archived'
+
+  const clientStatus = ref<ClientStatus>('Prospective')
   const answered = ref(0)
   const total = ref(50)
   const submitted = ref(false)
@@ -16,6 +19,8 @@
   const pclAnswered = ref(0)
   const pclTotal = ref(21)
   const pclSubmitted = ref(false)
+  const physicianSubmitted = ref(false)
+  const roiSubmitted = ref(false)
 
   const aceTarget = computed(() =>
     aceSubmitted.value ? '/forms/ace-form-results' : '/forms/ace-form'
@@ -23,32 +28,80 @@
   const aceProgressLabel = computed(() =>
     aceSubmitted.value ? 'Submitted' : `${aceAnswered.value}/${aceTotal.value}`
   )
+  const showWaitlistOnlyForms = computed(() => clientStatus.value === 'Waitlist')
+  const canAccessPhysicianStatement = computed(
+    () => clientStatus.value === 'Prospective' || clientStatus.value === 'Waitlist'
+  )
+  const canAccessRoiForm = computed(
+    () => clientStatus.value === 'Prospective' || clientStatus.value === 'Waitlist'
+  )
 
   async function loadProgress() {
-    const [appResult, aceProgressResult, gadResult, phqResult, pclResult] =
-      await Promise.allSettled([
-        $fetch<{ answered: number; total: number; submitted?: boolean }>(
-          '/api/application/progress'
-        ),
-        $fetch<{ answered: number; total: number; submitted?: boolean }>(
-          '/api/forms/ace-form/progress'
-        ),
-        $fetch<{
-          answered: number
-          total: number
-          totalScore: number | null
-          severity: string | null
-          status?: string | null
-        }>('/api/gad/progress'),
-        $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/phq/progress'),
-        $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/pcl/progress'),
-      ])
+    const [statusResult, appResult] = await Promise.allSettled([
+      $fetch<{ status: ClientStatus }>('/api/user/client-status'),
+      $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/application/progress'),
+    ])
+
+    if (statusResult.status === 'fulfilled') {
+      clientStatus.value = statusResult.value.status
+    } else {
+      clientStatus.value = 'Prospective'
+    }
 
     if (appResult.status === 'fulfilled') {
       answered.value = appResult.value.answered
       total.value = appResult.value.total
       submitted.value = Boolean(appResult.value.submitted)
     }
+
+    if (canAccessPhysicianStatement.value) {
+      const [physicianResult, roiResult] = await Promise.allSettled([
+        $fetch<{ submitted: boolean }>('/api/physician-statement/progress'),
+        $fetch<{ submitted: boolean }>('/api/release-of-information/progress'),
+      ])
+      if (physicianResult?.status === 'fulfilled') {
+        physicianSubmitted.value = Boolean(physicianResult.value.submitted)
+      }
+      if (roiResult?.status === 'fulfilled') {
+        roiSubmitted.value = Boolean(roiResult.value.submitted)
+      }
+    } else {
+      physicianSubmitted.value = false
+      roiSubmitted.value = false
+    }
+
+    if (!showWaitlistOnlyForms.value) {
+      aceAnswered.value = 0
+      aceTotal.value = 0
+      aceSubmitted.value = false
+      gadAnswered.value = 0
+      gadTotal.value = 8
+      gadScore.value = null
+      gadSeverity.value = null
+      gadSubmitted.value = false
+      phqAnswered.value = 0
+      phqTotal.value = 10
+      phqSubmitted.value = false
+      pclAnswered.value = 0
+      pclTotal.value = 21
+      pclSubmitted.value = false
+      return
+    }
+
+    const [aceProgressResult, gadResult, phqResult, pclResult] = await Promise.allSettled([
+      $fetch<{ answered: number; total: number; submitted?: boolean }>(
+        '/api/forms/ace-form/progress'
+      ),
+      $fetch<{
+        answered: number
+        total: number
+        totalScore: number | null
+        severity: string | null
+        status?: string | null
+      }>('/api/gad/progress'),
+      $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/phq/progress'),
+      $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/pcl/progress'),
+    ])
 
     if (aceProgressResult.status === 'fulfilled') {
       aceAnswered.value = aceProgressResult.value.answered
@@ -99,6 +152,8 @@
       pclAnswered.value = 0
       pclTotal.value = 21
       pclSubmitted.value = false
+      physicianSubmitted.value = false
+      roiSubmitted.value = false
     }
   })
 </script>
@@ -134,6 +189,7 @@
     </UButton>
 
     <UButton
+      v-if="showWaitlistOnlyForms"
       class="mt-3 w-full justify-between rounded-xl px-5 py-4 text-sm font-semibold"
       color="primary"
       variant="soft"
@@ -144,6 +200,7 @@
     </UButton>
 
     <UButton
+      v-if="showWaitlistOnlyForms"
       class="mt-3 w-full justify-between rounded-xl px-5 py-4 text-sm font-semibold"
       color="primary"
       variant="soft"
@@ -157,6 +214,7 @@
     </UButton>
 
     <UButton
+      v-if="showWaitlistOnlyForms"
       class="mt-3 w-full justify-between rounded-xl px-5 py-4 text-sm font-semibold"
       color="primary"
       variant="soft"
@@ -167,6 +225,7 @@
     </UButton>
 
     <UButton
+      v-if="showWaitlistOnlyForms"
       class="mt-3 w-full justify-between rounded-xl px-5 py-4 text-sm font-semibold"
       color="primary"
       variant="soft"
@@ -174,6 +233,44 @@
     >
       <span>PCL-5 Form</span>
       <span>{{ pclSubmitted ? 'Submitted' : `${pclAnswered}/${pclTotal}` }}</span>
+    </UButton>
+
+    <UButton
+      class="mt-3 w-full justify-between rounded-xl px-5 py-4 text-sm font-semibold"
+      :color="canAccessPhysicianStatement ? 'primary' : 'neutral'"
+      :variant="canAccessPhysicianStatement ? 'soft' : 'outline'"
+      :disabled="!canAccessPhysicianStatement"
+      to="/physician-statement"
+    >
+      <span>Physician Statement Form</span>
+      <span>
+        {{
+          canAccessPhysicianStatement
+            ? physicianSubmitted
+              ? 'Submitted'
+              : 'Not uploaded'
+            : 'Available on Prospective'
+        }}
+      </span>
+    </UButton>
+
+    <UButton
+      class="mt-3 w-full justify-between rounded-xl px-5 py-4 text-sm font-semibold"
+      :color="canAccessRoiForm ? 'primary' : 'neutral'"
+      :variant="canAccessRoiForm ? 'soft' : 'outline'"
+      :disabled="!canAccessRoiForm"
+      to="/release-of-information-authorization"
+    >
+      <span>Release of Information Authorization Form</span>
+      <span>
+        {{
+          canAccessRoiForm
+            ? roiSubmitted
+              ? 'Submitted'
+              : 'Not uploaded'
+            : 'Available on Prospective'
+        }}
+      </span>
     </UButton>
   </main>
 </template>

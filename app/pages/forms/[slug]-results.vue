@@ -1,4 +1,6 @@
 <script setup lang="ts">
+  definePageMeta({ middleware: 'waitlist-forms' })
+
   type ResultQuestion = {
     id: string
     text: string
