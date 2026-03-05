@@ -29,7 +29,7 @@
               alt="Hope Cope Heal logo"
               width="160"
               height="32"
-              style="height: 32px; width: auto;"
+              style="height: 32px; width: auto"
               class="h-8 w-auto dark:hidden"
             />
             <img
@@ -37,7 +37,7 @@
               alt="Hope Cope Heal logo"
               width="160"
               height="32"
-              style="height: 32px; width: auto;"
+              style="height: 32px; width: auto"
               class="hidden h-8 w-auto dark:block"
             />
             <span class="text-sm leading-none whitespace-nowrap sm:hidden">Hope.Cope.Heal.</span>
@@ -58,6 +58,12 @@
               to="/taskPage"
               color="primary"
               :variant="isTasksPage ? 'solid' : 'soft'"
+            />
+            <UButton
+              label="Calendar"
+              to="/calendar"
+              color="primary"
+              :variant="isCalendarPage ? 'solid' : 'soft'"
             />
             <UButton
               :icon="isDark ? 'i-heroicons-moon-20-solid' : 'i-heroicons-sun-20-solid'"
