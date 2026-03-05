@@ -1,4 +1,6 @@
 <script setup lang="ts">
+  import { capitalizeName } from '~/utils/name'
+
   type ClientStatus = 'INCOMPLETE' | 'WAITLIST' | 'ACTIVE' | 'ARCHIVED'
 
   const props = defineProps<{
@@ -48,8 +50,8 @@
   function displayName() {
     const p = profile.value
     if (!p) return ''
-    if (p.lname) return `${p.fname} ${p.lname}`
-    return p.fname || p.name
+    const raw = p.lname ? `${p.fname} ${p.lname}` : p.fname || p.name
+    return capitalizeName(raw)
   }
 
   function statusLabel(status: ClientStatus): string {
@@ -198,6 +200,7 @@
     <div v-else-if="profile" class="space-y-6">
       <!-- Summary -->
       <div class="flex flex-wrap items-center gap-4 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+        <span v-if="displayName()" class="text-lg font-semibold">{{ displayName() }}</span>
         <UBadge
           :color="profile.status === 'ACTIVE' ? 'success' : profile.status === 'ARCHIVED' ? 'neutral' : profile.status === 'WAITLIST' ? 'primary' : 'warning'"
           variant="soft"

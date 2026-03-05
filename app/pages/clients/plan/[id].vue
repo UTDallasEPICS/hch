@@ -1,4 +1,6 @@
 <script setup lang="ts">
+  import { capitalizeName } from '~/utils/name'
+
   definePageMeta({ middleware: 'clients-admin' })
 
   const route = useRoute()
@@ -35,15 +37,15 @@
   useHead({
     title: () =>
       profile.value
-        ? `Plan — ${[profile.value.fname, profile.value.lname].filter(Boolean).join(' ') || profile.value.name}`
+        ? `Plan — ${capitalizeName([profile.value.fname, profile.value.lname].filter(Boolean).join(' ') || profile.value.name || '')}`
         : 'Client Plan',
   })
 
   function displayName() {
     const p = profile.value
     if (!p) return ''
-    if (p.lname) return `${p.fname} ${p.lname}`
-    return p.fname || p.name
+    const raw = p.lname ? `${p.fname} ${p.lname}` : p.fname || p.name
+    return capitalizeName(raw)
   }
 
   async function savePlan() {
