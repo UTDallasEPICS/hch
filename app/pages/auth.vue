@@ -5,6 +5,7 @@
 
   const toast = useToast()
   const isEmailSent = ref(false)
+  const sessionRef = authClient.useSession()
 
   const schema = computed(() => {
     if (!isEmailSent.value) {
@@ -23,6 +24,25 @@
     email: '',
     otp: [] as string[],
   })
+
+  async function waitForSession(timeoutMs = 5000) {
+    if (sessionRef.value?.data) return
+    await sessionRef.value?.refetch?.().catch(() => {})
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Session timeout')), timeoutMs)
+      const stop = watch(
+        () => sessionRef.value?.data,
+        (data) => {
+          if (data) {
+            clearTimeout(timeout)
+            stop()
+            resolve()
+          }
+        },
+        { immediate: true }
+      )
+    })
+  }
 
   async function handleSubmit(event: FormSubmitEvent<any>) {
     if (!isEmailSent.value) {
@@ -43,14 +63,15 @@
         otp: state.otp.join(''),
       })
 
-      console.log('after verifying otp')
-
       if (error) {
         toast.add({ title: 'Error', description: error.message, color: 'error' })
-        console.log('error after verification')
       } else {
-        console.log('not error after verification')
-        await navigateTo('/')
+        try {
+          await waitForSession()
+          await navigateTo('/')
+        } catch {
+          await navigateTo('/', { replace: true, external: true })
+        }
       }
     }
   }
