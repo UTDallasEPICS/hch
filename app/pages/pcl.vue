@@ -107,8 +107,23 @@
 
       await $fetch('/api/pcl/save', { method: 'POST', body: buildPayload() })
 
-      await $fetch('/api/pcl/submit', { method: 'POST' })
+      const submitResult = await $fetch<{ totalScore?: number; severity?: string }>(
+        '/api/pcl/submit',
+        { method: 'POST' }
+      )  
+
+      if (typeof submitResult?.totalScore === 'number') {
+        submittedScore.value = submitResult.totalScore
+        submittedSeverity.value = submitResult.severity ?? null
+      } else {
+        // fallback: re-fetch if submit doesn't return score
+        const refreshed = await $fetch<{ totalScore?: number; severity?: string }>('/api/pcl/load')
+        submittedScore.value = typeof refreshed?.totalScore === 'number' ? refreshed.totalScore : null
+        submittedSeverity.value = typeof refreshed?.severity === 'string' ? refreshed.severity : null
+      }
+
       isReadOnly.value = true
+      
       toast.add({
         title: 'Assessment completed',
         color: 'success',
