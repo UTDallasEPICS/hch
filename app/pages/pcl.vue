@@ -3,6 +3,22 @@ const toast = useToast()
 const isSaving = ref(false)
 const isReadOnly = ref(false)
 const worstEvent = ref('')
+  const loadError = ref<string | null>(null)
+
+  const { data: permissions } = await useFetch<{
+    canViewScores: boolean
+    canViewNotes: boolean
+    canViewPlan: boolean
+  }>('/api/user/permissions')
+  const canViewScores = computed(() => permissions.value?.canViewScores ?? false)
+
+const options = [
+  { label: 'Not at all', value: 0 },
+  { label: 'A little bit', value: 1 },
+  { label: 'Moderately', value: 2 },
+  { label: 'Quite a bit', value: 3 },
+  { label: 'Extremely', value: 4 },
+]
 
 const questions = [
   'Repeated, disturbing, and unwanted memories of the stressful experience?',
@@ -18,7 +34,7 @@ const questions = [
   'Having strong negative feelings such as fear, horror, anger, guilt, or shame?',
   'Loss of interest in activities that you used to enjoy?',
   'Feeling distant or cut off from other people?',
-  'Trouble experiencing positive feelings (sfor example, being unable to feel happiness or have loving feelings for people close to you)?',
+  'Trouble experiencing positive feelings (for example, being unable to feel happiness or have loving feelings for people close to you)?',
   'Irritable behavior, angry outbursts, or acting aggressively?',
   'Taking too many risks or doing things that could cause you harm?',
   'Being "superalert" or watchful or on guard?',
@@ -58,11 +74,22 @@ async function saveAndExit() {
   try {
     isSaving.value = true
     await $fetch('/api/pcl/save', { method: 'POST', body: buildPayload() })
+
+    toast.add({
+      title: 'Saved',
+      color: 'success',
+    })
+
     await navigateTo('/taskPage')
   } catch (error: any) {
+    const description =
+      error?.data?.statusMessage ||
+      error?.statusMessage ||
+      'Unable to save your responses. Please try again.'
+
     toast.add({
       title: 'Save failed',
-      description: error?.data?.statusMessage || error?.statusMessage || 'Your answers could not be saved. Please try again.',
+      description,
       color: 'error',
     })
   } finally {
@@ -84,102 +111,120 @@ onMounted(async () => {
       }
     }
   } catch (error: any) {
-    toast.add({
-      title: 'Unable to load form',
-      description: error?.data?.statusMessage || error?.statusMessage || 'Please try again later.',
-      color: 'error',
-    })
-    await navigateTo('/taskPage')
+    loadError.value =
+      error?.data?.statusMessage || error?.statusMessage || 'Unable to load form.'
   }
 })
 </script>
 
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
-  <UContainer class="max-w-3xl py-10">
-    <div class="mb-6" v-if="!isReadOnly">
-      <div class="flex items-center justify-between text-sm">
-        <span class="font-medium text-gray-700 dark:text-gray-300"
-          >{{ progressPercent }}% Complete</span
-        >
-        <span class="text-gray-500 dark:text-gray-400"
-          >{{ completedCount }} of {{ TOTAL_QUESTIONS }} answered</span
-        >
-      </div>
-      <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-        <div
-          class="bg-primary-500 h-full rounded-full transition-all duration-300"
-          :style="{ width: `${progressPercent}%` }"
-        />
-      </div>
-    </div>
-    <div class="mb-8">
-      <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
-        PCL-5
-      </h1>
-      <p v-if="!isReadOnly" class="mt-1 text-sm text-gray-500 dark:text-gray-400 mb-3">
-        Instructions: Below is a list of problems that people sometimes have in response to a very
-        stressful experience. Keeping your worst event in mind, please read each problem carefully
-        and then select one of the numbers to the right to indicate how much you have been bothered
-        by that problem in the past month.
-      </p>
-      <p v-else class="mt-1 text-sm font-medium text-primary-600 dark:text-primary-400 mb-3">
-        Submitted Form (View Only).
-      </p>
-    </div>
-
-    <div class="mb-6" :inert="isReadOnly">
-      <label class="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-        Your worst event:
-      </label>
-      <UInput v-model="worstEvent" placeholder="Describe Your Worst Event" class="w-full" />
-    </div>
-
-    <div class="flex flex-col gap-4 mt-6" :inert="isReadOnly">
-      <div
-        v-for="(question, index) in questions"
-        :key="index"
-        class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-      >
-        <p class="font-medium text-gray-900 dark:text-white mb-4">{{ index + 1 }}. {{ question }}</p>
-        <div class="flex justify-between mt-4">
-          <label
-            v-for="(label, score) in ['Not at all', 'A little bit', 'Moderately', 'Quite a bit', 'Extremely']"
-            :key="score"
-            class="flex flex-col items-center gap-1"
+    <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+      <div v-if="canViewScores && !isReadOnly" class="mb-6">
+        <div class="flex items-center justify-between text-sm">
+          <span class="font-medium text-gray-700 dark:text-gray-300"
+            >{{ progressPercent }}% Complete</span
           >
-            <input
-              type="radio"
-              :name="'q' + index"
-              :value="score"
-              v-model="responses[index]"
-              class="accent-primary-500 mt-1"
-            />
-            <span class="text-sm text-gray-700 dark:text-gray-300 text-center">{{ label }}</span>
-          </label>
+          <span class="text-gray-500 dark:text-gray-400"
+            >{{ completedCount }} of {{ TOTAL_QUESTIONS }} answered</span
+          >
+        </div>
+        <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+          <div
+            class="bg-primary-500 h-full rounded-full transition-all duration-300"
+            :style="{ width: `${progressPercent}%` }"
+          />
         </div>
       </div>
-    </div>
 
-    <div class="mt-12 flex justify-end gap-3">
-      <UButton
-        v-if="!isReadOnly"
-        label="Clear Form"
-        variant="outline"
-        color="neutral"
-        size="lg"
-        :disabled="isSaving"
-        @click="clearForm"
-      />
-      <UButton
-        :label="isReadOnly ? 'Back to Tasks' : 'Save and Exit'"
+      <div class="mb-8">
+        <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
+          PCL-5
+        </h1>
+        <p v-if="!isReadOnly" class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          Instructions: Below is a list of problems that people sometimes have in response to a very
+          stressful experience. Keeping your worst event in mind, please read each problem carefully
+          and then select one of the numbers to the right to indicate how much you have been bothered
+          by that problem in the past month.
+        </p>
+        <p v-else class="mt-2 text-sm font-medium text-primary-600 dark:text-primary-400">
+          Submitted Form (View Only).
+        </p>
+      </div>
+
+      <UAlert
+        v-if="loadError"
+        icon="i-heroicons-exclamation-triangle-20-solid"
         color="error"
-        variant="soft"
-        size="lg"
-        :loading="isSaving"
-        @click="saveAndExit"
+        variant="subtle"
+        title="PCL-5: Error loading form"
+        :description="loadError"
       />
-    </div>
-  </UContainer>
+      <div v-if="loadError" class="mt-4">
+        <NuxtLink to="/taskPage">
+          <UButton variant="outline" size="lg">Back to Tasks</UButton>
+        </NuxtLink>
+      </div>
+
+      <form v-else class="space-y-8" @submit.prevent="saveAndExit">
+        <div
+          class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+          :inert="isReadOnly"
+        >
+          <label class="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+            Your worst event:
+          </label>
+          <UInput v-model="worstEvent" placeholder="Describe Your Worst Event" class="w-full" />
+        </div>
+
+        <div
+          v-for="(question, index) in questions"
+          :key="index"
+          class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+          :inert="isReadOnly"
+        >
+          <p class="font-medium text-gray-900 dark:text-white mb-3">
+            {{ index + 1 }}. {{ question }}
+          </p>
+          <div class="flex justify-between mt-4">
+            <label
+              v-for="opt in options"
+              :key="opt.value"
+              class="flex flex-col items-center gap-1"
+            >
+              <span class="text-sm text-gray-700 dark:text-gray-300 text-center">{{ opt.label }}</span>
+              <input
+                type="radio"
+                :name="'q' + index"
+                :value="opt.value"
+                v-model="responses[index]"
+                class="accent-primary-500 mt-1"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3">
+          <UButton
+            v-if="!isReadOnly"
+            type="button"
+            label="Clear Form"
+            variant="outline"
+            color="neutral"
+            size="lg"
+            :disabled="isSaving"
+            @click="clearForm"
+          />
+          <UButton
+            type="submit"
+            :label="isReadOnly ? 'Back to Tasks' : 'Save and Exit'"
+            color="error"
+            variant="soft"
+            size="lg"
+            :loading="isSaving"
+          />
+        </div>
+      </form>
+    </main>
   </div>
 </template>

@@ -2,6 +2,13 @@
   const toast = useToast()
   const isSaving = ref(false)
 
+  const { data: permissions } = await useFetch<{
+    canViewScores: boolean
+    canViewNotes: boolean
+    canViewPlan: boolean
+  }>('/api/user/permissions')
+  const canViewScores = computed(() => permissions.value?.canViewScores ?? false)
+
   const form = reactive({
     g1: null as number | null,
     g2: null as number | null,
@@ -71,9 +78,16 @@
     form.g8 = a.g08
   }
 
+  const loadError = ref<string | null>(null)
+
   onMounted(async () => {
-    const res = await $fetch('/api/gad/start', { method: 'POST' })
-    applySavedAnswers(res?.answers)
+    try {
+      const res = await $fetch('/api/gad/start', { method: 'POST' })
+      applySavedAnswers(res?.answers)
+    } catch (err: any) {
+      const msg = err?.data?.statusMessage || err?.message || 'Unable to load form.'
+      loadError.value = msg
+    }
   })
 
   function clearForm() {
@@ -123,7 +137,7 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
     <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-      <div class="mb-6">
+      <div v-if="canViewScores" class="mb-6">
         <div class="flex items-center justify-between text-sm">
           <span class="font-medium text-gray-700 dark:text-gray-300"
             >{{ progressPercent }}% Complete</span
@@ -150,7 +164,21 @@
         </p>
       </div>
 
-      <form class="space-y-8" @submit.prevent="saveAndExit">
+      <UAlert
+        v-if="loadError"
+        icon="i-heroicons-exclamation-triangle-20-solid"
+        color="error"
+        variant="subtle"
+        title="GAD-7: Error loading form"
+        :description="loadError"
+      />
+      <div v-if="loadError" class="mt-4">
+        <NuxtLink to="/taskPage">
+          <UButton variant="outline" size="lg">Back to Tasks</UButton>
+        </NuxtLink>
+      </div>
+
+      <form v-else class="space-y-8" @submit.prevent="saveAndExit">
         <!-- Questions - each in its own card -->
         <div
           v-for="(questionKey, index) in questionKeys"
@@ -212,13 +240,21 @@
           </div>
         </div>
 
-        <!-- Total Score -->
-        <div class="text-lg font-semibold text-gray-900 dark:text-white">
+        <!-- Total Score or Permission Message -->
+        <div v-if="canViewScores" class="text-lg font-semibold text-gray-900 dark:text-white">
           Total Score: {{ totalScore }}
           <span class="ml-2 text-sm font-normal text-gray-600 dark:text-gray-400"
             >({{ severity }})</span
           >
         </div>
+        <UAlert
+          v-else
+          icon="i-heroicons-exclamation-triangle-20-solid"
+          color="error"
+          variant="subtle"
+          title="GAD-7: You do not have permission to view scores"
+          description="Your administrator has not enabled this feature for your account. Please contact your clinician for any further inquiries."
+        />
 
         <div class="flex justify-end gap-3">
           <UButton

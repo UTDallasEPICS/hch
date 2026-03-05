@@ -1,6 +1,8 @@
 import { createError, defineEventHandler, getHeaders } from 'h3'
 import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
+import { isAdmin } from '../../utils/is-admin'
+import { getClientPermissions } from '../../utils/client-permissions'
 
 const TOTAL = 7
 
@@ -18,6 +20,14 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401 })
   }
 
+  const currentUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, email: true },
+  })
+  const canViewScores =
+    isAdmin(currentUser?.role ?? null, currentUser?.email ?? null) ||
+    (await getClientPermissions(userId)).canViewScores
+
   const form = await prisma.gadForm.findFirst({
     where: { userId },
     orderBy: { id: 'desc' },
@@ -32,8 +42,8 @@ export default defineEventHandler(async (event) => {
     return {
       answered: 0,
       total: TOTAL,
-      totalScore: form?.totalScore ?? null,
-      severity: form?.severity ?? null,
+      totalScore: canViewScores ? (form?.totalScore ?? null) : null,
+      severity: canViewScores ? (form?.severity ?? null) : null,
       submitted: false,
     }
   }
@@ -44,8 +54,8 @@ export default defineEventHandler(async (event) => {
   return {
     answered,
     total: TOTAL,
-    totalScore: form?.totalScore ?? null,
-    severity: form?.severity ?? null,
+    totalScore: canViewScores ? (form?.totalScore ?? null) : null,
+    severity: canViewScores ? (form?.severity ?? null) : null,
     submitted: form.status === 'COMPLETE',
   }
 })

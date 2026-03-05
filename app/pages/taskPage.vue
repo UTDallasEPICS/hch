@@ -8,11 +8,28 @@
     await navigateTo('/', { replace: true })
   }
 
-  const { data: statusData } = await useFetch<{ status: string | null; hasClient: boolean }>(
-    '/api/user/my-status',
-    { getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key] }
-  )
+  const { data: statusData } = await useFetch<{
+    status: string | null
+    hasClient: boolean
+    userId: string | null
+  }>('/api/user/my-status', {
+    getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
+  })
   const userStatus = computed(() => statusData.value?.status ?? 'INCOMPLETE')
+
+  const { data: profile } = await useFetch(
+    () => `/api/clients/${statusData.value?.userId}/profile`,
+    {
+      key: () => `client-profile-${statusData.value?.userId ?? 'none'}`,
+      watch: [() => statusData.value?.userId],
+      getCachedData: () => undefined,
+    }
+  )
+  const permissions = computed(() => profile.value?.permissions ?? {
+    canViewScores: false,
+    canViewNotes: false,
+    canViewPlan: false,
+  })
 
   const { form } = useFormStore()
   const answered = ref(0)
@@ -469,8 +486,8 @@
             name: 'GAD-7 Form',
             to: '/gad',
             progress: gadSubmitted
-              ? 'Submitted'
-              : `${gadAnswered}/${gadTotal}${gadScore !== null ? ` • ${gadSeverity}` : ''}`,
+              ? `Submitted${permissions.canViewScores && gadScore !== null ? ` • ${gadSeverity}` : ''}`
+              : `${gadAnswered}/${gadTotal}`,
             showSubmit: showGadSubmit,
             onSubmit: submitGad,
             key: 'gad',
@@ -516,6 +533,7 @@
           />
         </div>
       </div>
+
     </template>
 
     <!-- Archived or unknown status -->
@@ -531,6 +549,85 @@
           You have no pending tasks at this time.
         </p>
       </div>
+    </template>
+
+    <!-- Quick access: View Session Notes, View My Plan (visible when admin grants permission) -->
+    <div
+      v-if="(permissions.canViewNotes && profile?.sessionNotes?.length) || (permissions.canViewPlan && profile?.plan?.content)"
+      class="mt-10 flex flex-wrap gap-3"
+    >
+      <UButton
+        v-if="permissions.canViewNotes && profile?.sessionNotes?.length"
+        variant="soft"
+        color="primary"
+        size="sm"
+        icon="i-heroicons-document-text"
+        label="View Session Notes"
+        @click="document.getElementById('session-notes')?.scrollIntoView({ behavior: 'smooth' })"
+      />
+      <UButton
+        v-if="permissions.canViewPlan && profile?.plan?.content"
+        variant="soft"
+        color="primary"
+        size="sm"
+        icon="i-heroicons-document-plus"
+        label="View My Plan"
+        @click="document.getElementById('my-plan')?.scrollIntoView({ behavior: 'smooth' })"
+      />
+    </div>
+
+    <!-- My Scores, Session Notes, Plan (visible when admin grants permission) -->
+    <template v-if="permissions.canViewScores && profile?.metrics?.length">
+      <section class="mt-10">
+        <h2 class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
+          <UIcon name="i-heroicons-chart-bar" class="h-5 w-5" />
+          My Scores
+        </h2>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div
+            v-for="m in profile.metrics"
+            :key="m.form"
+            class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
+          >
+            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ m.form }}</p>
+            <div class="mt-1 flex items-baseline gap-2">
+              <span v-if="m.score != null" class="text-xl font-semibold text-gray-900 dark:text-white">{{ m.score }}</span>
+              <span v-if="m.severity" class="text-sm text-gray-600 dark:text-gray-400">{{ m.severity }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </template>
+    <template v-if="permissions.canViewNotes && profile?.sessionNotes?.length">
+      <section id="session-notes" class="mt-10">
+        <h2 class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
+          <UIcon name="i-heroicons-document-text" class="h-5 w-5" />
+          My Session Notes
+        </h2>
+        <div class="space-y-3">
+          <div
+            v-for="note in profile.sessionNotes"
+            :key="note.id"
+            class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
+          >
+            <p class="whitespace-pre-wrap text-sm text-gray-900 dark:text-gray-100">{{ note.content }}</p>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              {{ new Date(note.createdAt).toLocaleString() }}
+            </p>
+          </div>
+        </div>
+      </section>
+    </template>
+    <template v-if="permissions.canViewPlan && profile?.plan?.content">
+      <section id="my-plan" class="mt-10">
+        <h2 class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
+          <UIcon name="i-heroicons-document-plus" class="h-5 w-5" />
+          My Treatment Plan
+        </h2>
+        <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+          <p class="whitespace-pre-wrap text-sm text-gray-900 dark:text-gray-100">{{ profile.plan.content }}</p>
+        </div>
+      </section>
     </template>
   </main>
 </template>

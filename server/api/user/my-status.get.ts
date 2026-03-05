@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
 
   const session = await auth.api.getSession({ headers: requestHeaders })
   if (!session?.user?.id) {
-    return { status: null, hasClient: false }
+    return { status: null, hasClient: false, userId: null }
   }
 
   const client = await prisma.client.findUnique({
@@ -21,5 +21,6 @@ export default defineEventHandler(async (event) => {
   return {
     status: client?.status ?? 'INCOMPLETE',
     hasClient: !!client,
+    userId: session.user.id,
   }
 })

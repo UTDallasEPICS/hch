@@ -265,13 +265,17 @@ export default defineEventHandler(async (event) => {
     },
   ]
 
-  const metrics = tasks
-    .filter((t) => t.submitted && (t.score != null || t.severity != null))
-    .map((t) => ({
-      form: t.name,
-      score: t.score,
-      severity: t.severity,
-    }))
+  const canViewScores = hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewScores)
+  const metrics = canViewScores
+    ? tasks
+        .filter((t) => t.submitted && (t.score != null || t.severity != null))
+        .map((t) => ({ form: t.name, score: t.score, severity: t.severity }))
+    : []
+
+  const tasksForClient =
+    isOwnProfile && !canViewScores
+      ? tasks.map(({ score: _s, severity: _v, ...t }) => t)
+      : tasks
 
   return {
     id: user.id,
@@ -284,7 +288,7 @@ export default defineEventHandler(async (event) => {
     missedSessions: clientProfile?.missedSessions ?? 0,
     allFormsComplete,
     incompleteForms,
-    tasks,
+    tasks: tasksForClient,
     metrics,
     permissions: clientProfile?.permissions
       ? {
@@ -293,7 +297,13 @@ export default defineEventHandler(async (event) => {
           canViewPlan: clientProfile.permissions.canViewPlan,
         }
       : { canViewScores: false, canViewNotes: false, canViewPlan: false },
-    sessionNotes: isAdmin ? (clientProfile?.sessionNotes ?? []) : [],
-    plan: isAdmin ? clientProfile?.plan : null,
+    sessionNotes:
+      hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewNotes)
+        ? (clientProfile?.sessionNotes ?? [])
+        : [],
+    plan:
+      hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewPlan)
+        ? clientProfile?.plan
+        : null,
   }
 })

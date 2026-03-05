@@ -9,6 +9,13 @@
   const isReadOnly = ref(false)
   const { form, toPayload, applySavedAnswers } = useFormStore()
 
+  const { data: permissions } = await useFetch<{
+    canViewScores: boolean
+    canViewNotes: boolean
+    canViewPlan: boolean
+  }>('/api/user/permissions')
+  const canViewScores = computed(() => permissions.value?.canViewScores ?? false)
+
   const TOTAL_STEPS = 5
 
   const wizardSteps = [
@@ -261,7 +268,7 @@
   >
     <UContainer class="max-w-3xl">
       <div class="mb-6 sm:mb-8">
-        <div v-if="!isReadOnly" class="mb-4">
+        <div v-if="canViewScores && !isReadOnly" class="mb-4">
           <div class="flex items-center justify-between text-sm">
             <span class="font-medium text-gray-700 dark:text-gray-300"
               >{{ progressPercent }}% Complete</span

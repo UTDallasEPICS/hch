@@ -47,6 +47,12 @@
     }
     return null
   })
+
+  const formName = computed(() => {
+    const s = slug.value
+    if (s === 'ace-form') return 'ACE'
+    return s.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  })
 </script>
 
 <template>
@@ -58,14 +64,20 @@
         <USkeleton v-for="i in 5" :key="i" class="h-20 w-full" />
       </div>
 
-      <UAlert
-        v-else-if="error"
-        icon="i-heroicons-exclamation-triangle-20-solid"
-        color="error"
-        variant="subtle"
-        title="Error loading results"
-        :description="error.message"
-      />
+      <template v-else-if="error">
+        <UAlert
+          icon="i-heroicons-exclamation-triangle-20-solid"
+          color="error"
+          variant="subtle"
+          :title="`${formName}: Error loading results`"
+          :description="error.message"
+        />
+        <div class="mt-4">
+          <NuxtLink to="/taskPage">
+            <UButton variant="outline" size="lg">Back to Tasks</UButton>
+          </NuxtLink>
+        </div>
+      </template>
 
       <template v-else-if="form">
         <!-- Header -->
