@@ -34,6 +34,28 @@ async function main() {
     console.log('Created ACE form (questions in front-end)')
   }
 
+  // Assign roles: alice@a.com and djanjanam@gmail.com = ADMIN, bob@b.com = CLIENT
+  const adminEmails = ['alice@a.com', 'djanjanam@gmail.com']
+  const clientEmail = 'bob@b.com'
+  for (const email of adminEmails) {
+    const user = await prisma.user.findUnique({ where: { email } })
+    if (user) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'ADMIN' },
+      })
+      console.log(`Set ${email} as ADMIN`)
+    }
+  }
+  const clientUser = await prisma.user.findUnique({ where: { email: clientEmail } })
+  if (clientUser) {
+    await prisma.user.update({
+      where: { id: clientUser.id },
+      data: { role: 'CLIENT' },
+    })
+    console.log(`Set ${clientEmail} as CLIENT`)
+  }
+
   console.log('Seeding finished.')
 }
 

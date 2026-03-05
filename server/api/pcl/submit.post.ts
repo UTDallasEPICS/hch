@@ -3,6 +3,7 @@ import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
 
 const TOTAL_QUESTIONS = 20
+const TOTAL_ITEMS = 21
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
@@ -60,12 +61,31 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  if (answered !== TOTAL_QUESTIONS) {
+  if (
+    typeof form.questions.worstEvent === 'string' &&
+    form.questions.worstEvent.trim().length > 0
+  ) {
+    answered += 1
+  }
+
+  if (answered !== TOTAL_ITEMS) {
     throw createError({
       statusCode: 400,
       statusMessage: 'Please complete all required questions before submitting',
     })
   }
+
+  let totalScore = 0
+  for (let index = 1; index <= TOTAL_QUESTIONS; index += 1) {
+    const key = `q${String(index).padStart(2, '0')}` as keyof typeof form.questions
+    const value = form.questions[key]
+    totalScore += typeof value === 'number' ? value : 0
+  }
+
+  let severity = 'Minimal'
+  if (totalScore > 60) severity = 'Severe'
+  else if (totalScore > 40) severity = 'Moderate'
+  else if (totalScore > 20) severity = 'Mild'
 
   await prisma.pclForm.update({
     where: {
@@ -73,6 +93,8 @@ export default defineEventHandler(async (event) => {
     },
     data: {
       status: 'COMPLETE',
+      totalScore,
+      severity,
       submittedAt: new Date(),
     },
   })

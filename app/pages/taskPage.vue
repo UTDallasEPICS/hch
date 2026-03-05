@@ -4,39 +4,35 @@
   const submitted = ref(false)
   const aceAnswered = ref(0)
   const aceTotal = ref(0)
+  const aceSubmitted = ref(false)
   const gadAnswered = ref(0)
-  const gadTotal = ref(7)
+  const gadTotal = ref(8)
   const gadScore = ref<number | null>(null)
   const gadSeverity = ref<string | null>(null)
+  const gadSubmitted = ref(false)
   const phqAnswered = ref(0)
-  const phqTotal = ref(9)
+  const phqTotal = ref(10)
   const phqSubmitted = ref(false)
-  const isSubmitting = ref(false)
-  const toast = useToast()
   const pclAnswered = ref(0)
-  const pclTotal = ref(20)
+  const pclTotal = ref(21)
   const pclSubmitted = ref(false)
 
-  const isApplicationComplete = computed(() => answered.value === total.value)
-  const isAceComplete = computed(() => aceTotal.value > 0 && aceAnswered.value === aceTotal.value)
-  const canSubmit = computed(
-    () => isApplicationComplete.value && isAceComplete.value && !submitted.value
-  )
   const aceTarget = computed(() =>
-    submitted.value ? '/forms/ace-form-results' : '/forms/ace-form'
+    aceSubmitted.value ? '/forms/ace-form-results' : '/forms/ace-form'
   )
   const aceProgressLabel = computed(() =>
-    submitted.value ? 'Submitted' : `${aceAnswered.value}/${aceTotal.value}`
+    aceSubmitted.value ? 'Submitted' : `${aceAnswered.value}/${aceTotal.value}`
   )
 
   async function loadProgress() {
-    const [appResult, aceFormResult, aceResponsesResult, gadResult, phqResult, pclResult] =
+    const [appResult, aceProgressResult, gadResult, phqResult, pclResult] =
       await Promise.allSettled([
         $fetch<{ answered: number; total: number; submitted?: boolean }>(
           '/api/application/progress'
         ),
-        $fetch<{ questions: Array<{ id: string }> }>('/api/forms/ace-form'),
-        $fetch<Record<string, string>>('/api/forms/ace-form/responses'),
+        $fetch<{ answered: number; total: number; submitted?: boolean }>(
+          '/api/forms/ace-form/progress'
+        ),
         $fetch<{
           answered: number
           total: number
@@ -54,14 +50,10 @@
       submitted.value = Boolean(appResult.value.submitted)
     }
 
-    if (aceFormResult.status === 'fulfilled') {
-      aceTotal.value = aceFormResult.value.questions.length
-    }
-
-    if (aceResponsesResult.status === 'fulfilled') {
-      aceAnswered.value = Object.values(aceResponsesResult.value).filter(
-        (value) => typeof value === 'string' && value.trim().length > 0
-      ).length
+    if (aceProgressResult.status === 'fulfilled') {
+      aceAnswered.value = aceProgressResult.value.answered
+      aceTotal.value = aceProgressResult.value.total
+      aceSubmitted.value = Boolean(aceProgressResult.value.submitted)
     }
 
     if (gadResult.status === 'fulfilled') {
@@ -69,6 +61,8 @@
       gadTotal.value = gadResult.value.total
       gadScore.value = gadResult.value.totalScore
       gadSeverity.value = gadResult.value.severity
+      gadSubmitted.value =
+        gadResult.value.status === 'SUBMITTED' || gadResult.value.status === 'COMPLETE'
     }
 
     if (phqResult.status === 'fulfilled') {
@@ -84,35 +78,6 @@
     }
   }
 
-  async function submitForms() {
-    if (!canSubmit.value) return
-
-    try {
-      isSubmitting.value = true
-      await $fetch('/api/application/submit', { method: 'POST' })
-      submitted.value = true
-      toast.add({
-        title: 'Forms submitted',
-        description: 'Your application has been submitted successfully.',
-        color: 'success',
-      })
-    } catch (error: any) {
-      const description =
-        error?.data?.statusMessage ||
-        error?.statusMessage ||
-        'Unable to submit forms. Please try again.'
-
-      toast.add({
-        title: 'Submission failed',
-        description,
-        color: 'error',
-      })
-      await loadProgress()
-    } finally {
-      isSubmitting.value = false
-    }
-  }
-
   onMounted(async () => {
     try {
       await loadProgress()
@@ -122,15 +87,17 @@
       submitted.value = false
       aceAnswered.value = 0
       aceTotal.value = 0
+      aceSubmitted.value = false
       gadAnswered.value = 0
-      gadTotal.value = 7
+      gadTotal.value = 8
       gadScore.value = null
       gadSeverity.value = null
+      gadSubmitted.value = false
       phqAnswered.value = 0
-      phqTotal.value = 9
+      phqTotal.value = 10
       phqSubmitted.value = false
       pclAnswered.value = 0
-      pclTotal.value = 20
+      pclTotal.value = 21
       pclSubmitted.value = false
     }
   })
@@ -143,7 +110,10 @@
         Tasks to complete
       </h1>
       <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-        Complete each form to submit your application.
+        Complete all forms to enter the waitlist.
+      </p>
+      <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+        Once submitted, you can review your responses and results at any time.
       </p>
     </div>
     <div
@@ -152,6 +122,7 @@
       <span>Form</span>
       <span>Progress</span>
     </div>
+
     <UButton
       class="mt-3 w-full justify-between rounded-xl px-5 py-4 text-sm font-semibold"
       color="primary"
@@ -180,7 +151,7 @@
     >
       <span>GAD-7 Form</span>
       <span>
-        <template v-if="gadScore !== null"> Submitted • {{ gadSeverity }} </template>
+        <template v-if="gadSubmitted"> Submitted </template>
         <template v-else> {{ gadAnswered }}/{{ gadTotal }} </template>
       </span>
     </UButton>
@@ -204,20 +175,5 @@
       <span>PCL-5 Form</span>
       <span>{{ pclSubmitted ? 'Submitted' : `${pclAnswered}/${pclTotal}` }}</span>
     </UButton>
-
-    <div class="mt-8 flex justify-end">
-      <div v-if="canSubmit" class="flex flex-col items-end gap-2">
-        <p class="text-right text-sm text-gray-600 dark:text-gray-400">
-          Please verify your answers on the forms are accurate before submission.
-        </p>
-        <UButton
-          label="Submit Forms"
-          color="primary"
-          variant="solid"
-          :loading="isSubmitting"
-          @click="submitForms"
-        />
-      </div>
-    </div>
   </main>
 </template>

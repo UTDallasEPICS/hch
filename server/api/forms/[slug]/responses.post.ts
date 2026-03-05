@@ -46,10 +46,28 @@ export default defineEventHandler(async (event) => {
     })
 
     if (existing) {
+      let existingResponses: Record<string, string> = {}
+
+      try {
+        const parsed = JSON.parse(existing.responses) as unknown
+        if (parsed && typeof parsed === 'object') {
+          for (const [alias, value] of Object.entries(parsed as Record<string, unknown>)) {
+            existingResponses[alias] = typeof value === 'string' ? value : String(value ?? '')
+          }
+        }
+      } catch {
+        existingResponses = {}
+      }
+
+      const mergedResponses = {
+        ...existingResponses,
+        ...normalized,
+      }
+
       await prisma.aceResponse.update({
         where: { id: existing.id },
         data: {
-          responses: JSON.stringify(normalized),
+          responses: JSON.stringify(mergedResponses),
           completedAt: new Date(), // Update timestamp
         },
       })

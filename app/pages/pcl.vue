@@ -3,6 +3,8 @@
   const isSaving = ref(false)
   const isReadOnly = ref(false)
   const worstEvent = ref('')
+  const submittedScore = ref<number | null>(null)
+  const submittedSeverity = ref<string | null>(null)
 
   const questions = [
     'Repeated, disturbing, and unwanted memories of the stressful experience?',
@@ -28,11 +30,30 @@
   ]
 
   const responses = ref<number[]>(Array(questions.length).fill(-1))
-  const TOTAL_QUESTIONS = 20
-  const completedCount = computed(() => responses.value.filter((v) => v !== -1).length)
+  const TOTAL_ITEMS = 21
+  const completedCount = computed(() => {
+    const answeredQuestions = responses.value.filter((v) => v !== -1).length
+    const hasWorstEvent = worstEvent.value.trim().length > 0
+    return answeredQuestions + (hasWorstEvent ? 1 : 0)
+  })
+  const isComplete = computed(() => completedCount.value === TOTAL_ITEMS)
   const progressPercent = computed(() =>
-    TOTAL_QUESTIONS ? Math.round((completedCount.value / TOTAL_QUESTIONS) * 100) : 0
+    TOTAL_ITEMS ? Math.round((completedCount.value / TOTAL_ITEMS) * 100) : 0
   )
+
+  const fallbackScore = computed(() =>
+    responses.value.reduce((sum, value) => sum + (value >= 0 ? value : 0), 0)
+  )
+  const resultScore = computed(() => submittedScore.value ?? fallbackScore.value)
+  const resultSeverity = computed(() => submittedSeverity.value ?? 'Minimal')
+
+  function getSeverityColor(level: string | null) {
+    if (level === 'Minimal') return 'success'
+    if (level === 'Mild') return 'warning'
+    if (level === 'Moderate') return 'warning'
+    if (level === 'Severe') return 'error'
+    return 'neutral'
+  }
 
   function buildPayload() {
     const body: Record<string, number | string | null> = { worstEvent: worstEvent.value }
@@ -66,12 +87,61 @@
     }
   }
 
+  async function submitForm() {
+    if (isReadOnly.value) {
+      await navigateTo('/taskPage')
+      return
+    }
+
+    if (!isComplete.value) {
+      toast.add({
+        title: 'Incomplete',
+        description: 'Please answer all questions before submitting.',
+        color: 'error',
+      })
+      return
+    }
+
+    try {
+      isSaving.value = true
+
+      await $fetch('/api/pcl/save', { method: 'POST', body: buildPayload() })
+
+      await $fetch('/api/pcl/submit', { method: 'POST' })
+      isReadOnly.value = true
+      toast.add({
+        title: 'Assessment completed',
+        color: 'success',
+      })
+      await navigateTo('/taskPage')
+    } catch (error: any) {
+      const isIncompleteError =
+        error?.data?.statusMessage === 'Please complete all required questions before submitting'
+
+      toast.add({
+        title: isIncompleteError ? 'Incomplete' : 'Submission failed',
+        description:
+          error?.data?.statusMessage ||
+          error?.statusMessage ||
+          'Your answers could not be saved or submitted. Please try again.',
+        color: 'error',
+      })
+    } finally {
+      isSaving.value = false
+    }
+  }
+
   onMounted(async () => {
     try {
-      const data = await $fetch<{ answers?: Record<string, any>; submitted?: boolean }>(
-        '/api/pcl/load'
-      )
+      const data = await $fetch<{
+        answers?: Record<string, any>
+        submitted?: boolean
+        totalScore?: number | null
+        severity?: string | null
+      }>('/api/pcl/load')
       isReadOnly.value = Boolean(data?.submitted)
+      submittedScore.value = typeof data?.totalScore === 'number' ? data.totalScore : null
+      submittedSeverity.value = typeof data?.severity === 'string' ? data.severity : null
       if (data?.answers) {
         for (let i = 1; i <= 20; i++) {
           const key = `q${String(i).padStart(2, '0')}`
@@ -80,6 +150,8 @@
             responses.value[i - 1] = val
           }
         }
+
+        worstEvent.value = data.answers.worstEvent ?? ''
       }
     } catch (error: any) {
       toast.add({
@@ -96,13 +168,20 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
     <UContainer class="max-w-3xl py-10">
+      <div
+        v-if="isReadOnly"
+        class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-green-800"
+      >
+        You have already completed this assessment.
+      </div>
+
       <div class="mb-6" v-if="!isReadOnly">
         <div class="flex items-center justify-between text-sm">
           <span class="font-medium text-gray-700 dark:text-gray-300"
             >{{ progressPercent }}% Complete</span
           >
           <span class="text-gray-500 dark:text-gray-400"
-            >{{ completedCount }} of {{ TOTAL_QUESTIONS }} answered</span
+            >{{ completedCount }} of {{ TOTAL_ITEMS }} answered</span
           >
         </div>
         <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
@@ -127,11 +206,46 @@
         </p>
       </div>
 
-      <div class="mb-6" :inert="isReadOnly">
-        <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
+      <div
+        v-if="isReadOnly"
+        class="mb-8 rounded-xl border border-gray-200 bg-white p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+      >
+        <div class="text-center">
+          <div class="mb-4">
+            <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Your Score</span>
+          </div>
+          <div class="mb-4">
+            <span class="text-primary-600 dark:text-primary-400 text-6xl font-bold">
+              {{ resultScore }}
+            </span>
+            <span class="ml-2 text-2xl text-gray-500 dark:text-gray-400">/ 80</span>
+          </div>
+          <div class="mt-6">
+            <UBadge
+              :color="getSeverityColor(resultSeverity)"
+              size="lg"
+              variant="subtle"
+              class="mb-2"
+            >
+              {{ resultSeverity }}
+            </UBadge>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+        :inert="isReadOnly"
+      >
+        <label class="mb-3 block font-medium text-gray-900 dark:text-white">
           Your worst event:
         </label>
-        <UInput v-model="worstEvent" placeholder="Describe your worst event" class="w-full" />
+        <textarea
+          v-model="worstEvent"
+          placeholder="Describe your worst event"
+          rows="4"
+          class="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900 placeholder-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:placeholder-gray-500"
+        ></textarea>
       </div>
 
       <div class="mt-6 flex flex-col gap-4" :inert="isReadOnly">
@@ -170,14 +284,37 @@
         </div>
       </div>
 
-      <div class="mt-12 flex justify-end">
+      <div
+        v-if="!isReadOnly && !isComplete"
+        class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800"
+      >
+        Please answer all questions before submitting.
+      </div>
+
+      <div class="mt-12 flex justify-end gap-3">
         <UButton
-          :label="isReadOnly ? 'Back to Tasks' : 'Save and Exit'"
+          v-if="isReadOnly"
+          label="Back to Tasks"
+          variant="outline"
+          size="lg"
+          @click="saveAndExit"
+        />
+        <UButton
+          v-else
+          label="Save and Exit"
           color="error"
           variant="soft"
           size="lg"
           :loading="isSaving"
           @click="saveAndExit"
+        />
+        <UButton
+          v-if="!isReadOnly && isComplete"
+          label="Submit"
+          color="primary"
+          size="lg"
+          :loading="isSaving"
+          @click="submitForm"
         />
       </div>
     </UContainer>

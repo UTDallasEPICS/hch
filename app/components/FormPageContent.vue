@@ -11,10 +11,16 @@
     totalCount,
     progressPercent,
     setResponse,
+    clearResponses,
     submitting,
     submitError,
+    saveAndExit,
     submit,
-  } = await useFormBySlug(slugRef)
+  } = useFormBySlug(slugRef)
+
+  const isComplete = computed(
+    () => totalCount.value > 0 && completedCount.value === totalCount.value
+  )
 
   function toggleRadioResponse(alias: string, option: string) {
     const current = responses.value[alias]
@@ -25,7 +31,7 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
     <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-      <div v-if="form" class="mb-6">
+      <div v-if="form && !(form.slug === 'ace-form' && isComplete)" class="mb-6">
         <div class="flex items-center justify-between text-sm">
           <span class="font-medium text-gray-700 dark:text-gray-300"
             >{{ progressPercent }}% Complete</span
@@ -53,7 +59,7 @@
         icon="i-heroicons-exclamation-triangle-20-solid"
         color="error"
         variant="subtle"
-        title="Form not found"
+        title="Form Not Found"
         :description="
           formError?.message || 'Invalid form URL. Please check the link and try again.'
         "
@@ -131,13 +137,24 @@
 
           <div class="flex justify-end gap-3">
             <UButton
+              type="button"
+              size="lg"
+              :loading="submitting"
+              :disabled="submitting"
+              color="error"
+              variant="soft"
+              @click="saveAndExit"
+            >
+              Save and Exit
+            </UButton>
+            <UButton
+              v-if="isComplete"
               type="submit"
               size="lg"
               :loading="submitting"
               :disabled="submitting"
-              @click.prevent="submit"
             >
-              Save and Exit
+              Submit
             </UButton>
           </div>
         </form>

@@ -1,9 +1,18 @@
 <script setup lang="ts">
+  import { authClient } from './utils/auth-client'
+
   const route = useRoute()
   const colorMode = useColorMode()
+  const { data: session } = await authClient.useSession(useFetch)
+
+  const { data: adminData } = await useFetch<{ isAdmin: boolean }>('/api/user/is-admin', {
+    getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
+  })
+  const isAdmin = computed(() => adminData.value?.isAdmin ?? false)
 
   const isTasksPage = computed(() => route.path === '/taskPage')
   const isDashboardPage = computed(() => route.path === '/')
+  const isAuthenticated = computed(() => Boolean(session.value))
   const isDark = computed({
     get() {
       return colorMode.value === 'dark'
@@ -47,18 +56,20 @@
           </NuxtLink>
 
           <div class="flex items-center gap-2">
-            <UButton
-              label="Dashboard"
-              to="/"
-              color="primary"
-              :variant="isDashboardPage ? 'solid' : 'soft'"
-            />
-            <UButton
-              label="Tasks"
-              to="/taskPage"
-              color="primary"
-              :variant="isTasksPage ? 'solid' : 'soft'"
-            />
+            <template v-if="isAuthenticated">
+              <UButton
+                label="Dashboard"
+                to="/"
+                color="primary"
+                :variant="isDashboardPage ? 'solid' : 'soft'"
+              />
+              <UButton
+                label="Tasks"
+                to="/taskPage"
+                color="primary"
+                :variant="isTasksPage ? 'solid' : 'soft'"
+              />
+            </template>
             <UButton
               label="Calendar"
               to="/calendar"
@@ -77,7 +88,7 @@
       </header>
 
       <main class="flex-1">
-        <NuxtPage />
+        <NuxtPage :page-key="(r) => r.fullPath" />
       </main>
     </div>
   </UApp>

@@ -2,7 +2,7 @@ import { createError, defineEventHandler, getHeaders } from 'h3'
 import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
 
-const TOTAL_QUESTIONS = 9
+const TOTAL_QUESTIONS = 10
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
@@ -49,13 +49,22 @@ export default defineEventHandler(async (event) => {
 
   let answered = 0
 
-  for (let index = 1; index <= TOTAL_QUESTIONS; index += 1) {
+  // Count q1-q9
+  for (let index = 1; index <= 9; index += 1) {
     const key = `q${index}` as keyof typeof questions
     const value = questions[key]
 
     if (typeof value === 'number' && value>=0) {
       answered += 1
     }
+  }
+
+  // Count difficulty separately
+  if (
+    typeof questions.difficulty === 'number' &&
+    questions.difficulty >= 0
+  ) {
+    answered += 1
   }
 
   return {

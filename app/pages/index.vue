@@ -1,7 +1,9 @@
 <script setup lang="ts">
   import { authClient } from '../utils/auth-client'
 
-  const { data: users, pending, error } = await useFetch('/api/get/users')
+  const { data: users, pending, error } = await useFetch('/api/get/users', {
+    getCachedData: () => undefined,
+  })
 
   async function logout() {
     await authClient.signOut()
@@ -20,13 +22,15 @@
           Manage your application users and settings.
         </p>
       </div>
-      <UButton
-        color="error"
-        variant="soft"
-        icon="i-heroicons-arrow-right-on-rectangle-20-solid"
-        label="Logout"
-        @click="logout"
-      />
+      <div class="flex items-center gap-2">
+        <UButton
+          color="error"
+          variant="soft"
+          icon="i-heroicons-arrow-right-on-rectangle-20-solid"
+          label="Logout"
+          @click="logout"
+        />
+      </div>
     </div>
 
     <div

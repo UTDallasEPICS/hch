@@ -1,4 +1,8 @@
 <script setup lang="ts">
+  const emit = defineEmits<{
+    (e: 'select-step', step: number): void
+  }>()
+
   defineProps<{
     steps: { label: string; shortLabel?: string }[]
     currentStep: number
@@ -9,12 +13,17 @@
 <template>
   <nav aria-label="Application progress" class="w-full">
     <ol
-      class="grid w-full grid-cols-5 items-center rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+      class="grid w-full grid-cols-5 items-center rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4 dark:border-gray-800 dark:bg-gray-900"
       role="list"
     >
       <li v-for="(step, index) in steps" :key="index" class="relative min-w-0" role="listitem">
         <template v-if="stepStates">
-          <div class="relative z-10 flex w-full items-center justify-center">
+          <button
+            type="button"
+            class="relative z-10 flex w-full cursor-pointer items-center justify-center"
+            :aria-label="`Go to step ${index + 1}: ${step.label}`"
+            @click="emit('select-step', index + 1)"
+          >
             <div
               class="flex flex-col items-center gap-1 text-center sm:flex-row sm:gap-2 sm:text-left"
             >
@@ -56,10 +65,15 @@
                 {{ step.shortLabel ?? step.label }}
               </span>
             </div>
-          </div>
+          </button>
         </template>
         <template v-else>
-          <div class="relative z-10 flex w-full items-center justify-center">
+          <button
+            type="button"
+            class="relative z-10 flex w-full cursor-pointer items-center justify-center"
+            :aria-label="`Go to step ${index + 1}: ${step.label}`"
+            @click="emit('select-step', index + 1)"
+          >
             <div
               class="flex flex-col items-center gap-1 text-center sm:flex-row sm:gap-2 sm:text-left"
             >
@@ -99,7 +113,7 @@
                 {{ step.shortLabel ?? step.label }}
               </span>
             </div>
-          </div>
+          </button>
         </template>
       </li>
     </ol>
