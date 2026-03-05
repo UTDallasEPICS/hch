@@ -124,20 +124,23 @@
   const toast = useToast()
   const updatingId = ref<string | null>(null)
 
-  const STATUS_ORDER: ClientStatus[] = ['INCOMPLETE', 'WAITLIST', 'ACTIVE', 'ARCHIVED']
+  type StatusTransition = { from: ClientStatus; to: ClientStatus; label: string }
 
-  function getNextStatus(client: Client): ClientStatus | null {
-    if (client.status === 'ARCHIVED') return 'ACTIVE'
-    if (client.status === 'INCOMPLETE' && !client.allFormsComplete) return null
-    if (client.status === 'ACTIVE') {
-      const missedSessions = client.missedSessions ?? 0
-      const therapyWeek = client.therapyWeek ?? 0
-      const canArchive = missedSessions >= 2 || therapyWeek >= 26
-      return canArchive ? 'ARCHIVED' : null
-    }
-    const idx = STATUS_ORDER.indexOf(client.status)
-    if (idx < 0 || idx >= STATUS_ORDER.length - 1) return null
-    return STATUS_ORDER[idx + 1]!
+  const STATUS_TRANSITIONS: StatusTransition[] = [
+    { from: 'INCOMPLETE', to: 'WAITLIST', label: '→ Waitlist' },
+    { from: 'WAITLIST', to: 'INCOMPLETE', label: '→ Incomplete' },
+    { from: 'WAITLIST', to: 'ACTIVE', label: '→ Active' },
+    { from: 'ACTIVE', to: 'WAITLIST', label: '→ Waitlist' },
+    { from: 'ACTIVE', to: 'ARCHIVED', label: '→ Archive' },
+    { from: 'ARCHIVED', to: 'ACTIVE', label: '→ Active' },
+  ]
+
+  function getAvailableTransitions(client: Client): StatusTransition[] {
+    return STATUS_TRANSITIONS.filter((t) => {
+      if (t.from !== client.status) return false
+      if (t.from === 'INCOMPLETE' && t.to === 'WAITLIST' && !client.allFormsComplete) return false
+      return true
+    })
   }
 
   const confirmModalOpen = ref(false)
@@ -358,14 +361,23 @@
                   }}
                 </td>
                 <td class="py-4 pr-4 text-right" @click.stop>
-                  <UButton
-                    v-if="getNextStatus(client) && updatingId !== client.id"
-                    size="md"
-                    variant="outline"
-                    color="primary"
-                    :label="`→ ${statusLabel(getNextStatus(client)!)}`"
-                    @click="openConfirmModal(client, getNextStatus(client)!)"
-                  />
+                  <div
+                    v-if="updatingId !== client.id"
+                    class="flex flex-wrap justify-end gap-1.5"
+                  >
+                    <UButton
+                      v-for="t in getAvailableTransitions(client)"
+                      :key="`${t.from}-${t.to}`"
+                      size="xs"
+                      variant="outline"
+                      color="primary"
+                      :label="t.label"
+                      @click="openConfirmModal(client, t.to)"
+                    />
+                  </div>
+                  <div v-else class="flex justify-end">
+                    <UIcon name="i-heroicons-arrow-path" class="h-5 w-5 animate-spin text-gray-400" />
+                  </div>
                 </td>
               </tr>
             </tbody>
