@@ -35,11 +35,11 @@
   <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <NuxtLink
-        :to="`/clients/${clientId}`"
+        to="/clients"
         class="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
       >
         <UIcon name="i-heroicons-arrow-left" class="h-4 w-4" />
-        Back to {{ displayName() || 'Client' }}
+        Back to Clients
       </NuxtLink>
     </div>
 
@@ -58,14 +58,14 @@
       :description="error.message"
     >
       <template #actions>
-        <UButton :to="`/clients/${clientId}`" variant="soft" size="sm">Back to Client</UButton>
+        <UButton to="/clients" variant="soft" size="sm">Back to Clients</UButton>
       </template>
     </UAlert>
 
     <div v-else-if="!note" class="rounded-xl border border-gray-200 bg-white p-8 dark:border-gray-800 dark:bg-gray-900">
       <p class="text-gray-500 dark:text-gray-400">Note not found.</p>
-      <UButton :to="`/clients/${clientId}`" variant="soft" size="sm" class="mt-4">
-        Back to Client
+      <UButton to="/clients" variant="soft" size="sm" class="mt-4">
+        Back to Clients
       </UButton>
     </div>
 

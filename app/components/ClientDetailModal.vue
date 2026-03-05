@@ -107,6 +107,45 @@
     { immediate: true }
   )
 
+  // Client plan (preview for modal; full edit on /clients/[id]/plan page)
+  const planContent = ref('')
+  watch(
+    () => profile.value?.plan?.content,
+    (v) => { planContent.value = v ?? '' },
+    { immediate: true }
+  )
+
+  // Permissions
+  const perms = ref({ canViewScores: false, canViewNotes: false, canViewPlan: false })
+  watch(
+    () => profile.value?.permissions,
+    (v) => {
+      if (v) perms.value = { ...v }
+      else perms.value = { canViewScores: false, canViewNotes: false, canViewPlan: false }
+    },
+    { immediate: true }
+  )
+  const permsSaving = ref(false)
+
+  async function savePermissions() {
+    if (!props.clientId || permsSaving.value) return
+    try {
+      permsSaving.value = true
+      const res = await $fetch<{ canViewScores: boolean; canViewNotes: boolean; canViewPlan: boolean }>(
+        `/api/clients/${props.clientId}/permissions`,
+        { method: 'PATCH', body: perms.value }
+      )
+      if (profile.value) profile.value.permissions = res
+      toast.add({ title: 'Permissions updated', color: 'success' })
+      emit('refreshed')
+    } catch (e: unknown) {
+      const msg = (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to update'
+      toast.add({ title: 'Error', description: msg, color: 'error' })
+    } finally {
+      permsSaving.value = false
+    }
+  }
+
   async function saveAbsences() {
     if (!props.clientId || absencesSaving.value) return
     try {
@@ -182,6 +221,65 @@
           </template>
         </div>
       </div>
+
+      <!-- Permissions -->
+      <section>
+        <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
+          <UIcon name="i-heroicons-shield-check" class="h-4 w-4" />
+          Client Permissions
+        </h3>
+        <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+          Control what this client can see on their dashboard.
+        </p>
+        <div class="flex flex-wrap gap-4">
+          <label class="flex cursor-pointer items-center gap-2">
+            <UCheckbox v-model="perms.canViewScores" />
+            <span class="text-sm">View their scores</span>
+          </label>
+          <label class="flex cursor-pointer items-center gap-2">
+            <UCheckbox v-model="perms.canViewNotes" />
+            <span class="text-sm">View their session notes</span>
+          </label>
+          <label class="flex cursor-pointer items-center gap-2">
+            <UCheckbox v-model="perms.canViewPlan" />
+            <span class="text-sm">View their plan</span>
+          </label>
+        </div>
+        <UButton
+          size="sm"
+          color="primary"
+          variant="soft"
+          class="mt-2"
+          :loading="permsSaving"
+          @click="savePermissions"
+        >
+          Save Permissions
+        </UButton>
+      </section>
+
+      <!-- Metrics / Statistics -->
+      <section v-if="profile.metrics?.length">
+        <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
+          <UIcon name="i-heroicons-chart-bar" class="h-4 w-4" />
+          Form Metrics
+        </h3>
+        <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+          Statistics based on forms the client has completed.
+        </p>
+        <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div
+            v-for="m in profile.metrics"
+            :key="m.form"
+            class="rounded-lg border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/30"
+          >
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ m.form }}</p>
+            <div class="mt-1 flex items-baseline gap-2">
+              <span v-if="m.score != null" class="text-lg font-semibold">{{ m.score }}</span>
+              <span v-if="m.severity" class="text-sm text-gray-600 dark:text-gray-400">{{ m.severity }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <!-- Tasks -->
       <section>
@@ -273,6 +371,32 @@
           </div>
         </div>
         <p v-else class="text-sm text-gray-500">No notes yet.</p>
+      </section>
+
+      <!-- Client plan (at bottom) -->
+      <section>
+        <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
+          <UIcon name="i-heroicons-document-plus" class="h-4 w-4" />
+          Client Plan
+        </h3>
+        <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">
+          Create or edit the client's treatment plan. Clients can view this if permitted above.
+        </p>
+        <div class="rounded-lg border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/30">
+          <p v-if="planContent" class="line-clamp-3 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
+            {{ planContent }}
+          </p>
+          <p v-else class="text-sm text-gray-500 dark:text-gray-400 italic">
+            No plan yet.
+          </p>
+        </div>
+        <NuxtLink
+          :to="`/clients/plan/${clientId}`"
+          class="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
+        >
+          Open plan page
+          <UIcon name="i-heroicons-arrow-right" class="h-4 w-4" />
+        </NuxtLink>
       </section>
     </div>
     </template>
