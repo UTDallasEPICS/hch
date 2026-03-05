@@ -8,6 +8,12 @@
     await navigateTo('/', { replace: true })
   }
 
+  const { data: statusData } = await useFetch<{ status: string | null; hasClient: boolean }>(
+    '/api/user/my-status',
+    { getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key] }
+  )
+  const userStatus = computed(() => statusData.value?.status ?? 'INCOMPLETE')
+
   const { form } = useFormStore()
   const answered = ref(0)
   const total = ref(50)
@@ -58,6 +64,20 @@
   const showPclSubmit = computed(
     () => isPclComplete.value && !pclSubmitted.value
   )
+
+  const isPreWaitlist = computed(() => userStatus.value === 'INCOMPLETE')
+  const isWaitlist = computed(() => userStatus.value === 'WAITLIST')
+  const isActive = computed(() => userStatus.value === 'ACTIVE')
+
+  const statusLabel = computed(() => {
+    const labels: Record<string, string> = {
+      INCOMPLETE: 'Pre-waitlist',
+      WAITLIST: 'Waitlist',
+      ACTIVE: 'Active',
+      ARCHIVED: 'Archived',
+    }
+    return labels[userStatus.value] ?? userStatus.value
+  })
 
   async function loadProgress() {
     const [
@@ -259,6 +279,24 @@
     }
   }
 
+  function handlePhysicianStatement() {
+    toast.add({
+      title: 'Physician Statement Form',
+      description:
+        'Please contact us to receive the Physician Statement Form, or download it from your welcome email.',
+      color: 'primary',
+    })
+  }
+
+  function handleReleaseOfInfo() {
+    toast.add({
+      title: 'Release of Information Authorization Form',
+      description:
+        'Please contact us to receive the Release of Information Authorization Form, or download it from your welcome email.',
+      color: 'primary',
+    })
+  }
+
   onMounted(async () => {
     try {
       await loadProgress()
@@ -273,7 +311,6 @@
       gadTotal.value = 7
       gadScore.value = null
       gadSeverity.value = null
-      gadSubmitted.value = false
       phqAnswered.value = 0
       phqTotal.value = 10
       phqSubmitted.value = false
@@ -286,89 +323,214 @@
 
 <template>
   <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-    <div class="mb-8">
-      <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
-        Tasks to Complete
-      </h1>
-      <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-        Complete Each Form to Submit Your Application.
-      </p>
-    </div>
-    <div
-      class="mb-6 flex items-center justify-between px-1 text-sm font-medium text-gray-700 dark:text-gray-300"
-    >
-      <span>Form</span>
-      <span>Progress</span>
-    </div>
-
-    <div
-      v-for="form in [
-        {
-          name: 'Application Form',
-          to: '/application',
-          progress: submitted ? 'Submitted' : `${answered}/${total}`,
-          showSubmit: showApplicationSubmit,
-          onSubmit: submitApplication,
-          key: 'application',
-        },
-        {
-          name: 'ACE Form',
-          to: aceTarget,
-          progress: aceSubmitted ? 'Submitted' : `${aceAnswered}/${aceTotal}`,
-          showSubmit: showAceSubmit,
-          onSubmit: submitAce,
-          key: 'ace',
-        },
-        {
-          name: 'GAD-7 Form',
-          to: '/gad',
-          progress: gadSubmitted
-            ? 'Submitted'
-            : `${gadAnswered}/${gadTotal}${gadScore !== null ? ` • ${gadSeverity}` : ''}`,
-          showSubmit: showGadSubmit,
-          onSubmit: submitGad,
-          key: 'gad',
-        },
-        {
-          name: 'PHQ-9 Form',
-          to: '/phq',
-          progress: phqSubmitted ? 'Submitted' : `${phqAnswered}/${phqTotal}`,
-          showSubmit: showPhqSubmit,
-          onSubmit: submitPhq,
-          key: 'phq',
-        },
-        {
-          name: 'PCL-5 Form',
-          to: '/pcl',
-          progress: pclSubmitted ? 'Submitted' : `${pclAnswered}/${pclTotal}`,
-          showSubmit: showPclSubmit,
-          onSubmit: submitPcl,
-          key: 'pcl',
-        },
-      ]"
-      :key="form.key"
-      class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
-    >
-      <NuxtLink
-        :to="form.to"
-        class="min-w-0 flex-1 font-semibold text-gray-900 hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
+    <!-- Pre-waitlist: Application + 2 buttons -->
+    <template v-if="isPreWaitlist">
+      <div class="mb-8">
+        <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
+          Tasks to Complete
+        </h1>
+        <UBadge class="mt-2" color="warning" variant="soft" size="md">
+          Your status: {{ statusLabel }}
+        </UBadge>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          Complete the application form and provide the required documents.
+        </p>
+      </div>
+      <div
+        class="mb-6 flex items-center justify-between px-1 text-sm font-medium text-gray-700 dark:text-gray-300"
       >
-        {{ form.name }}
-      </NuxtLink>
-      <div class="flex shrink-0 items-center gap-3">
-        <span class="text-sm text-gray-600 dark:text-gray-400">
-          {{ form.progress }}
+        <span>Form</span>
+        <span>Progress</span>
+      </div>
+
+      <!-- Application Form -->
+      <div
+        class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
+      >
+        <NuxtLink
+          to="/application"
+          class="min-w-0 flex-1 font-semibold text-gray-900 hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
+        >
+          Application Form
+        </NuxtLink>
+        <div class="flex shrink-0 items-center gap-3">
+          <span class="text-sm text-gray-600 dark:text-gray-400">
+            {{ submitted ? 'Submitted' : `${answered}/${total}` }}
+          </span>
+          <UButton
+            v-if="showApplicationSubmit"
+            label="Submit"
+            color="primary"
+            variant="solid"
+            size="sm"
+            :loading="submittingForm === 'application'"
+            @click="submitApplication"
+          />
+        </div>
+      </div>
+
+      <!-- Physician Statement Form (button only) -->
+      <div
+        class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
+      >
+        <span class="min-w-0 flex-1 font-semibold text-gray-900 dark:text-white">
+          Provide Physician Statement Form
         </span>
         <UButton
-          v-if="form.showSubmit"
-          label="Submit"
+          label="Provide"
           color="primary"
-          variant="solid"
+          variant="soft"
           size="sm"
-          :loading="submittingForm === form.key"
-          @click="form.onSubmit"
+          @click="handlePhysicianStatement"
         />
       </div>
-    </div>
+
+      <!-- Release of Information Authorization Form (button only) -->
+      <div
+        class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
+      >
+        <span class="min-w-0 flex-1 font-semibold text-gray-900 dark:text-white">
+          Provide Release of Information Authorization Form
+        </span>
+        <UButton
+          label="Provide"
+          color="primary"
+          variant="soft"
+          size="sm"
+          @click="handleReleaseOfInfo"
+        />
+      </div>
+    </template>
+
+    <!-- Waitlist: Status only, no forms -->
+    <template v-else-if="isWaitlist">
+      <div class="mb-8">
+        <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
+          Waitlist Status
+        </h1>
+        <UBadge class="mt-2" color="primary" variant="soft" size="md">
+          Your status: {{ statusLabel }}
+        </UBadge>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          You are on the waitlist.
+        </p>
+      </div>
+      <div
+        class="rounded-xl border border-primary-200 bg-primary-50 p-6 dark:border-primary-800 dark:bg-primary-950/30"
+      >
+        <div class="flex items-center gap-3">
+          <UIcon
+            name="i-heroicons-queue-list"
+            class="h-10 w-10 shrink-0 text-primary-600 dark:text-primary-400"
+          />
+          <div>
+            <h2 class="font-semibold text-gray-900 dark:text-white">
+              You are on the waitlist
+            </h2>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              We will contact you when a spot becomes available. No further action is needed at this time.
+            </p>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Active patient: ACE, GAD-7, PHQ-9, PCL-5 -->
+    <template v-else-if="isActive">
+      <div class="mb-8">
+        <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
+          Tasks to Complete
+        </h1>
+        <UBadge class="mt-2" color="success" variant="soft" size="md">
+          Your status: {{ statusLabel }}
+        </UBadge>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          Complete each clinical assessment form.
+        </p>
+      </div>
+      <div
+        class="mb-6 flex items-center justify-between px-1 text-sm font-medium text-gray-700 dark:text-gray-300"
+      >
+        <span>Form</span>
+        <span>Progress</span>
+      </div>
+
+      <div
+        v-for="formItem in [
+          {
+            name: 'ACE Form',
+            to: aceTarget,
+            progress: aceSubmitted ? 'Submitted' : `${aceAnswered}/${aceTotal}`,
+            showSubmit: showAceSubmit,
+            onSubmit: submitAce,
+            key: 'ace',
+          },
+          {
+            name: 'GAD-7 Form',
+            to: '/gad',
+            progress: gadSubmitted
+              ? 'Submitted'
+              : `${gadAnswered}/${gadTotal}${gadScore !== null ? ` • ${gadSeverity}` : ''}`,
+            showSubmit: showGadSubmit,
+            onSubmit: submitGad,
+            key: 'gad',
+          },
+          {
+            name: 'PHQ-9 Form',
+            to: '/phq',
+            progress: phqSubmitted ? 'Submitted' : `${phqAnswered}/${phqTotal}`,
+            showSubmit: showPhqSubmit,
+            onSubmit: submitPhq,
+            key: 'phq',
+          },
+          {
+            name: 'PCL-5 Form',
+            to: '/pcl',
+            progress: pclSubmitted ? 'Submitted' : `${pclAnswered}/${pclTotal}`,
+            showSubmit: showPclSubmit,
+            onSubmit: submitPcl,
+            key: 'pcl',
+          },
+        ]"
+        :key="formItem.key"
+        class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
+      >
+        <NuxtLink
+          :to="formItem.to"
+          class="min-w-0 flex-1 font-semibold text-gray-900 hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
+        >
+          {{ formItem.name }}
+        </NuxtLink>
+        <div class="flex shrink-0 items-center gap-3">
+          <span class="text-sm text-gray-600 dark:text-gray-400">
+            {{ formItem.progress }}
+          </span>
+          <UButton
+            v-if="formItem.showSubmit"
+            label="Submit"
+            color="primary"
+            variant="solid"
+            size="sm"
+            :loading="submittingForm === formItem.key"
+            @click="formItem.onSubmit"
+          />
+        </div>
+      </div>
+    </template>
+
+    <!-- Archived or unknown status -->
+    <template v-else>
+      <div class="mb-8">
+        <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
+          Tasks
+        </h1>
+        <UBadge class="mt-2" color="neutral" variant="soft" size="md">
+          Your status: {{ statusLabel }}
+        </UBadge>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          You have no pending tasks at this time.
+        </p>
+      </div>
+    </template>
   </main>
 </template>

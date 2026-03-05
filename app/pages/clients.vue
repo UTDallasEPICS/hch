@@ -98,7 +98,7 @@
 
   function statusHint(c: Client): string {
     if (c.status === 'INCOMPLETE' && !c.allFormsComplete) {
-      return 'To move to waitlist, need to complete all forms'
+      return 'To move to waitlist, need to complete the application form'
     }
     return ''
   }
@@ -114,7 +114,7 @@
   function formatIncompleteForms(c: Client): string {
     if (c.status !== 'INCOMPLETE') return ''
     if (!c.incompleteForms?.length || c.allFormsComplete) {
-      return 'Congradulations! All Forms Complete'
+      return 'Congratulations! All forms complete'
     }
     const count = c.incompleteForms.length
     const names = c.incompleteForms.map((k) => FORM_LABELS[k] ?? k).join(', ')

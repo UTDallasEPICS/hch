@@ -2,7 +2,12 @@ import { createError, defineEventHandler, getHeaders, getQuery } from 'h3'
 import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
 import { isAdmin } from '../../utils/is-admin'
-import { isAllFormsComplete, getIncompleteForms } from '../../utils/client-forms'
+import {
+  isAllFormsComplete,
+  isPreWaitlistComplete,
+  getIncompleteForms,
+  getPreWaitlistIncompleteForms,
+} from '../../utils/client-forms'
 import { parseName } from '../../utils/name'
 import type { ClientStatus } from '../../../../prisma/generated/client'
 
@@ -66,8 +71,16 @@ export default defineEventHandler(async (event) => {
       const storedStatus = clientProfile?.status ?? 'INCOMPLETE'
       const therapyWeek = clientProfile?.therapyWeek ?? null
       const missedSessions = clientProfile?.missedSessions ?? 0
-      const allFormsComplete = await isAllFormsComplete(prisma, user.id)
-      const incompleteForms = storedStatus === 'INCOMPLETE' ? await getIncompleteForms(prisma, user.id) : []
+      const allFormsComplete =
+        storedStatus === 'INCOMPLETE'
+          ? await isPreWaitlistComplete(prisma, user.id)
+          : await isAllFormsComplete(prisma, user.id)
+      const incompleteForms =
+        storedStatus === 'INCOMPLETE'
+          ? await getPreWaitlistIncompleteForms(prisma, user.id)
+          : storedStatus === 'ACTIVE'
+            ? await getIncompleteForms(prisma, user.id)
+            : []
       const { fname, lname } = parseName(user.name)
 
       return {

@@ -1,7 +1,7 @@
 import { createError, defineEventHandler, getHeaders, getRouterParam, readBody } from 'h3'
 import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
-import { isAllFormsComplete } from '../../utils/client-forms'
+import { isPreWaitlistComplete } from '../../utils/client-forms'
 import type { ClientStatus } from '../../../../prisma/generated/client'
 
 const VALID_STATUSES: ClientStatus[] = ['INCOMPLETE', 'WAITLIST', 'ACTIVE', 'ARCHIVED']
@@ -66,11 +66,11 @@ export default defineEventHandler(async (event) => {
       })
     }
     if (body.status === 'WAITLIST') {
-      const allFormsComplete = await isAllFormsComplete(prisma, userId)
-      if (!allFormsComplete) {
+      const preWaitlistComplete = await isPreWaitlistComplete(prisma, userId)
+      if (!preWaitlistComplete) {
         throw createError({
           statusCode: 400,
-          statusMessage: 'To move to waitlist, need to complete all forms',
+          statusMessage: 'To move to waitlist, need to complete the application form',
         })
       }
     }
