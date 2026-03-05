@@ -25,11 +25,14 @@
       getCachedData: () => undefined,
     }
   )
-  const permissions = computed(() => profile.value?.permissions ?? {
-    canViewScores: false,
-    canViewNotes: false,
-    canViewPlan: false,
-  })
+  const permissions = computed(
+    () =>
+      profile.value?.permissions ?? {
+        canViewScores: false,
+        canViewNotes: false,
+        canViewPlan: false,
+      }
+  )
 
   const { form } = useFormStore()
   const answered = ref(0)
@@ -66,21 +69,11 @@
     const digits = (form.value?.q5 || '').replace(/\D/g, '')
     return digits.length === 10
   })
-  const showApplicationSubmit = computed(
-    () => isApplicationComplete.value && !submitted.value
-  )
-  const showAceSubmit = computed(
-    () => isAceComplete.value && !aceSubmitted.value
-  )
-  const showGadSubmit = computed(
-    () => isGadComplete.value && !gadSubmitted.value
-  )
-  const showPhqSubmit = computed(
-    () => isPhqComplete.value && !phqSubmitted.value
-  )
-  const showPclSubmit = computed(
-    () => isPclComplete.value && !pclSubmitted.value
-  )
+  const showApplicationSubmit = computed(() => isApplicationComplete.value && !submitted.value)
+  const showAceSubmit = computed(() => isAceComplete.value && !aceSubmitted.value)
+  const showGadSubmit = computed(() => isGadComplete.value && !gadSubmitted.value)
+  const showPhqSubmit = computed(() => isPhqComplete.value && !phqSubmitted.value)
+  const showPclSubmit = computed(() => isPclComplete.value && !pclSubmitted.value)
 
   const isPreWaitlist = computed(() => userStatus.value === 'INCOMPLETE')
   const isWaitlist = computed(() => userStatus.value === 'WAITLIST')
@@ -97,33 +90,24 @@
   })
 
   async function loadProgress() {
-    const [
-      appResult,
-      aceProgressResult,
-      gadResult,
-      phqResult,
-      pclResult,
-    ] = await Promise.allSettled([
-      $fetch<{ answered: number; total: number; submitted?: boolean }>(
-        '/api/application/progress'
-      ),
-      $fetch<{ answered: number; total: number; submitted?: boolean }>(
-        '/api/forms/ace-form/progress'
-      ),
-      $fetch<{
-        answered: number
-        total: number
-        totalScore: number | null
-        severity: string | null
-        submitted?: boolean
-      }>('/api/gad/progress'),
-      $fetch<{ answered: number; total: number; submitted?: boolean }>(
-        '/api/phq/progress'
-      ),
-      $fetch<{ answered: number; total: number; submitted?: boolean }>(
-        '/api/pcl/progress'
-      ),
-    ])
+    const [appResult, aceProgressResult, gadResult, phqResult, pclResult] =
+      await Promise.allSettled([
+        $fetch<{ answered: number; total: number; submitted?: boolean }>(
+          '/api/application/progress'
+        ),
+        $fetch<{ answered: number; total: number; submitted?: boolean }>(
+          '/api/forms/ace-form/progress'
+        ),
+        $fetch<{
+          answered: number
+          total: number
+          totalScore: number | null
+          severity: string | null
+          submitted?: boolean
+        }>('/api/gad/progress'),
+        $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/phq/progress'),
+        $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/pcl/progress'),
+      ])
 
     if (appResult.status === 'fulfilled') {
       answered.value = appResult.value.answered
@@ -366,7 +350,7 @@
       >
         <NuxtLink
           to="/application"
-          class="min-w-0 flex-1 font-semibold text-gray-900 hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
+          class="hover:text-primary-600 dark:hover:text-primary-400 min-w-0 flex-1 font-semibold text-gray-900 dark:text-white"
         >
           Application Form
         </NuxtLink>
@@ -428,24 +412,21 @@
         <UBadge class="mt-2" color="primary" variant="soft" size="md">
           Your status: {{ statusLabel }}
         </UBadge>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          You are on the waitlist.
-        </p>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">You are on the waitlist.</p>
       </div>
       <div
-        class="rounded-xl border border-primary-200 bg-primary-50 p-6 dark:border-primary-800 dark:bg-primary-950/30"
+        class="border-primary-200 bg-primary-50 dark:border-primary-800 dark:bg-primary-950/30 rounded-xl border p-6"
       >
         <div class="flex items-center gap-3">
           <UIcon
             name="i-heroicons-queue-list"
-            class="h-10 w-10 shrink-0 text-primary-600 dark:text-primary-400"
+            class="text-primary-600 dark:text-primary-400 h-10 w-10 shrink-0"
           />
           <div>
-            <h2 class="font-semibold text-gray-900 dark:text-white">
-              You are on the waitlist
-            </h2>
+            <h2 class="font-semibold text-gray-900 dark:text-white">You are on the waitlist</h2>
             <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              We will contact you when a spot becomes available. No further action is needed at this time.
+              We will contact you when a spot becomes available. No further action is needed at this
+              time.
             </p>
           </div>
         </div>
@@ -514,7 +495,7 @@
       >
         <NuxtLink
           :to="formItem.to"
-          class="min-w-0 flex-1 font-semibold text-gray-900 hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
+          class="hover:text-primary-600 dark:hover:text-primary-400 min-w-0 flex-1 font-semibold text-gray-900 dark:text-white"
         >
           {{ formItem.name }}
         </NuxtLink>
@@ -533,7 +514,6 @@
           />
         </div>
       </div>
-
     </template>
 
     <!-- Archived or unknown status -->
@@ -553,7 +533,10 @@
 
     <!-- Quick access: View Session Notes, View My Plan (visible when admin grants permission) -->
     <div
-      v-if="(permissions.canViewNotes && profile?.sessionNotes?.length) || (permissions.canViewPlan && profile?.plan?.content)"
+      v-if="
+        (permissions.canViewNotes && profile?.sessionNotes?.length) ||
+        (permissions.canViewPlan && profile?.plan?.content)
+      "
       class="mt-10 flex flex-wrap gap-3"
     >
       <UButton
@@ -565,21 +548,14 @@
         label="View Session Notes"
         @click="document.getElementById('session-notes')?.scrollIntoView({ behavior: 'smooth' })"
       />
-      <UButton
-        v-if="permissions.canViewPlan && profile?.plan?.content"
-        variant="soft"
-        color="primary"
-        size="sm"
-        icon="i-heroicons-document-plus"
-        label="View My Plan"
-        @click="document.getElementById('my-plan')?.scrollIntoView({ behavior: 'smooth' })"
-      />
     </div>
 
     <!-- My Scores, Session Notes, Plan (visible when admin grants permission) -->
     <template v-if="permissions.canViewScores && profile?.metrics?.length">
       <section class="mt-10">
-        <h2 class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
+        <h2
+          class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white"
+        >
           <UIcon name="i-heroicons-chart-bar" class="h-5 w-5" />
           My Scores
         </h2>
@@ -591,8 +567,14 @@
           >
             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ m.form }}</p>
             <div class="mt-1 flex items-baseline gap-2">
-              <span v-if="m.score != null" class="text-xl font-semibold text-gray-900 dark:text-white">{{ m.score }}</span>
-              <span v-if="m.severity" class="text-sm text-gray-600 dark:text-gray-400">{{ m.severity }}</span>
+              <span
+                v-if="m.score != null"
+                class="text-xl font-semibold text-gray-900 dark:text-white"
+                >{{ m.score }}</span
+              >
+              <span v-if="m.severity" class="text-sm text-gray-600 dark:text-gray-400">{{
+                m.severity
+              }}</span>
             </div>
           </div>
         </div>
@@ -600,7 +582,9 @@
     </template>
     <template v-if="permissions.canViewNotes && profile?.sessionNotes?.length">
       <section id="session-notes" class="mt-10">
-        <h2 class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
+        <h2
+          class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white"
+        >
           <UIcon name="i-heroicons-document-text" class="h-5 w-5" />
           My Session Notes
         </h2>
@@ -610,7 +594,9 @@
             :key="note.id"
             class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
           >
-            <p class="whitespace-pre-wrap text-sm text-gray-900 dark:text-gray-100">{{ note.content }}</p>
+            <p class="text-sm whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+              {{ note.content }}
+            </p>
             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
               {{ new Date(note.createdAt).toLocaleString() }}
             </p>
@@ -620,12 +606,18 @@
     </template>
     <template v-if="permissions.canViewPlan && profile?.plan?.content">
       <section id="my-plan" class="mt-10">
-        <h2 class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
+        <h2
+          class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white"
+        >
           <UIcon name="i-heroicons-document-plus" class="h-5 w-5" />
           My Treatment Plan
         </h2>
-        <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-          <p class="whitespace-pre-wrap text-sm text-gray-900 dark:text-gray-100">{{ profile.plan.content }}</p>
+        <div
+          class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
+        >
+          <p class="text-sm whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+            {{ profile.plan.content }}
+          </p>
         </div>
       </section>
     </template>
