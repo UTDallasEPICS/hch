@@ -1,6 +1,8 @@
 <script setup lang="ts">
   import { capitalizeName } from '~/utils/name'
 
+  import { capitalizeName } from '~/utils/name'
+
   definePageMeta({ middleware: 'clients-admin' })
 
   const route = useRoute()
@@ -37,6 +39,7 @@
   useHead({
     title: () =>
       profile.value
+        ? `Plan — ${capitalizeName([profile.value.fname, profile.value.lname].filter(Boolean).join(' ') || profile.value.name || '')}`
         ? `Plan — ${capitalizeName([profile.value.fname, profile.value.lname].filter(Boolean).join(' ') || profile.value.name || '')}`
         : 'Client Plan',
   })
@@ -100,16 +103,22 @@
       </template>
     </UAlert>
 
-    <div v-else class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-      <div class="mb-4 rounded-lg border border-primary-200 bg-primary-50/50 px-4 py-2 dark:border-primary-800 dark:bg-primary-900/20">
-        <p class="text-xs font-medium text-primary-700 dark:text-primary-400">Patient</p>
-        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ displayName() || 'Unknown' }}</p>
+    <div
+      v-else
+      class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+    >
+      <div
+        class="border-primary-200 bg-primary-50/50 dark:border-primary-800 dark:bg-primary-900/20 mb-4 rounded-lg border px-4 py-2"
+      >
+        <p class="text-primary-700 dark:text-primary-400 text-xs font-medium">Patient</p>
+        <p class="text-lg font-semibold text-gray-900 dark:text-white">
+          {{ displayName() || 'Unknown' }}
+        </p>
       </div>
-      <h1 class="text-xl font-semibold text-gray-900 dark:text-white">
-        Treatment Plan
-      </h1>
+      <h1 class="text-xl font-semibold text-gray-900 dark:text-white">Treatment Plan</h1>
       <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        This plan is unique to {{ displayName() || 'this patient' }}. Create or edit their treatment plan. Clients can view this if permitted.
+        This plan is unique to {{ displayName() || 'this patient' }}. Create or edit their treatment
+        plan. Clients can view this if permitted.
       </p>
       <div class="mt-6">
         <UTextarea
@@ -118,13 +127,7 @@
           :rows="16"
           class="w-full"
         />
-        <UButton
-          size="md"
-          color="primary"
-          class="mt-4"
-          :loading="planSaving"
-          @click="savePlan"
-        >
+        <UButton size="md" color="primary" class="mt-4" :loading="planSaving" @click="savePlan">
           Save Plan
         </UButton>
       </div>

@@ -37,8 +37,8 @@ async function main() {
 
   // Assign roles and names: alice@a.com and djanjanam@gmail.com = ADMIN, bob@b.com = CLIENT
   const userNames: Record<string, { fname: string; lname: string }> = {
-    'bob@b.com': { fname: 'bob', lname: 'builder' },
-    'alice@a.com': { fname: 'Alice', lname: 'wonderland' },
+    'bob@b.com': { fname: 'Bob', lname: 'Builder' },
+    'alice@a.com': { fname: 'Alice', lname: 'Wonderland' },
   }
   const adminEmails = ['alice@a.com', 'djanjanam@gmail.com']
   const clientEmail = 'bob@b.com'

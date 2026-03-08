@@ -1,6 +1,8 @@
 <script setup lang="ts">
   import { capitalizeName } from '~/utils/name'
 
+  import { capitalizeName } from '~/utils/name'
+
   definePageMeta({ middleware: 'clients-admin' })
 
   type ClientStatus = 'INCOMPLETE' | 'WAITLIST' | 'ACTIVE' | 'ARCHIVED'
@@ -69,13 +71,8 @@
     return labels[status]
   }
 
-  function statusColor(
-    status: ClientStatus
-  ): 'warning' | 'primary' | 'success' | 'neutral' {
-    const colors: Record<
-      ClientStatus,
-      'warning' | 'primary' | 'success' | 'neutral'
-    > = {
+  function statusColor(status: ClientStatus): 'warning' | 'primary' | 'success' | 'neutral' {
+    const colors: Record<ClientStatus, 'warning' | 'primary' | 'success' | 'neutral'> = {
       INCOMPLETE: 'warning',
       WAITLIST: 'primary',
       ACTIVE: 'success',
@@ -300,7 +297,7 @@
                   Week no
                 </th>
                 <th
-                  class="w-0 pb-3 pr-4 text-right text-sm font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
+                  class="w-0 pr-4 pb-3 text-right text-sm font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
                 >
                   Actions
                 </th>
@@ -363,10 +360,7 @@
                   }}
                 </td>
                 <td class="py-4 pr-4 text-right" @click.stop>
-                  <div
-                    v-if="updatingId !== client.id"
-                    class="flex flex-wrap justify-end gap-1.5"
-                  >
+                  <div v-if="updatingId !== client.id" class="flex flex-wrap justify-end gap-1.5">
                     <UButton
                       v-for="t in getAvailableTransitions(client)"
                       :key="`${t.from}-${t.to}`"
@@ -378,7 +372,10 @@
                     />
                   </div>
                   <div v-else class="flex justify-end">
-                    <UIcon name="i-heroicons-arrow-path" class="h-5 w-5 animate-spin text-gray-400" />
+                    <UIcon
+                      name="i-heroicons-arrow-path"
+                      class="h-5 w-5 animate-spin text-gray-400"
+                    />
                   </div>
                 </td>
               </tr>

@@ -1,8 +1,13 @@
 <script setup lang="ts">
   import { authClient } from '../utils/auth-client'
   import { capitalizeName } from '~/utils/name'
+  import { capitalizeName } from '~/utils/name'
 
-  const { data: users, pending, error } = await useFetch('/api/get/users', {
+  const {
+    data: users,
+    pending,
+    error,
+  } = await useFetch('/api/get/users', {
     getCachedData: () => undefined,
   })
 
@@ -37,12 +42,15 @@
     <div
       class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
     >
-      <div class="mb-6 flex items-center justify-between border-b border-gray-200 pb-4 dark:border-gray-800">
+      <div
+        class="mb-6 flex items-center justify-between border-b border-gray-200 pb-4 dark:border-gray-800"
+      >
         <div class="flex items-center gap-2">
-          <UIcon name="i-heroicons-users-20-solid" class="h-5 w-5 text-gray-500 dark:text-gray-400" />
-          <h2 class="text-base font-semibold text-gray-900 dark:text-white">
-            Registered Users
-          </h2>
+          <UIcon
+            name="i-heroicons-users-20-solid"
+            class="h-5 w-5 text-gray-500 dark:text-gray-400"
+          />
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">Registered Users</h2>
         </div>
         <UBadge variant="subtle" color="primary" size="md">{{ users?.length || 0 }} Users</UBadge>
       </div>
@@ -76,9 +84,15 @@
           class="flex items-center justify-between py-4 first:pt-0 last:pb-0"
         >
           <div class="flex items-center gap-3">
-            <UAvatar :alt="capitalizeName(user.name ?? '')" :src="user.image || undefined" size="md" />
+            <UAvatar
+              :alt="capitalizeName(user.name ?? '')"
+              :src="user.image || undefined"
+              size="md"
+            />
             <div>
-              <p class="font-medium text-gray-900 dark:text-white">{{ capitalizeName(user.name ?? '') }}</p>
+              <p class="font-medium text-gray-900 dark:text-white">
+                {{ capitalizeName(user.name ?? '') }}
+              </p>
               <p class="text-sm text-gray-500 dark:text-gray-400">{{ user.email }}</p>
             </div>
           </div>
