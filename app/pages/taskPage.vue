@@ -25,6 +25,7 @@
       getCachedData: () => undefined,
     }
   )
+  const { parse: parseMarkdown } = useMarkdown()
   const permissions = computed(
     () =>
       profile.value?.permissions ?? {
@@ -615,9 +616,10 @@
         <div
           class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
         >
-          <p class="text-sm whitespace-pre-wrap text-gray-900 dark:text-gray-100">
-            {{ profile.plan.content }}
-          </p>
+          <div
+            class="text-sm text-gray-900 dark:text-gray-100 prose prose-sm dark:prose-invert max-w-none"
+            v-html="parseMarkdown(profile.plan.content)"
+          />
         </div>
       </section>
     </template>

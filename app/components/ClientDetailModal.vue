@@ -115,6 +115,7 @@
 
   // Client plan (preview for modal; full edit on /clients/[id]/plan page)
   const planContent = ref('')
+  const { parse: parseMarkdown } = useMarkdown()
   watch(
     () => profile.value?.plan?.content,
     (v) => {
@@ -413,12 +414,11 @@
           <div
             class="rounded-lg border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/30"
           >
-            <p
+            <div
               v-if="planContent"
-              class="line-clamp-3 text-sm whitespace-pre-wrap text-gray-700 dark:text-gray-300"
-            >
-              {{ planContent }}
-            </p>
+              class="line-clamp-3 text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none"
+              v-html="parseMarkdown(planContent)"
+            />
             <p v-else class="text-sm text-gray-500 italic dark:text-gray-400">No plan yet.</p>
           </div>
           <NuxtLink

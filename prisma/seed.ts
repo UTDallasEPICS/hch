@@ -10,7 +10,6 @@ const prisma = new PrismaClient({ adapter })
 async function main() {
   console.log('Start seeding...')
 
-  // Assign roles and names: alice@a.com and djanjanam@gmail.com = ADMIN, bob@b.com = CLIENT
   const userNames: Record<string, { fname: string; lname: string }> = {
     'bob@b.com': { fname: 'Bob', lname: 'Builder' },
     'alice@a.com': { fname: 'Alice', lname: 'Wonderland' },
