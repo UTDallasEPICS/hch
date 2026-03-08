@@ -238,13 +238,13 @@
           content-type="markdown"
           placeholder="Enter client plan..."
           :extensions="editorExtensions"
-          class="min-h-[400px] w-full rounded-lg border border-gray-200 dark:border-gray-700 sm:px-8"
-          :ui="{ base: 'p-4 min-h-[400px]' }"
+          class="flex min-h-[400px] w-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/30"
+          :ui="{ base: 'px-4 sm:px-6 py-5 min-h-[360px]' }"
         >
           <UEditorToolbar
             :editor="editor"
             :items="toolbarItems"
-            class="overflow-x-auto"
+            class="shrink-0 border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900/50 sm:px-6"
           />
         </UEditor>
         <UButton
