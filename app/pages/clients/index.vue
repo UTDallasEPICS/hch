@@ -1,4 +1,6 @@
 <script setup lang="ts">
+  import { capitalizeName } from '~/utils/name'
+
   definePageMeta({ middleware: 'clients-admin' })
 
   type ClientStatus = 'INCOMPLETE' | 'WAITLIST' | 'ACTIVE' | 'ARCHIVED'
@@ -53,8 +55,8 @@
   })
 
   function displayName(c: Client) {
-    if (c.lname) return `${c.fname} ${c.lname}`
-    return c.fname || c.name
+    const raw = c.lname ? `${c.fname} ${c.lname}` : (c.fname || c.name || '')
+    return capitalizeName(raw)
   }
 
   function statusLabel(status: ClientStatus): string {

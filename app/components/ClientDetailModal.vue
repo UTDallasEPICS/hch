@@ -50,8 +50,8 @@
   function displayName() {
     const p = profile.value
     if (!p) return ''
-    if (p.lname) return `${p.fname} ${p.lname}`
-    return p.fname || p.name
+    const raw = p.lname ? `${p.fname} ${p.lname}` : (p.fname || p.name || '')
+    return capitalizeName(String(raw))
   }
 
   function statusLabel(status: ClientStatus): string {
