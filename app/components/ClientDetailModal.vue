@@ -297,33 +297,7 @@
           </UButton>
         </section>
 
-        <!-- Metrics / Statistics -->
-        <section v-if="profile.metrics?.length">
-          <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
-            <UIcon name="i-heroicons-chart-bar" class="h-4 w-4" />
-            Form Metrics
-          </h3>
-          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-            Statistics based on forms the client has completed.
-          </p>
-          <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            <div
-              v-for="m in profile.metrics"
-              :key="m.form"
-              class="rounded-lg border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/30"
-            >
-              <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ m.form }}</p>
-              <div class="mt-1 flex items-baseline gap-2">
-                <span v-if="m.score != null" class="text-lg font-semibold">{{ m.score }}</span>
-                <span v-if="m.severity" class="text-sm text-gray-600 dark:text-gray-400">{{
-                  m.severity
-                }}</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Tasks -->
+        <!-- Client Tasks -->
         <section>
           <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
             <UIcon name="i-heroicons-clipboard-document-list" class="h-4 w-4" />
@@ -346,10 +320,8 @@
                 <span class="font-medium">{{ task.name }}</span>
                 <span class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                   {{ task.submitted ? 'Submitted' : `${task.answered}/${task.total}` }}
+                  <span v-if="task.submitted && task.score != null"> • {{ task.score }}</span>
                   <span v-if="task.submitted && task.severity"> • {{ task.severity }}</span>
-                  <span v-else-if="task.submitted && task.score != null">
-                    • Score: {{ task.score }}</span
-                  >
                   <UIcon
                     :name="
                       expandedFormKey === task.key

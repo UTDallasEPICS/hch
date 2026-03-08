@@ -74,11 +74,11 @@ export default defineEventHandler(async (event) => {
     totalScore += typeof value === 'number' ? value : 0
   }
 
-  let severity = 'Minimal or None'
-  if (totalScore > 19) severity = 'Severe'
-  else if (totalScore > 14) severity = 'Moderately Severe'
-  else if (totalScore > 9) severity = 'Moderate'
-  else if (totalScore > 4) severity = 'Mild'
+  let severity = 'Minimal or no depression'
+  if (totalScore > 19) severity = 'Severe depression'
+  else if (totalScore > 14) severity = 'Moderately severe depression'
+  else if (totalScore > 9) severity = 'Moderate depression'
+  else if (totalScore > 4) severity = 'Mild depression'
 
   await prisma.phqForm.update({
     where: {

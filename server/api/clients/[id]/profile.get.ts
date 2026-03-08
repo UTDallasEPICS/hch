@@ -185,14 +185,12 @@ export default defineEventHandler(async (event) => {
       const v = phqQuestions[key]
       sum += typeof v === 'number' ? v : 0
     }
-    phqScore = sum > 0 ? sum : null
-    if (phqScore != null) {
-      if (phqScore > 19) phqSeverity = 'Severe'
-      else if (phqScore > 14) phqSeverity = 'Moderately Severe'
-      else if (phqScore > 9) phqSeverity = 'Moderate'
-      else if (phqScore > 4) phqSeverity = 'Mild'
-      else phqSeverity = 'Minimal or None'
-    }
+    phqScore = sum
+    if (phqScore > 19) phqSeverity = 'Severe depression'
+    else if (phqScore > 14) phqSeverity = 'Moderately severe depression'
+    else if (phqScore > 9) phqSeverity = 'Moderate depression'
+    else if (phqScore > 4) phqSeverity = 'Mild depression'
+    else phqSeverity = 'Minimal or no depression'
   }
 
   // PCL totalScore: compute from questions if not stored (backward compat)
