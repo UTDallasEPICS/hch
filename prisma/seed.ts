@@ -10,44 +10,6 @@ const prisma = new PrismaClient({ adapter })
 async function main() {
   console.log('Start seeding...')
 
-  const aceForm = await prisma.form.findUnique({ where: { slug: 'ace-form' } })
-  if (aceForm) {
-    const deleted = await prisma.formQuestion.deleteMany({
-      where: { formId: aceForm.id },
-    })
-    if (deleted.count > 0) {
-      await prisma.question.deleteMany({
-        where: {
-          alias: {
-            in: [
-              'ace_1',
-              'ace_2',
-              'ace_3',
-              'ace_4',
-              'ace_5',
-              'ace_6',
-              'ace_7',
-              'ace_8',
-              'ace_9',
-              'ace_10',
-            ],
-          },
-        },
-      })
-      console.log('Removed old ACE questions from DB (now in front-end)')
-    }
-  } else {
-    await prisma.form.create({
-      data: {
-        title: 'ACE Questionnaire',
-        description:
-          'Adverse Childhood Experiences (ACE) Questionnaire. Answer Yes or No for each question.',
-        slug: 'ace-form',
-      },
-    })
-    console.log('Created ACE form (questions in front-end)')
-  }
-
   // Assign roles and names: alice@a.com and djanjanam@gmail.com = ADMIN, bob@b.com = CLIENT
   const userNames: Record<string, { fname: string; lname: string }> = {
     'bob@b.com': { fname: 'bob', lname: 'builder' },
