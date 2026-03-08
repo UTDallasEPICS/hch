@@ -1,0 +1,106 @@
+AppForm
+    form_id (PK)
+    form_name
+
+Question
+    question_id (PK)
+    form_id (FK) — Links to Forms
+    question_text
+    question_type (Enum: Text, Multiple Choice, etc.)
+
+Prisma Schema Draft (Two Tables)
+```prisma
+model AppForm {
+    id          Int           @id @default(autoincrement())
+    userId      String
+    status      String
+    submittedAt DateTime      @default(now())
+    questions   AppQuestion[]
+}
+
+enum QuestionType {
+    TEXT
+    MULTIPLE_CHOICE
+    CHECKLIST
+    MULTI_PLUS_TEXT
+}
+
+enum AppQuestionKey {
+    EMAIL
+    YOUR_FIRST_NAME
+    YOUR_LAST_NAME
+    YOUR_EMAIL_ADDRESS
+    YOUR_PHONE_NUMBER
+    YOUR_GENDER
+    YOUR_DATE_OF_BIRTH
+    YOUR_ADDRESS
+
+    CHILD_FIRST_NAME
+    CHILD_LAST_NAME
+    CHILD_DATE_OF_BIRTH
+    CHILD_GENDER
+    CHILD_ADDRESS
+
+    MEDICAL_DIAGNOSIS
+    MEDICAL_DIAGNOSIS_DATE
+    HOUSEHOLD_MEMBERS
+
+    BIO_PARENTS_RESIDE
+    CUSTODY_HOLDER
+    PRIMARY_CONTACT_MAIN
+
+    LEGAL_MOTHER_FIRST_NAME
+    LEGAL_MOTHER_LAST_NAME
+    LEGAL_MOTHER_STREET
+    LEGAL_MOTHER_CITY
+    LEGAL_MOTHER_STATE
+    LEGAL_MOTHER_ZIP
+    LEGAL_MOTHER_EMAIL
+    LEGAL_MOTHER_OCCUPATION
+    LEGAL_MOTHER_PRIMARY_CONTACT
+
+    LEGAL_FATHER_FIRST_NAME
+    LEGAL_FATHER_LAST_NAME
+    LEGAL_FATHER_STREET
+    LEGAL_FATHER_CITY
+    LEGAL_FATHER_STATE
+    LEGAL_FATHER_ZIP
+    LEGAL_FATHER_EMAIL
+    LEGAL_FATHER_OCCUPATION
+
+    PRIMARY_CAREGIVER
+
+    SIBLINGS_WITNESS_TRAUMA
+    SIBLINGS_SEPARATED
+
+    MEDICAL_DECISIONS_BY
+    HOSPITAL_PRIMARY_CARE
+    TREATMENT_DURATION
+    ICU_VISITS
+    EXTENDED_ADMISSIONS
+    RELAPSE_OR_SECONDARY
+    HOSPICE_OR_DECEASED
+
+    APPLY_THERAPY_SCHOLARSHIP
+    SUPPORT_GROUP_WAITLIST
+    SCHOLARSHIP_FOR_WHO
+    THERAPIST_OR_REFERRAL
+    MENTAL_HEALTH_INSURANCE
+}
+
+model AppQuestion {
+    id           Int            @id @default(autoincrement())
+    formId       Int
+    questionKey  AppQuestionKey
+    questionType QuestionType
+
+    answerText   String?
+    answerChoice String?
+    answerList   String?
+
+    form         AppForm        @relation(fields: [formId], references: [id])
+
+    @@unique([formId, questionKey])
+}
+```
+

@@ -1,27 +1,81 @@
 <script setup lang="ts">
-const colorMode = useColorMode()
+  import { authClient } from './utils/auth-client'
 
-const isDark = computed({
-  get () {
-    return colorMode.value === 'dark'
-  },
-  set () {
-    colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'
-  }
-})
+  const route = useRoute()
+  const colorMode = useColorMode()
+  const { data: session } = await authClient.useSession(useFetch)
+
+  const { data: adminData } = await useFetch<{ isAdmin: boolean }>('/api/user/is-admin', {
+    getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
+  })
+  const isAdmin = computed(() => adminData.value?.isAdmin ?? false)
+
+  const isTasksPage = computed(() => route.path === '/taskPage')
+  const isDashboardPage = computed(() => route.path === '/')
+  const isAuthenticated = computed(() => Boolean(session.value))
+  const isDark = computed({
+    get() {
+      return colorMode.value === 'dark'
+    },
+    set() {
+      colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'
+    },
+  })
 </script>
 
 <template>
   <UApp>
-    <div class="min-h-screen flex flex-col bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
-      <header class="border-b border-gray-200 dark:border-gray-800 bg-white/75 dark:bg-gray-900/75 backdrop-blur-md sticky top-0 z-50">
-        <UContainer class="flex items-center justify-between h-16">
-          <NuxtLink to="/" class="text-xl font-bold flex items-center gap-2">
-            <UIcon name="i-heroicons-cube-transparent" class="w-8 h-8 text-primary-500" />
-            <span>Nuxt Template</span>
+    <div
+      class="flex min-h-screen flex-col bg-gray-50 text-gray-900 transition-colors duration-300 dark:bg-gray-950 dark:text-gray-100"
+    >
+      <header
+        class="sticky top-0 z-50 border-b border-gray-200 bg-white backdrop-blur-md dark:border-gray-800 dark:bg-gray-900"
+      >
+        <UContainer class="flex h-16 items-center justify-between">
+          <NuxtLink to="/" class="flex items-center gap-2 font-bold text-gray-900 dark:text-white">
+            <img
+              src="/HCH%20Light%20Mode%20Logo.png"
+              alt="Hope Cope Heal logo"
+              width="160"
+              height="32"
+              style="height: 32px; width: auto"
+              class="h-8 w-auto dark:hidden"
+            />
+            <img
+              src="/HCH%20Dark%20Mode%20Logo.png"
+              alt="Hope Cope Heal logo"
+              width="160"
+              height="32"
+              style="height: 32px; width: auto"
+              class="hidden h-8 w-auto dark:block"
+            />
+            <span class="text-sm leading-none whitespace-nowrap sm:hidden">Hope.Cope.Heal.</span>
+            <span class="hidden text-xl leading-none whitespace-nowrap sm:inline"
+              >Hope. Cope. Heal.</span
+            >
           </NuxtLink>
-          
+
           <div class="flex items-center gap-2">
+            <template v-if="isAuthenticated">
+              <UButton
+                label="Dashboard"
+                to="/"
+                color="primary"
+                :variant="isDashboardPage ? 'solid' : 'soft'"
+              />
+              <UButton
+                label="Tasks"
+                to="/taskPage"
+                color="primary"
+                :variant="isTasksPage ? 'solid' : 'soft'"
+              />
+            </template>
+            <UButton
+              label="Calendar"
+              to="/calendar"
+              color="primary"
+              :variant="isCalendarPage ? 'solid' : 'soft'"
+            />
             <UButton
               :icon="isDark ? 'i-heroicons-moon-20-solid' : 'i-heroicons-sun-20-solid'"
               color="neutral"
@@ -34,7 +88,7 @@ const isDark = computed({
       </header>
 
       <main class="flex-1">
-        <NuxtPage />
+        <NuxtPage :page-key="(r) => r.fullPath" />
       </main>
     </div>
   </UApp>

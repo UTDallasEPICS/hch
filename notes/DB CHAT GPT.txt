@@ -1,0 +1,303 @@
+3NF Revision (Stricter)
+Forms
+    form_id (PK)
+    form_name
+
+Questions
+    question_id (PK)
+    form_id (FK)
+    question_text
+    question_type (Enum)
+
+QuestionOptions
+    option_id (PK)
+    question_id (FK)
+    option_text
+
+Responses
+    submission_id (PK)
+    patient_id (FK)
+    form_id (FK)
+    submitted_at (Timestamp)
+
+Answers
+    answer_id (PK)
+    submission_id (FK)
+    question_id (FK)
+
+AnswerText
+    answer_id (PK/FK) — Only for text/date/etc.
+    answer_text
+
+AnswerSelections
+    answer_id (FK)
+    option_id (FK)
+    (PK: answer_id, option_id)
+
+Users
+    user_id (PK)
+    email
+    name
+    phone_number
+
+Staff
+    staff_id (PK/FK)
+    title
+
+Patient
+    patient_id (PK/FK)
+    start_date
+    end_date
+    status (waitlist, active, inactive)
+
+Session
+    session_id (PK)
+    patient_id (FK)
+    staff_id (FK)
+    notes_id (FK)
+    attendance (Enum)
+    date_time
+    location (Enum: online/in-person)
+
+SessionRecurrence
+    recurrence_id (PK)
+    session_id (FK, UNIQUE)
+    frequency
+
+
+Notes
+    notes_id (PK)
+    content
+    is_locked
+    signed_at
+
+Prisma Schema Draft (3NF)
+```prisma
+generator client {
+    provider = "prisma-client"
+    output   = "./generated"
+}
+
+datasource db {
+    provider = "sqlite"
+}
+
+enum QuestionType {
+    TEXT
+    MULTIPLE_CHOICE
+    CHECKBOX
+    DATE
+}
+
+enum AttendanceStatus {
+    PRESENT
+    ABSENT
+    CANCELLED
+}
+
+enum SessionLocation {
+    ONLINE
+    IN_PERSON
+}
+
+enum PatientStatus {
+    WAITLIST
+    ACTIVE
+    INACTIVE
+}
+
+enum Role {
+    ADMIN
+    CLIENT
+}
+
+model Client {
+    id       String  @id
+    waitlist Boolean @default(true)
+    notes    String
+}
+
+model InitalApp {
+    id String @id
+}
+
+model User {
+    id            String    @id
+    name          String
+    email         String
+    emailVerified Boolean   @default(false)
+    createdAt     DateTime  @default(now())
+    updatedAt     DateTime  @updatedAt
+    sessions      Session[]
+    accounts      Account[]
+    phoneNumber   Int?
+    userRoles     UserRole[]
+
+    @@unique([email])
+    @@map("user")
+}
+
+model UserRole {
+    userId String
+    role   Role
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@id([userId, role])
+    @@map("user_role")
+}
+
+model Session {
+    id        String   @id
+    expiresAt DateTime
+    token     String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    ipAddress String?
+    userAgent String?
+    userId    String
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([token])
+    @@index([userId])
+    @@map("session")
+}
+
+model Account {
+    id                    String    @id
+    accountId             String
+    providerId            String
+    userId                String
+    user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    accessToken           String?
+    refreshToken          String?
+    idToken               String?
+    accessTokenExpiresAt  DateTime?
+    refreshTokenExpiresAt DateTime?
+    scope                 String?
+    password              String?
+    createdAt             DateTime  @default(now())
+    updatedAt             DateTime  @updatedAt
+
+    @@index([userId])
+    @@map("account")
+}
+
+model Verification {
+    id         String   @id
+    identifier String
+    value      String
+    expiresAt  DateTime
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
+
+    @@index([identifier])
+    @@map("verification")
+}
+
+model Form {
+    id        String      @id
+    name      String
+    questions Question[]
+    responses Response[]
+}
+
+model Question {
+    id         String           @id
+    formId     String
+    text       String
+    type       QuestionType
+    form       Form             @relation(fields: [formId], references: [id])
+    options    QuestionOption[]
+    answers    Answer[]
+}
+
+model QuestionOption {
+    id         String   @id
+    questionId String
+    text       String
+    question   Question @relation(fields: [questionId], references: [id])
+    selections AnswerSelection[]
+}
+
+model Response {
+    id          String   @id
+    patientId   String
+    formId      String
+    submittedAt DateTime @default(now())
+    patient     Patient  @relation(fields: [patientId], references: [userId])
+    form        Form     @relation(fields: [formId], references: [id])
+    answers     Answer[]
+}
+
+model Answer {
+    id            String   @id
+    submissionId  String
+    questionId    String
+    submission    Response @relation(fields: [submissionId], references: [id])
+    question      Question @relation(fields: [questionId], references: [id])
+    textAnswer    AnswerText?
+    selections   AnswerSelection[]
+}
+
+model AnswerText {
+    answerId String @id
+    text     String
+    answer   Answer @relation(fields: [answerId], references: [id])
+}
+
+model AnswerSelection {
+    answerId String
+    optionId String
+    answer   Answer         @relation(fields: [answerId], references: [id])
+    option   QuestionOption @relation(fields: [optionId], references: [id])
+
+    @@id([answerId, optionId])
+}
+
+model Staff {
+    userId String @id
+    title  String
+    user   User   @relation(fields: [userId], references: [id])
+}
+
+model Patient {
+    userId    String        @id
+    startDate DateTime
+    endDate   DateTime?
+    status    PatientStatus
+    user      User          @relation(fields: [userId], references: [id])
+    responses Response[]
+    sessions  CareSession[]
+}
+
+model Notes {
+    id       String   @id
+    content  String
+    isLocked Boolean  @default(false)
+    signedAt DateTime?
+    sessions CareSession[]
+}
+
+// Renamed to avoid clash with auth Session model.
+model CareSession {
+    id         String   @id
+    patientId  String
+    staffId    String
+    notesId    String
+    attendance AttendanceStatus
+    dateTime   DateTime
+    location   SessionLocation
+    patient    Patient @relation(fields: [patientId], references: [userId])
+    staff      Staff   @relation(fields: [staffId], references: [userId])
+    notes      Notes   @relation(fields: [notesId], references: [id])
+    recurrence SessionRecurrence?
+}
+
+model SessionRecurrence {
+    sessionId String      @id
+    frequency String
+    session   CareSession @relation(fields: [sessionId], references: [id])
+}
+```
+
+

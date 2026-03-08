@@ -1,46 +1,61 @@
-import { Param } from '@prisma/client/runtime/client'
-import { prisma } from '../server/utils/prisma'
+import 'dotenv/config'
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
+import { PrismaClient } from './generated/client'
+
+const connectionString = process.env.DATABASE_URL ?? 'file:./dev.db'
+const adapter = new PrismaBetterSqlite3({ url: connectionString })
+const prisma = new PrismaClient({ adapter })
 
 async function main() {
   console.log('Start seeding...')
 
-  // 1. Create a User with a Password (Local Auth)
-  const user1 = await prisma.user.create({
-    data: {
-      id: 'user_01',
-      name: 'Alice Developer',
-      email: 'alice@a.com',
-      emailVerified: true,
-      accounts: {
-        create: {
-          id: 'acc_01',
-          accountId: 'alice_local_id',
-          providerId: 'credential', // Common for email/password
-          password: 'hashed_password_here', // In a real app, hash this!
-        },
+  // ACE form: Form table only (questions in front-end; AceResponse for answers)
+  // Remove any stale FormQuestion/Question records from when ACE used the DB
+  const aceForm = await prisma.form.findUnique({ where: { slug: 'ace-form' } })
+  if (aceForm) {
+    const deleted = await prisma.formQuestion.deleteMany({
+      where: { formId: aceForm.id },
+    })
+    if (deleted.count > 0) {
+      await prisma.question.deleteMany({
+        where: { alias: { in: ['ace_1', 'ace_2', 'ace_3', 'ace_4', 'ace_5', 'ace_6', 'ace_7', 'ace_8', 'ace_9', 'ace_10'] } },
+      })
+      console.log('Removed old ACE questions from DB (now in front-end)')
+    }
+  } else {
+    await prisma.form.create({
+      data: {
+        title: 'ACE Questionnaire',
+        description:
+          'Adverse Childhood Experiences (ACE) Questionnaire. Answer Yes or No for each question.',
+        slug: 'ace-form',
       },
-    },
-  })
+    })
+    console.log('Created ACE form (questions in front-end)')
+  }
 
-  // 2. Create a User with an OAuth Account (e.g., Google)
-  const user2 = await prisma.user.create({
-    data: {
-      id: 'user_02',
-      name: 'Bob Tester',
-      email: 'bob@b.com',
-      emailVerified: true,
-      accounts: {
-        create: {
-          id: 'acc_02',
-          accountId: 'bob_google_id',
-          providerId: 'google',
-          accessToken: 'mock_access_token',
-        },
-      },
-    },
-  })
+  // Assign roles: alice@a.com and djanjanam@gmail.com = ADMIN, bob@b.com = CLIENT
+  const adminEmails = ['alice@a.com', 'djanjanam@gmail.com']
+  const clientEmail = 'bob@b.com'
+  for (const email of adminEmails) {
+    const user = await prisma.user.findUnique({ where: { email } })
+    if (user) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'ADMIN' },
+      })
+      console.log(`Set ${email} as ADMIN`)
+    }
+  }
+  const clientUser = await prisma.user.findUnique({ where: { email: clientEmail } })
+  if (clientUser) {
+    await prisma.user.update({
+      where: { id: clientUser.id },
+      data: { role: 'CLIENT' },
+    })
+    console.log(`Set ${clientEmail} as CLIENT`)
+  }
 
-  console.log({ user1, user2 })
   console.log('Seeding finished.')
 }
 
