@@ -75,9 +75,9 @@
           class="flex items-center justify-between py-4 first:pt-0 last:pb-0"
         >
           <div class="flex items-center gap-3">
-            <UAvatar :alt="user.name" :src="user.image || undefined" size="md" />
+            <UAvatar :alt="(user.name ?? '').replace(/\|\|/g, ' ')" :src="user.image || undefined" size="md" />
             <div>
-              <p class="font-medium text-gray-900 dark:text-white">{{ user.name }}</p>
+              <p class="font-medium text-gray-900 dark:text-white">{{ (user.name ?? '').replace(/\|\|/g, ' ') }}</p>
               <p class="text-sm text-gray-500 dark:text-gray-400">{{ user.email }}</p>
             </div>
           </div>
