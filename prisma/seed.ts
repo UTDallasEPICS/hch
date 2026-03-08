@@ -49,26 +49,47 @@ async function main() {
     console.log('Created ACE form (questions in front-end)')
   }
 
-  // Assign roles: alice@example.com and djanjanam@gmail.com = ADMIN, bob@b.com = CLIENT
-  const adminEmails = ['alice@example.com', 'alice@a.com', 'djanjanam@gmail.com']
-  const clientEmail = 'bob@b.com'
-  for (const email of adminEmails) {
+  // Ensure baseline users always exist after a reset.
+  await prisma.user.upsert({
+    where: { email: 'alice@a.com' },
+    update: {
+      name: 'Alice',
+      role: 'ADMIN',
+    },
+    create: {
+      id: 'seed-alice',
+      name: 'Alice',
+      email: 'alice@a.com',
+      role: 'ADMIN',
+    },
+  })
+  console.log('Ensured alice@a.com exists as ADMIN')
+
+  await prisma.user.upsert({
+    where: { email: 'bob@b.com' },
+    update: {
+      name: 'Bob',
+      role: 'CLIENT',
+    },
+    create: {
+      id: 'seed-bob',
+      name: 'Bob',
+      email: 'bob@b.com',
+      role: 'CLIENT',
+    },
+  })
+  console.log('Ensured bob@b.com exists as CLIENT')
+
+  // Keep existing admin aliases consistent if they already exist.
+  const adminAliases = ['alice@example.com', 'djanjanam@gmail.com']
+  for (const email of adminAliases) {
     const user = await prisma.user.findUnique({ where: { email } })
-    if (user) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { role: 'ADMIN' },
-      })
-      console.log(`Set ${email} as ADMIN`)
-    }
-  }
-  const clientUser = await prisma.user.findUnique({ where: { email: clientEmail } })
-  if (clientUser) {
+    if (!user) continue
     await prisma.user.update({
-      where: { id: clientUser.id },
-      data: { role: 'CLIENT' },
+      where: { id: user.id },
+      data: { role: 'ADMIN' },
     })
-    console.log(`Set ${clientEmail} as CLIENT`)
+    console.log(`Set ${email} as ADMIN`)
   }
 
   console.log('Seeding finished.')
