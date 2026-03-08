@@ -95,6 +95,15 @@ export default defineEventHandler(async (event) => {
   }
 
   let therapyWeek: number | null | undefined = body.therapyWeek
+
+  // Auto-populate week 1 when moving from waitlist to active
+  if (body.status === 'ACTIVE') {
+    const currentStatus = user.client?.status ?? 'INCOMPLETE'
+    if (currentStatus === 'WAITLIST' && therapyWeek === undefined) {
+      therapyWeek = 1
+    }
+  }
+
   if (therapyWeek !== undefined && therapyWeek !== null) {
     if (therapyWeek < 0 || therapyWeek > MAX_THERAPY_WEEKS) {
       throw createError({
