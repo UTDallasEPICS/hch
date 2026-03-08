@@ -167,13 +167,25 @@
     }],
   ]
 
-  async function savePlan() {
+  const justificationModalOpen = ref(false)
+
+  async function savePlanWithJustification(payload: {
+    reasoning?: string
+    documentationBase64?: string
+    signatureData: string
+  }) {
     if (!clientId.value || planSaving.value) return
     try {
       planSaving.value = true
+      justificationModalOpen.value = false
       const res = await $fetch<{ id: string; content: string; createdAt: string; updatedAt: string; clientId: string }>(`/api/clients/${clientId.value}/plan`, {
         method: 'PUT',
-        body: { content: planContent.value },
+        body: {
+          content: planContent.value,
+          reasoning: payload.reasoning,
+          documentationBase64: payload.documentationBase64,
+          signatureData: payload.signatureData,
+        },
       })
       if (profile.value) {
         profile.value.plan = res
@@ -186,6 +198,23 @@
     } finally {
       planSaving.value = false
     }
+  }
+
+  function onSavePlanClick() {
+    justificationModalOpen.value = true
+  }
+
+  function onJustificationSubmit(payload: {
+    reasoning?: string
+    documentation?: File
+    documentationBase64?: string
+    signatureData: string
+  }) {
+    savePlanWithJustification({
+      reasoning: payload.reasoning,
+      documentationBase64: payload.documentationBase64,
+      signatureData: payload.signatureData,
+    })
   }
 </script>
 
@@ -252,11 +281,22 @@
           color="primary"
           class="mt-4"
           :loading="planSaving"
-          @click="savePlan"
+          @click="onSavePlanClick"
         >
           Save Plan
         </UButton>
       </div>
     </div>
+
+    <ChangeWithJustificationModal
+      :open="justificationModalOpen"
+      title="Justify treatment plan change"
+      description="Saving or updating a treatment plan requires reasoning or supporting documentation, and your signature."
+      entity-type="treatment plan"
+      submit-label="Confirm & save plan"
+      :loading="planSaving"
+      @close="justificationModalOpen = false"
+      @submit="onJustificationSubmit"
+    />
   </main>
 </template>
