@@ -471,22 +471,24 @@
       </div>
     </template>
 
-    <ChangeWithJustificationModal
-      :open="justificationModalOpen"
-      title="Justify change"
-      description="This change requires a reason or supporting documentation, and your signature."
-      entity-type="absence"
-      submit-label="Confirm & save absences"
-      :loading="absencesSaving"
-      @close="justificationModalOpen = false; pendingAbsenceSave = false"
-      @submit="onJustificationSubmit"
-    >
-      <template v-if="pendingAbsenceSave">
-        <p class="text-sm text-gray-600 dark:text-gray-400">
-          Changing absences from <strong>{{ profile?.missedSessions ?? 0 }}</strong> to
-          <strong>{{ absencesValue }}</strong>.
-        </p>
-      </template>
-    </ChangeWithJustificationModal>
+    <Teleport to="body">
+      <ChangeWithJustificationModal
+        :open="justificationModalOpen"
+        title="Justify change"
+        description="This change requires a reason or supporting documentation, and your signature."
+        entity-type="absence"
+        submit-label="Confirm & save absences"
+        :loading="absencesSaving"
+        @close="justificationModalOpen = false; pendingAbsenceSave = false"
+        @submit="onJustificationSubmit"
+      >
+        <template v-if="pendingAbsenceSave">
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            Changing absences from <strong>{{ profile?.missedSessions ?? 0 }}</strong> to
+            <strong>{{ absencesValue }}</strong>.
+          </p>
+        </template>
+      </ChangeWithJustificationModal>
+    </Teleport>
   </UModal>
 </template>
