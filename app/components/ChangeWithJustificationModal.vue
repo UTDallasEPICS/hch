@@ -109,7 +109,7 @@ function hasValidSignature(): boolean {
   return !!signatureDataUrl.value
 }
 
-// Signature pad
+// Signature pad (canvas-based)
 const sigCanvasRef = ref<HTMLCanvasElement | null>(null)
 const docUploadRef = ref<HTMLInputElement | null>(null)
 const isDrawing = ref(false)
@@ -131,7 +131,9 @@ function getCanvasCoords(e: MouseEvent | TouchEvent): { x: number; y: number } {
   if (!canvas) return { x: 0, y: 0 }
   const rect = canvas.getBoundingClientRect()
   if ('touches' in e) {
-    return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top }
+    const touch = e.touches[0]
+    if (!touch) return { x: 0, y: 0 }
+    return { x: touch.clientX - rect.left, y: touch.clientY - rect.top }
   }
   return { x: e.clientX - rect.left, y: e.clientY - rect.top }
 }
@@ -213,7 +215,8 @@ async function handleSubmit() {
     :open="open"
     :title="title"
     :ui="{
-      content: 'max-w-xl w-full',
+      overlay: 'z-[60]',
+      content: 'max-w-xl w-full z-[60]',
       body: 'max-h-[85vh] overflow-y-auto p-6',
     }"
     @update:open="(v: boolean) => !v && emit('close')"
@@ -302,7 +305,7 @@ async function handleSubmit() {
           Sign in the box below using your mouse or touchscreen.
         </p>
         <div
-          class="relative overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800"
+          class="relative h-32 w-full overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800"
           :class="{ 'border-red-400': signatureError }"
         >
           <canvas
