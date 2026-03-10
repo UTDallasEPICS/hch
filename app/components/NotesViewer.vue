@@ -23,6 +23,15 @@ const selectedNoteData = computed(() =>
   selectedPreviousNote.value !== null ? props.previousNotes[selectedPreviousNote.value] : null
 )
 
+const searchQuery = ref('')
+const filteredNotes = computed(() =>
+  props.previousNotes.filter(note =>
+    note.date.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    note.preview.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    note.content.toLowerCase().includes(searchQuery.value.toLowerCase())
+  )
+)
+
 function closeSelectedNote() {
   selectedPreviousNote.value = null
 }
@@ -32,14 +41,15 @@ const showEditModal = ref(false)
 const editReason = ref('')
 const signature = ref('')
 const selectedForm = ref<string | null>(null)
+const sidebarTab = ref<'notes' | 'forms'>('notes')
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 overflow-y-auto bg-gray-50 dark:bg-gray-950 flex items-start justify-center px-4">
+  <div class="fixed inset-0 z-50 overflow-y-auto bg-gray-50 dark:bg-gray-950">
 
     <!-- Main card -->
     <div
-      class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg overflow-hidden transition-all duration-300 w-full max-w-sm md:max-w-3xl lg:max-w-5xl"
+      class="min-h-screen border-x border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden"
     >
       <!-- Header -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
@@ -51,28 +61,89 @@ const selectedForm = ref<string | null>(null)
       </div>
 
       <!-- Main Panel -->
-      <div class="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-gray-200 dark:divide-gray-800" style="min-height: 420px">
+      <div class="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-gray-200 dark:divide-gray-800" style="min-height: 600px">
 
-        <!-- Left: Previous Notes List -->
+        <!-- Left: Sidebar -->
         <div class="hidden md:block w-64 flex-shrink-0 overflow-y-auto">
-          <div class="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            <UIcon name="i-heroicons-calendar" class="w-4 h-4" />
-            Previous Notes
+
+          <!-- Tabs -->
+          <div class="flex border-b border-gray-200 dark:border-gray-800">
+            <button
+              @click="sidebarTab = 'notes'"
+              class="flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors"
+              :class="sidebarTab === 'notes'
+                ? 'text-primary-500 border-b-2 border-primary-500'
+                : 'text-gray-400 hover:text-gray-600'"
+            >
+              Notes
+            </button>
+            <button
+              @click="sidebarTab = 'forms'"
+              class="flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors"
+              :class="sidebarTab === 'forms'
+                ? 'text-primary-500 border-b-2 border-primary-500'
+                : 'text-gray-400 hover:text-gray-600'"
+            >
+              Forms
+            </button>
           </div>
-          <div
-            v-for="(note, index) in previousNotes"
-            :key="note.id"
-            @click="selectedPreviousNote = index"
-            class="cursor-pointer px-4 py-3 border-b border-gray-100 dark:border-gray-800 transition-colors"
-            :class="
-              selectedPreviousNote === index
-                ? 'bg-gray-100 dark:bg-gray-800'
-                : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
-            "
-          >
-            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ note.date }}</p>
-            <p class="text-xs text-gray-400 truncate mt-0.5">{{ note.preview }}</p>
+
+          <!-- Notes Tab -->
+          <template v-if="sidebarTab === 'notes'">
+            <!-- Search -->
+            <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-800">
+              <div class="flex items-center gap-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-1.5">
+                <UIcon name="i-heroicons-magnifying-glass" class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                <input
+                  v-model="searchQuery"
+                  type="text"
+                  placeholder="Search notes..."
+                  class="w-full bg-transparent text-xs text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none"
+                />
+              </div>
+            </div>
+            <!-- Notes List -->
+            <template v-if="filteredNotes.length > 0">
+              <div
+                v-for="note in filteredNotes"
+                :key="note.id"
+                @click="selectedPreviousNote = props.previousNotes.indexOf(note)"
+                class="cursor-pointer px-4 py-3 border-b border-gray-100 dark:border-gray-800 transition-colors"
+                :class="
+                  selectedPreviousNote === props.previousNotes.indexOf(note)
+                    ? 'bg-gray-100 dark:bg-gray-800'
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                "
+              >
+                <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ note.date }}</p>
+                <p class="text-xs text-gray-400 truncate mt-0.5">{{ note.preview }}</p>
+              </div>
+            </template>
+            <div v-else class="px-4 py-6 text-center text-xs text-gray-400">
+              No notes found
+            </div>
+          </template>
+
+          <!-- Forms Tab -->
+          <div v-if="sidebarTab === 'forms'" class="p-3 flex flex-col gap-2">
+            <div
+              v-for="form in forms"
+              :key="form.label"
+              @click="selectedForm = selectedForm === form.label ? null : form.label"
+              class="cursor-pointer rounded-xl border p-3 text-center text-sm font-medium transition-colors"
+              :class="
+                selectedForm === form.label
+                  ? 'border-primary-400 bg-primary-50 dark:bg-primary-900/20 text-primary-600'
+                  : form.status === 'complete'
+                  ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+                  : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-400'
+              "
+            >
+              {{ form.label }}
+              <div class="text-xs mt-1 font-normal">{{ form.status }}</div>
+            </div>
           </div>
+
         </div>
 
         <!-- Right: Note Content Area -->
@@ -119,43 +190,44 @@ const selectedForm = ref<string | null>(null)
         </div>
       </div>
 
-      <!-- Client Forms -->
-      <div class="px-6 py-5 border-t border-gray-200 dark:border-gray-800">
-        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-          Client Forms
-        </p>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div
-            v-for="form in forms"
-            :key="form.label"
-            @click="selectedForm = selectedForm === form.label ? null : form.label"
-            class="cursor-pointer rounded-xl border p-3 text-center text-sm font-medium transition-colors"
-            :class="
-              selectedForm === form.label
-                ? 'border-primary-400 bg-primary-50 dark:bg-primary-900/20 text-primary-600'
-                : form.status === 'complete'
-                ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
-                : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-400'
-            "
-          >
-            {{ form.label }}
-            <div class="text-xs mt-1 font-normal">{{ form.status }}</div>
+      <!-- Client Forms
+      <div class="border-t border-gray-200 dark:border-gray-800">
+        <div class="px-6 py-4">
+          <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+            Client Forms
+          </p>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div
+              v-for="form in forms"
+              :key="form.label"
+              @click="selectedForm = selectedForm === form.label ? null : form.label"
+              class="cursor-pointer rounded-xl border p-3 text-center text-sm font-medium transition-colors"
+              :class="
+                selectedForm === form.label
+                  ? 'border-primary-400 bg-primary-50 dark:bg-primary-900/20 text-primary-600'
+                  : form.status === 'complete'
+                  ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+                  : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-400'
+              "
+            >
+              {{ form.label }}
+              <div class="text-xs mt-1 font-normal">{{ form.status }}</div>
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
+        </div> -->
 
-    <!-- Form side panel -->
-    <div
-      v-if="selectedForm"
-      class="ml-4 w-full max-w-sm md:max-w-md lg:max-w-lg rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg p-6 transition-all duration-300"
-      style="max-height: 90vh"
-    >
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ selectedForm }}</h2>
-        <button @click="selectedForm = null" class="text-gray-400 hover:text-gray-600 font-bold text-xl">×</button>
-      </div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Form details will appear here.</p>
+        <!-- Form Details -->
+        <div
+          v-if="selectedForm"
+          class="px-6 py-4 border-t border-gray-200 dark:border-gray-800"
+        >
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ selectedForm }}</h2>
+            <button @click="selectedForm = null" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+          </div>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Form details will appear here.</p>
+        </div>
+      <!-- </div> -->
     </div>
 
     <!-- Edit Modal -->
