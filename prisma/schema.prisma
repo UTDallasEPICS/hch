@@ -36,6 +36,8 @@ model User {
   PclForms       PclForm[]
   PclQuestions   PclQuestion[]
 
+  Notes          Note[]
+
   @@unique([email])
   @@map("user")
 }
@@ -340,4 +342,33 @@ model PclQuestion {
   user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model Note {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  clientId  String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  edits NoteEdit[]
+
+  @@index([userId])
+  @@index([clientId])
+}
+
+model NoteEdit {
+  id              Int      @id @default(autoincrement())
+  noteId          Int  
+  editedContent   String? //what it was changed to   
+  originalContent String? //what it was before the edit 
+  reason          String?
+  signature       String?
+  editedAt        DateTime @default(now())
+
+  note Note   @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([noteId])
 }
