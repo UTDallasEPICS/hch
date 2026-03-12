@@ -2,6 +2,7 @@ import { createError, defineEventHandler, getHeaders, getRouterParam, readBody }
 import { auth } from '../../../utils/auth'
 import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
+import { saveBase64File } from '../../../utils/file-upload'
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
@@ -30,6 +31,7 @@ export default defineEventHandler(async (event) => {
     content?: string
     reasoning?: string
     documentationBase64?: string
+    documentationFilename?: string
     signatureData: string
   }>(event)
   const hasReasoning = typeof body?.reasoning === 'string' && body.reasoning.trim().length > 0
@@ -39,6 +41,20 @@ export default defineEventHandler(async (event) => {
   }
   if (!body?.signatureData || typeof body.signatureData !== 'string') {
     throw createError({ statusCode: 400, statusMessage: 'Admin signature is required' })
+  }
+  if (!body.signatureData.startsWith('data:image/png;base64,') || body.signatureData.length < 100) {
+    throw createError({ statusCode: 400, statusMessage: 'Invalid signature data format' })
+  }
+
+  let documentationPath: string | null = null
+  let documentationName: string | null = null
+  if (hasDoc && body.documentationBase64) {
+    const savedFile = await saveBase64File(
+      body.documentationBase64,
+      body.documentationFilename || 'document'
+    )
+    documentationPath = savedFile.path
+    documentationName = savedFile.originalName
   }
 
   const user = await prisma.user.findFirst({
@@ -74,7 +90,8 @@ export default defineEventHandler(async (event) => {
       oldValue: existingPlan ? JSON.stringify({ content: existingPlan.content }) : null,
       newValue: JSON.stringify({ content }),
       reasoning: body.reasoning?.trim() || null,
-      documentationBase64: body.documentationBase64 || null,
+      documentationPath,
+      documentationName,
       signatureData: body.signatureData,
       signedById: session.user.id,
     },

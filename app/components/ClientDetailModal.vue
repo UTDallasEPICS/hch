@@ -163,6 +163,7 @@
   async function saveAbsencesWithJustification(payload: {
     reasoning?: string
     documentationBase64?: string
+    documentationFilename?: string
     signatureData: string
   }) {
     if (!props.clientId || absencesSaving.value) return
@@ -177,6 +178,7 @@
             missedSessions: absencesValue.value,
             reasoning: payload.reasoning,
             documentationBase64: payload.documentationBase64,
+            documentationFilename: payload.documentationFilename,
             signatureData: payload.signatureData,
           },
         }
@@ -215,6 +217,7 @@
       saveAbsencesWithJustification({
         reasoning: payload.reasoning,
         documentationBase64: payload.documentationBase64,
+        documentationFilename: payload.documentation?.name,
         signatureData: payload.signatureData,
       })
       pendingAbsenceSave.value = false

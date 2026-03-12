@@ -172,6 +172,7 @@
   async function savePlanWithJustification(payload: {
     reasoning?: string
     documentationBase64?: string
+    documentationFilename?: string
     signatureData: string
   }) {
     if (!clientId.value || planSaving.value) return
@@ -184,6 +185,7 @@
           content: planContent.value,
           reasoning: payload.reasoning,
           documentationBase64: payload.documentationBase64,
+          documentationFilename: payload.documentationFilename,
           signatureData: payload.signatureData,
         },
       })
@@ -213,6 +215,7 @@
     savePlanWithJustification({
       reasoning: payload.reasoning,
       documentationBase64: payload.documentationBase64,
+      documentationFilename: payload.documentation?.name,
       signatureData: payload.signatureData,
     })
   }

@@ -26,3 +26,8 @@ logs
 /prisma/generated
 /prisma/migrations
 /dev.db
+
+# Uploaded files (keep directory structure, ignore contents)
+/uploads/**/*
+!/uploads/.gitkeep
+!/uploads/audit-docs/.gitkeep
