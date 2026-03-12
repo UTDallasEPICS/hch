@@ -1,6 +1,34 @@
 <script setup lang="ts">
   type ClientStatus = 'Prospective' | 'Waitlist' | 'Active' | 'Archived'
   type Permissions = { canViewScores: boolean; canViewNotes: boolean; canViewPlan: boolean }
+  type ClientTask = {
+    key: string
+    name: string
+    to: string
+    answered: number
+    total: number
+    submitted: boolean
+    score?: number | null
+    severity?: string | null
+  }
+  type ClientMetric = { form: string; score?: number | null; severity?: string | null }
+  type ClientSessionNote = { id: string; content: string; createdAt: string }
+  type ClientPlan = { id: string; content: string; updatedAt: string } | null
+  type ClientProfile = {
+    id: string
+    fname: string
+    lname: string
+    name: string
+    email: string
+    status: ClientStatus
+    therapyWeek: number | null
+    missedSessions: number
+    tasks: ClientTask[]
+    metrics: ClientMetric[]
+    permissions: Permissions
+    sessionNotes: ClientSessionNote[]
+    plan: ClientPlan
+  }
 
   const props = defineProps<{
     clientId: string | null
@@ -12,7 +40,7 @@
     refreshed: []
   }>()
 
-  const profile = ref<Record<string, unknown> | null>(null)
+  const profile = ref<ClientProfile | null>(null)
   const pending = ref(false)
   const error = ref<Error | null>(null)
 
@@ -50,7 +78,7 @@
     const p = profile.value
     if (!p) return ''
     if (p.lname) return `${p.fname} ${p.lname}`
-    return p.fname || p.name
+    return p.fname || p.name || ''
   }
 
   function statusLabel(status: ClientStatus): string {
@@ -267,6 +295,11 @@
       })
       pendingAbsenceSave.value = false
     }
+  }
+
+  function onJustificationClose() {
+    justificationModalOpen.value = false
+    pendingAbsenceSave.value = false
   }
 </script>
 
@@ -580,10 +613,7 @@
       entity-type="absence"
       submit-label="Confirm & save absences"
       :loading="absencesSaving"
-      @close="
-        justificationModalOpen = false
-        pendingAbsenceSave = false
-      "
+      @close="onJustificationClose"
       @submit="onJustificationSubmit"
     >
       <template v-if="pendingAbsenceSave">

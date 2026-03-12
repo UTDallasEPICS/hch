@@ -2,7 +2,7 @@ import { createError, defineEventHandler, getHeaders, getRouterParam, readBody }
 import { auth } from '../../../utils/auth'
 import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
-import { saveBase64File } from '../../../utils/file-upload'
+import { saveBase64File, saveSignaturePng } from '../../../utils/file-upload'
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
@@ -35,9 +35,13 @@ export default defineEventHandler(async (event) => {
     signatureData: string
   }>(event)
   const hasReasoning = typeof body?.reasoning === 'string' && body.reasoning.trim().length > 0
-  const hasDoc = typeof body?.documentationBase64 === 'string' && body.documentationBase64.length > 0
+  const hasDoc =
+    typeof body?.documentationBase64 === 'string' && body.documentationBase64.length > 0
   if (!hasReasoning && !hasDoc) {
-    throw createError({ statusCode: 400, statusMessage: 'Provide reasoning or documentation (PDF/Word)' })
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Provide reasoning or documentation (PDF/Word)',
+    })
   }
   if (!body?.signatureData || typeof body.signatureData !== 'string') {
     throw createError({ statusCode: 400, statusMessage: 'Admin signature is required' })
@@ -45,6 +49,9 @@ export default defineEventHandler(async (event) => {
   if (!body.signatureData.startsWith('data:image/png;base64,') || body.signatureData.length < 100) {
     throw createError({ statusCode: 400, statusMessage: 'Invalid signature data format' })
   }
+
+  // Persist a PNG copy of each signature for server-side archival.
+  const signaturePath = await saveSignaturePng(body.signatureData)
 
   let documentationPath: string | null = null
   let documentationName: string | null = null
@@ -92,6 +99,7 @@ export default defineEventHandler(async (event) => {
       reasoning: body.reasoning?.trim() || null,
       documentationPath,
       documentationName,
+      signaturePath,
       signatureData: body.signatureData,
       signedById: session.user.id,
     },

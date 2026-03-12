@@ -3,9 +3,14 @@ import { join } from 'path'
 import { randomUUID } from 'crypto'
 
 const UPLOADS_DIR = join(process.cwd(), 'uploads', 'audit-docs')
+const SIGNATURES_DIR = join(process.cwd(), 'server', 'uploads', 'signatures')
 
 export async function ensureUploadsDir(): Promise<void> {
   await fs.mkdir(UPLOADS_DIR, { recursive: true })
+}
+
+export async function ensureSignaturesDir(): Promise<void> {
+  await fs.mkdir(SIGNATURES_DIR, { recursive: true })
 }
 
 export interface SavedFile {
@@ -39,6 +44,24 @@ export async function saveBase64File(
     path: `uploads/audit-docs/${filename}`,
     originalName: originalFilename,
   }
+}
+
+export async function saveSignaturePng(base64DataUrl: string): Promise<string> {
+  await ensureSignaturesDir()
+
+  const matches = base64DataUrl.match(/^data:image\/png;base64,(.+)$/)
+  if (!matches) {
+    throw new Error('Invalid PNG signature data URL format')
+  }
+
+  const base64Data = matches[1]
+  const buffer = Buffer.from(base64Data, 'base64')
+  const filename = `${randomUUID()}.png`
+  const filePath = join(SIGNATURES_DIR, filename)
+
+  await fs.writeFile(filePath, buffer)
+
+  return `server/uploads/signatures/${filename}`
 }
 
 export async function deleteFile(relativePath: string): Promise<void> {
@@ -83,6 +106,7 @@ export function getMimeType(filename: string): string {
   const ext = filename.toLowerCase()
   if (ext.endsWith('.pdf')) return 'application/pdf'
   if (ext.endsWith('.doc')) return 'application/msword'
-  if (ext.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  if (ext.endsWith('.docx'))
+    return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   return 'application/octet-stream'
 }

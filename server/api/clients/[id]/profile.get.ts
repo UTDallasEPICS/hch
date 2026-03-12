@@ -5,7 +5,7 @@ import { isAdmin } from '../../../utils/is-admin'
 import { isAllFormsComplete, getIncompleteForms, FORM_LABELS } from '../../../utils/client-forms'
 import { parseName } from '../../../utils/name'
 import { getAceFormQuestions } from '../../../utils/ace-questions'
-import type { ClientStatus } from '../../../../../prisma/generated/client'
+import type { ClientStatus } from '../../../../prisma/generated/client'
 
 const APP_TOTAL = 50
 const GAD_TOTAL = 7
@@ -257,7 +257,8 @@ export default defineEventHandler(async (event) => {
     },
   ]
 
-  const canViewScores = hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewScores)
+  const canViewScores =
+    hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewScores)
   const metrics = canViewScores
     ? tasks
         .filter((t) => t.submitted && (t.score != null || t.severity != null))
@@ -265,9 +266,7 @@ export default defineEventHandler(async (event) => {
     : []
 
   const tasksForClient =
-    isOwnProfile && !canViewScores
-      ? tasks.map(({ score: _s, severity: _v, ...t }) => t)
-      : tasks
+    isOwnProfile && !canViewScores ? tasks.map(({ score: _s, severity: _v, ...t }) => t) : tasks
 
   return {
     id: user.id,

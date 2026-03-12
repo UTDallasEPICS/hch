@@ -68,6 +68,26 @@ model ClientPlan {
   @@map("client_plan")
 }
 
+// Audit trail for changes requiring reasoning + documentation + admin signature
+model ChangeAudit {
+  id                String   @id @default(cuid())
+  entityType        String // 'ABSENCE' | 'TREATMENT_PLAN' | etc.
+  entityId          String // client userId or clientId
+  oldValue          String? // JSON
+  newValue          String? // JSON
+  reasoning         String?
+  documentationPath String? // Path to uploaded PDF/Word file (optional)
+  documentationName String? // Original filename for display
+  signaturePath     String? // Path to saved PNG signature file
+  signatureData     String // base64 PNG of signature
+  signedById        String
+  signedAt          DateTime @default(now())
+  signedBy          User     @relation(fields: [signedById], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@map("change_audit")
+}
+
 model User {
   id              String           @id
   name            String
@@ -92,6 +112,7 @@ model User {
   PclForms                          PclForm[]
   PclQuestions                      PclQuestion[]
   client                            Client?
+  changeAudits                      ChangeAudit[]
   physicianStatement                PhysicianStatementForm?
   releaseOfInformationAuthorization ReleaseOfInformationAuthorizationForm?
 

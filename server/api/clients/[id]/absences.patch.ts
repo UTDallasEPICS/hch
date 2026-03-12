@@ -2,7 +2,7 @@ import { createError, defineEventHandler, getHeaders, getRouterParam, readBody }
 import { auth } from '../../../utils/auth'
 import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
-import { saveBase64File } from '../../../utils/file-upload'
+import { saveBase64File, saveSignaturePng } from '../../../utils/file-upload'
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
@@ -34,13 +34,23 @@ export default defineEventHandler(async (event) => {
     documentationFilename?: string
     signatureData: string
   }>(event)
-  if (body?.missedSessions === undefined || !Number.isInteger(body.missedSessions) || body.missedSessions < 0) {
-    throw createError({ statusCode: 400, statusMessage: 'missedSessions must be a non-negative integer' })
+  if (
+    body?.missedSessions === undefined ||
+    !Number.isInteger(body.missedSessions) ||
+    body.missedSessions < 0
+  ) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'missedSessions must be a non-negative integer',
+    })
   }
   const hasReasoning = typeof body.reasoning === 'string' && body.reasoning.trim().length > 0
   const hasDoc = typeof body.documentationBase64 === 'string' && body.documentationBase64.length > 0
   if (!hasReasoning && !hasDoc) {
-    throw createError({ statusCode: 400, statusMessage: 'Provide reasoning or documentation (PDF/Word)' })
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Provide reasoning or documentation (PDF/Word)',
+    })
   }
   if (!body?.signatureData || typeof body.signatureData !== 'string') {
     throw createError({ statusCode: 400, statusMessage: 'Admin signature is required' })
@@ -48,6 +58,9 @@ export default defineEventHandler(async (event) => {
   if (!body.signatureData.startsWith('data:image/png;base64,') || body.signatureData.length < 100) {
     throw createError({ statusCode: 400, statusMessage: 'Invalid signature data format' })
   }
+
+  // Persist a PNG copy of each signature for server-side archival.
+  const signaturePath = await saveSignaturePng(body.signatureData)
 
   let documentationPath: string | null = null
   let documentationName: string | null = null
@@ -74,18 +87,20 @@ export default defineEventHandler(async (event) => {
     client = await prisma.client.create({
       data: { userId: clientUserId, missedSessions: body.missedSessions },
     })
+    const createAuditData: any = {
+      entityType: 'ABSENCE',
+      entityId: clientUserId,
+      oldValue: null,
+      newValue: JSON.stringify({ missedSessions: body.missedSessions }),
+      reasoning: body.reasoning?.trim() || null,
+      documentationPath,
+      documentationName,
+      signaturePath,
+      signatureData: body.signatureData,
+      signedById: session.user.id,
+    }
     await prisma.changeAudit.create({
-      data: {
-        entityType: 'ABSENCE',
-        entityId: clientUserId,
-        oldValue: null,
-        newValue: JSON.stringify({ missedSessions: body.missedSessions }),
-        reasoning: body.reasoning?.trim() || null,
-        documentationPath,
-        documentationName,
-        signatureData: body.signatureData,
-        signedById: session.user.id,
-      },
+      data: createAuditData as any,
     })
   } else {
     const oldSessions = client.missedSessions
@@ -93,18 +108,20 @@ export default defineEventHandler(async (event) => {
       where: { id: client.id },
       data: { missedSessions: body.missedSessions },
     })
+    const createAuditData: any = {
+      entityType: 'ABSENCE',
+      entityId: clientUserId,
+      oldValue: JSON.stringify({ missedSessions: oldSessions }),
+      newValue: JSON.stringify({ missedSessions: body.missedSessions }),
+      reasoning: body.reasoning?.trim() || null,
+      documentationPath,
+      documentationName,
+      signaturePath,
+      signatureData: body.signatureData,
+      signedById: session.user.id,
+    }
     await prisma.changeAudit.create({
-      data: {
-        entityType: 'ABSENCE',
-        entityId: clientUserId,
-        oldValue: JSON.stringify({ missedSessions: oldSessions }),
-        newValue: JSON.stringify({ missedSessions: body.missedSessions }),
-        reasoning: body.reasoning?.trim() || null,
-        documentationPath,
-        documentationName,
-        signatureData: body.signatureData,
-        signedById: session.user.id,
-      },
+      data: createAuditData as any,
     })
   }
 
