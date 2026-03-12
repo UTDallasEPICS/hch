@@ -68,9 +68,9 @@ function formatEntityType(type: string): string {
 
 function getDocumentUrl(): string {
   if (!props.audit) return ''
-  // Use direct file path if available (faster, no auth needed for dev)
+  // Use direct URL if available (stored as full URL in database)
   if (props.audit.documentationPath) {
-    return `/${props.audit.documentationPath}`
+    return props.audit.documentationPath
   }
   // Fallback to API endpoint
   return `/api/audit-docs/${props.audit.id}`
@@ -83,12 +83,14 @@ function viewDocumentInline() {
 
 function openInNewTab() {
   if (props.audit) {
-    window.open(`/api/audit-docs/${props.audit.id}`, '_blank')
+    const url = getDocumentUrl()
+    window.open(url, '_blank')
   }
 }
 
 function downloadDocument() {
   if (props.audit) {
+    // Use API endpoint for download (forces Content-Disposition: attachment)
     window.open(`/api/audit-docs/${props.audit.id}/download`, '_blank')
   }
 }
