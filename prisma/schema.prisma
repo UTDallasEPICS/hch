@@ -7,34 +7,21 @@ datasource db {
   provider = "sqlite"
 }
 
-enum Role {
-  ADMIN
-  CLIENT
-}
-
-enum ClientStatus {
-  INCOMPLETE
-  WAITLIST
-  ACTIVE
-  ARCHIVED
-}
-
 model Client {
   id             String            @id @default(cuid())
   userId         String            @unique
   status         ClientStatus      @default(INCOMPLETE)
-  therapyWeek    Int? // 0-26, max weeks of therapy
-  missedSessions Int               @default(0) // count of missed therapy sessions
+  therapyWeek    Int?
+  missedSessions Int               @default(0)
   user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   permissions    ClientPermission?
-  sessionNotes   SessionNote[]
   plan           ClientPlan?
+  sessionNotes   SessionNote[]
 
   @@index([status])
   @@map("client")
 }
 
-// Controls what clients can see on their dashboard
 model ClientPermission {
   id            String  @id @default(cuid())
   clientId      String  @unique
@@ -71,52 +58,49 @@ model ClientPlan {
 model User {
   id              String           @id
   name            String
-  email           String
+  email           String           @unique
   emailVerified   Boolean          @default(false)
   image           String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
-  sessions        Session[]
-  accounts        Account[]
   role            Role             @default(CLIENT)
   phoneNumber     Int?
-  appForms        AppForm[]
+  appForms        AppForm?
   appQuestions    AppQuestion[]
-  formAssignments FormAssignment[]
-  aceResponses    AceResponse[]
   gadForms        GadForm[]
   gadQuestions    GadQuestion[]
-  phqForm         PhqForm[]
+  PclForms        PclForm[]
+  PclQuestions    PclQuestion[]
+  phqForm         PhqForm?
   phqQuestions    PhqQuestion[]
+  accounts        Account[]
+  aceResponses    AceResponse[]
+  change_audit    change_audit[]
+  client          Client?
+  formAssignments FormAssignment[]
+  sessions        Session[]
 
-  PclForms     PclForm[]
-  PclQuestions PclQuestion[]
-  client       Client?
-
-  @@unique([email])
   @@map("user")
 }
 
-// Form metadata (e.g. ACE Questionnaire)
 model Form {
   id            String           @id @default(cuid())
   title         String
   description   String?
-  slug          String           @unique // e.g. 'ace-form'
+  slug          String           @unique
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
-  formQuestions FormQuestion[]
   assignments   FormAssignment[]
+  formQuestions FormQuestion[]
 
   @@map("form")
 }
 
-// Master list of all possible questions (reusable across forms)
 model Question {
   id            String         @id @default(cuid())
   text          String
-  type          String // 'radio', 'text', 'checkbox', etc.
-  alias         String         @unique // e.g. 'parent_insult', 'physical_harm'
+  type          String
+  alias         String         @unique
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   formQuestions FormQuestion[]
@@ -124,14 +108,13 @@ model Question {
   @@map("question")
 }
 
-// Junction: which questions belong to which form, and in what order
 model FormQuestion {
   id         String   @id @default(cuid())
   formId     String
   questionId String
-  order      Int // 1-based position for display and mapping
-  form       Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  order      Int
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  form       Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
 
   @@unique([formId, questionId])
   @@index([formId])
@@ -139,15 +122,14 @@ model FormQuestion {
   @@map("form_question")
 }
 
-// Assigns forms to users (tasks); completion tracked here
 model FormAssignment {
   id          String    @id @default(cuid())
   userId      String
   formId      String
   assignedAt  DateTime  @default(now())
   completedAt DateTime?
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   form        Form      @relation(fields: [formId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, formId])
   @@index([userId])
@@ -155,11 +137,10 @@ model FormAssignment {
   @@map("form_assignment")
 }
 
-// ACE-specific response table. Responses stored as JSON mapping question alias -> value (boolean string or text)
 model AceResponse {
   id          String   @id @default(cuid())
   userId      String
-  responses   String // JSON: { "alias1": "true", "alias2": "false", ... }
+  responses   String
   completedAt DateTime @default(now())
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -170,7 +151,7 @@ model AceResponse {
 model Session {
   id        String   @id
   expiresAt DateTime
-  token     String
+  token     String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   ipAddress String?
@@ -178,7 +159,6 @@ model Session {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([token])
   @@index([userId])
   @@map("session")
 }
@@ -188,7 +168,6 @@ model Account {
   accountId             String
   providerId            String
   userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
   refreshToken          String?
   idToken               String?
@@ -198,6 +177,7 @@ model Account {
   password              String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("account")
@@ -225,97 +205,92 @@ model AppForm {
 }
 
 model AppQuestion {
-  id     Int    @id @default(autoincrement())
-  formId Int    @unique
+  id     Int     @id @default(autoincrement())
+  formId Int     @unique
   userId String
-
-  q01 String?
-  q02 String?
-  q03 String?
-  q04 String?
-  q05 String?
-  q06 String?
-  q07 String?
-  q08 String?
-  q09 String?
-  q10 String?
-  q11 String?
-  q12 String?
-  q13 String?
-  q14 String?
-  q15 String?
-  q16 String?
-  q17 String?
-  q18 String?
-  q19 String?
-  q20 String?
-  q21 String?
-  q22 String?
-  q23 String?
-  q24 String?
-  q25 String?
-  q26 String?
-  q27 String?
-  q28 String?
-  q29 String?
-  q30 String?
-  q31 String?
-  q32 String?
-  q33 String?
-  q34 String?
-  q35 String?
-  q36 String?
-  q37 String?
-  q38 String?
-  q39 String?
-  q40 String?
-  q41 String?
-  q42 String?
-  q43 String?
-  q44 String?
-  q45 String?
-  q46 String?
-  q47 String?
-  q48 String?
-  q49 String?
-  q50 String?
-
-  form AppForm @relation(fields: [formId], references: [id], onDelete: Cascade)
-  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  q01    String?
+  q02    String?
+  q03    String?
+  q04    String?
+  q05    String?
+  q06    String?
+  q07    String?
+  q08    String?
+  q09    String?
+  q10    String?
+  q11    String?
+  q12    String?
+  q13    String?
+  q14    String?
+  q15    String?
+  q16    String?
+  q17    String?
+  q18    String?
+  q19    String?
+  q20    String?
+  q21    String?
+  q22    String?
+  q23    String?
+  q24    String?
+  q25    String?
+  q26    String?
+  q27    String?
+  q28    String?
+  q29    String?
+  q30    String?
+  q31    String?
+  q32    String?
+  q33    String?
+  q34    String?
+  q35    String?
+  q36    String?
+  q37    String?
+  q38    String?
+  q39    String?
+  q40    String?
+  q41    String?
+  q42    String?
+  q43    String?
+  q44    String?
+  q45    String?
+  q46    String?
+  q47    String?
+  q48    String?
+  q49    String?
+  q50    String?
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  form   AppForm @relation(fields: [formId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
 
 model GadForm {
-  id          Int       @id @default(autoincrement())
+  id          Int          @id @default(autoincrement())
   userId      String
-  status      String    @default("IN_PROGRESS")
+  status      String       @default("IN_PROGRESS")
   totalScore  Int?
   severity    String?
   submittedAt DateTime?
-
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  questions GadQuestion?
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions   GadQuestion?
 
   @@index([userId])
 }
 
 model GadQuestion {
-  id     Int    @id @default(autoincrement())
-  formId Int    @unique
+  id     Int     @id @default(autoincrement())
+  formId Int     @unique
   userId String
-
-  g01 Int?
-  g02 Int?
-  g03 Int?
-  g04 Int?
-  g05 Int?
-  g06 Int?
-  g07 Int?
-  g08 Int?
-
-  form GadForm @relation(fields: [formId], references: [id], onDelete: Cascade)
-  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  g01    Int?
+  g02    Int?
+  g03    Int?
+  g04    Int?
+  g05    Int?
+  g06    Int?
+  g07    Int?
+  g08    Int?
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  form   GadForm @relation(fields: [formId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -325,8 +300,8 @@ model PhqForm {
   userId      String       @unique
   status      String       @default("IN_PROGRESS")
   totalScore  Int?
-  severity    String?
   submittedAt DateTime?
+  severity    String?
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   questions   PhqQuestion?
 
@@ -334,23 +309,21 @@ model PhqForm {
 }
 
 model PhqQuestion {
-  id     Int    @id @default(autoincrement())
-  formId Int    @unique
+  id     Int     @id @default(autoincrement())
+  formId Int     @unique
   userId String
-
-  q1         Int?
-  q2         Int?
-  q3         Int?
-  q4         Int?
-  q5         Int?
-  q6         Int?
-  q7         Int?
-  q8         Int?
-  q9         Int?
-  difficulty Int?
-
-  form PhqForm @relation(fields: [formId], references: [id], onDelete: Cascade)
-  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  q1     Int?
+  q2     Int?
+  q3     Int?
+  q4     Int?
+  q5     Int?
+  q6     Int?
+  q7     Int?
+  q8     Int?
+  q9     Int?
+  q10    Int?
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  form   PhqForm @relation(fields: [formId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -359,9 +332,9 @@ model PclForm {
   id          Int          @id @default(autoincrement())
   userId      String
   status      String       @default("IN_PROGRESS")
-  totalScore  Int?
-  severity    String?
   submittedAt DateTime?
+  severity    String?
+  totalScore  Int?
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   questions   PclQuestion?
 
@@ -369,35 +342,59 @@ model PclForm {
 }
 
 model PclQuestion {
-  id     Int    @id @default(autoincrement())
-  formId Int    @unique
+  id     Int     @id @default(autoincrement())
+  formId Int     @unique
   userId String
-
-  worstEvent String?
-
-  q01 Int?
-  q02 Int?
-  q03 Int?
-  q04 Int?
-  q05 Int?
-  q06 Int?
-  q07 Int?
-  q08 Int?
-  q09 Int?
-  q10 Int?
-  q11 Int?
-  q12 Int?
-  q13 Int?
-  q14 Int?
-  q15 Int?
-  q16 Int?
-  q17 Int?
-  q18 Int?
-  q19 Int?
-  q20 Int?
-
-  form PclForm @relation(fields: [formId], references: [id], onDelete: Cascade)
-  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  q01    Int?
+  q02    Int?
+  q03    Int?
+  q04    Int?
+  q05    Int?
+  q06    Int?
+  q07    Int?
+  q08    Int?
+  q09    Int?
+  q10    Int?
+  q11    Int?
+  q12    Int?
+  q13    Int?
+  q14    Int?
+  q15    Int?
+  q16    Int?
+  q17    Int?
+  q18    Int?
+  q19    Int?
+  q20    Int?
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  form   PclForm @relation(fields: [formId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model change_audit {
+  id                  String   @id
+  entityType          String
+  entityId            String
+  oldValue            String?
+  newValue            String?
+  reasoning           String?
+  documentationBase64 String?
+  signatureData       String
+  signedById          String
+  signedAt            DateTime @default(now())
+  user                User     @relation(fields: [signedById], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+}
+
+enum Role {
+  ADMIN
+  CLIENT
+}
+
+enum ClientStatus {
+  INCOMPLETE
+  WAITLIST
+  ACTIVE
+  ARCHIVED
 }
