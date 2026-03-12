@@ -6,6 +6,12 @@
   const fileInputRef = ref<HTMLInputElement | null>(null)
   const uploading = ref(false)
 
+  function isPdfFile(file: File) {
+    const mimeType = file.type?.toLowerCase() || ''
+    const fileName = file.name.toLowerCase()
+    return mimeType === 'application/pdf' || fileName.endsWith('.pdf')
+  }
+
   const {
     data: progress,
     pending,
@@ -21,7 +27,23 @@
   function onFileChange(event: Event) {
     const target = event.target as HTMLInputElement
     const file = target.files?.[0]
-    selectedFile.value = file ?? null
+    if (!file) {
+      selectedFile.value = null
+      return
+    }
+
+    if (!isPdfFile(file)) {
+      selectedFile.value = null
+      target.value = ''
+      toast.add({
+        title: 'Invalid file',
+        description: 'Please choose a PDF file only.',
+        color: 'error',
+      })
+      return
+    }
+
+    selectedFile.value = file
   }
 
   function openFilePicker() {
@@ -36,7 +58,7 @@
   async function uploadFile() {
     if (!selectedFile.value || uploading.value) return
 
-    if (!selectedFile.value.name.toLowerCase().endsWith('.pdf')) {
+    if (!isPdfFile(selectedFile.value)) {
       toast.add({
         title: 'Invalid file',
         description: 'Please upload a PDF file.',

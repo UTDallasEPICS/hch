@@ -7,6 +7,17 @@ import { randomUUID } from 'node:crypto'
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
 
+function hasPdfSignature(fileBytes: Uint8Array) {
+  if (fileBytes.length < 5) return false
+  return (
+    fileBytes[0] === 0x25 && // %
+    fileBytes[1] === 0x50 && // P
+    fileBytes[2] === 0x44 && // D
+    fileBytes[3] === 0x46 && // F
+    fileBytes[4] === 0x2d // -
+  )
+}
+
 export default defineEventHandler(async (event) => {
   const db = prisma as any
 
@@ -46,7 +57,8 @@ export default defineEventHandler(async (event) => {
   const contentType = filePart.type || 'application/octet-stream'
   const isPdfByType = contentType.toLowerCase() === 'application/pdf'
   const isPdfByName = filePart.filename.toLowerCase().endsWith('.pdf')
-  if (!isPdfByType && !isPdfByName) {
+  const isPdfByContent = hasPdfSignature(filePart.data)
+  if ((!isPdfByType && !isPdfByName) || !isPdfByContent) {
     throw createError({ statusCode: 400, statusMessage: 'Only PDF files are allowed' })
   }
 
