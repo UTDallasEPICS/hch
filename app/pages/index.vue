@@ -1,12 +1,49 @@
 <script setup lang="ts">
   import { authClient } from '../utils/auth-client'
 
-  const { data: users, pending, error } = await useFetch('/api/get/users', {
+  const toast = useToast()
+  const isLoggingOut = ref(false)
+
+  const {
+    data: users,
+    pending,
+    error,
+  } = await useFetch('/api/get/users', {
     getCachedData: () => undefined,
   })
 
   async function logout() {
-    await authClient.signOut()
+    if (isLoggingOut.value) return
+    isLoggingOut.value = true
+
+    try {
+      // better-auth sign-out expects a JSON request body; missing body returns 415.
+      await $fetch('/api/auth/sign-out', {
+        method: 'POST',
+        credentials: 'include',
+        body: {},
+      })
+    } catch {
+      // Keep authClient as a secondary attempt for compatibility.
+      try {
+        const { error } = await authClient.signOut()
+        if (error) throw error
+      } catch {
+        toast.add({
+          title: 'Logout failed',
+          description: 'Unable to sign out right now. Please try again.',
+          color: 'error',
+        })
+        isLoggingOut.value = false
+        return
+      }
+    }
+
+    if (import.meta.client) {
+      window.location.href = '/auth'
+      return
+    }
+
     await navigateTo('/auth', { external: true })
   }
 </script>
@@ -28,6 +65,7 @@
           variant="soft"
           icon="i-heroicons-arrow-right-on-rectangle-20-solid"
           label="Logout"
+          :loading="isLoggingOut"
           @click="logout"
         />
       </div>
@@ -36,12 +74,15 @@
     <div
       class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
     >
-      <div class="mb-6 flex items-center justify-between border-b border-gray-200 pb-4 dark:border-gray-800">
+      <div
+        class="mb-6 flex items-center justify-between border-b border-gray-200 pb-4 dark:border-gray-800"
+      >
         <div class="flex items-center gap-2">
-          <UIcon name="i-heroicons-users-20-solid" class="h-5 w-5 text-gray-500 dark:text-gray-400" />
-          <h2 class="text-base font-semibold text-gray-900 dark:text-white">
-            Registered Users
-          </h2>
+          <UIcon
+            name="i-heroicons-users-20-solid"
+            class="h-5 w-5 text-gray-500 dark:text-gray-400"
+          />
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">Registered Users</h2>
         </div>
         <UBadge variant="subtle" color="primary" size="md">{{ users?.length || 0 }} Users</UBadge>
       </div>
