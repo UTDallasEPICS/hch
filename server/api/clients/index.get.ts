@@ -10,7 +10,14 @@ export default defineEventHandler(async (event) => {
   }
 
   const session = await auth.api.getSession({ headers })
-  const user = session?.user
+  const userId = session?.user?.id
+
+  if (!userId) throw createError({ statusCode: 403 })
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true }, // include role
+  })
 
   if (!user || user.role !== 'ADMIN') {
     throw createError({ statusCode: 403 })

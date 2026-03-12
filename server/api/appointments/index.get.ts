@@ -10,22 +10,55 @@ export default defineEventHandler(async (event) => {
   }
 
   const session = await auth.api.getSession({ headers })
-  const user = session?.user
+  const userId = session?.user?.id
 
-  if (!user) {
-    throw createError({ statusCode: 401 })
+  if (!userId) {
+    throw createError({ statusCode: 403 })
   }
 
-  const where = user.role === 'CLIENT' ? { clientId: user.id } : {}
-
-  const appointments = await prisma.appointment.findMany({
-    where,
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
   })
+
+  if (!user) {
+    throw createError({ statusCode: 403 })
+  }
+
+  let appointments
+
+  // ADMIN → see all
+  if (user.role === 'ADMIN') {
+    appointments = await prisma.appointment.findMany({
+      include: {
+        client: {
+          select: { name: true },
+        },
+      },
+    })
+  }
+
+  // CLIENT → see only their own
+  else {
+    appointments = await prisma.appointment.findMany({
+      where: {
+        clientId: userId,
+      },
+      include: {
+        client: {
+          select: { name: true },
+        },
+      },
+    })
+  }
 
   return appointments.map((a) => ({
     id: a.id,
     title: a.title,
     start: a.startTime,
     end: a.endTime,
+    clientName: a.client.name,
+    description: a.description,
+    status: a.status,
   }))
 })

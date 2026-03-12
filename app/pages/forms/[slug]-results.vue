@@ -76,7 +76,6 @@
       />
 
       <template v-else-if="form">
-        <!-- Header -->
         <div class="mb-8">
           <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
             {{ form.title }} - Results

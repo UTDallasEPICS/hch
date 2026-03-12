@@ -1,33 +1,44 @@
-import { defineEventHandler, getHeaders, readBody, createError } from 'h3'
 import { prisma } from '../../utils/prisma'
-import { auth } from '../../utils/auth'
+import { readBody, createError } from 'h3'
 
 export default defineEventHandler(async (event) => {
-  const headers = new Headers()
+  try {
+    const body = await readBody(event)
 
-  for (const [k, v] of Object.entries(getHeaders(event))) {
-    if (v) headers.set(k, v)
+    const { clientId, adminId, title, description, date, startTime, endTime } = body
+
+    if (!clientId || !adminId || !title || !date || !startTime || !endTime) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Missing required fields',
+      })
+    }
+
+    const start = new Date(`${date}T${startTime}`)
+    const end = new Date(`${date}T${endTime}`)
+
+    const appointment = await prisma.appointment.create({
+      data: {
+        clientId,
+        adminId,
+        title,
+        description,
+        startTime: start,
+        endTime: end,
+        status: 'SCHEDULED',
+      },
+    })
+
+    return {
+      success: true,
+      appointment,
+    }
+  } catch (error) {
+    console.error('Create appointment error:', error)
+
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'Failed to create appointment',
+    })
   }
-
-  const session = await auth.api.getSession({ headers })
-  const user = session?.user
-
-  if (!user || user.role !== 'ADMIN') {
-    throw createError({ statusCode: 403 })
-  }
-
-  const body = await readBody(event)
-
-  const appointment = await prisma.appointment.create({
-    data: {
-      title: body.title,
-      description: body.description,
-      clientId: body.clientId,
-      adminId: user.id,
-      startTime: new Date(body.start),
-      endTime: new Date(body.end),
-    },
-  })
-
-  return appointment
 })
