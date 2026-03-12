@@ -1,3 +1,5 @@
+import { isDev, getAceSeedData } from '~/utils/devSeedData'
+
 export async function useFormBySlug(slug: Ref<string> | ComputedRef<string>) {
   const route = useRoute()
   const slugValue = computed(() => unref(slug))
@@ -148,7 +150,16 @@ export async function useFormBySlug(slug: Ref<string> | ComputedRef<string>) {
   watch(
     existingResponses,
     (newResponses) => {
-      responses.value = { ...(newResponses ?? {}) }
+      if (newResponses && Object.keys(newResponses).length > 0) {
+        responses.value = { ...newResponses }
+      } else if (isDev() && slugValue.value === 'ace-form') {
+        const seedData = getAceSeedData()
+        if (seedData) {
+          responses.value = { ...seedData }
+        }
+      } else {
+        responses.value = { ...(newResponses ?? {}) }
+      }
     },
     { immediate: true }
   )

@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { isDev, getPclSeedData } from '~/utils/devSeedData'
+
 const toast = useToast()
 const isSaving = ref(false)
 const isReadOnly = ref(false)
 const worstEvent = ref('')
-  const loadError = ref<string | null>(null)
+const loadError = ref<string | null>(null)
 
   const { data: permissions } = await useFetch<{
     canViewScores: boolean
@@ -109,10 +111,24 @@ onMounted(async () => {
           responses.value[i - 1] = val
         }
       }
+    } else if (isDev()) {
+      const seedData = getPclSeedData()
+      if (seedData) {
+        worstEvent.value = seedData.worstEvent
+        responses.value = [...seedData.responses]
+      }
     }
   } catch (error: any) {
     loadError.value =
       error?.data?.statusMessage || error?.statusMessage || 'Unable to load form.'
+    if (isDev()) {
+      const seedData = getPclSeedData()
+      if (seedData) {
+        worstEvent.value = seedData.worstEvent
+        responses.value = [...seedData.responses]
+        loadError.value = null
+      }
+    }
   }
 })
 </script>

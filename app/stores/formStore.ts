@@ -4,6 +4,8 @@
  * Payload keys q1–q50 match the API/backend.
  */
 
+import { isDev, applicationSeedData } from '~/utils/devSeedData'
+
 const TOTAL_PAYLOAD_QUESTIONS = 50
 
 function toFormQuestionNumber(payloadQuestionNumber: number): number | null {
@@ -92,7 +94,7 @@ export interface ApplicationFormState {
   q51: string
 }
 
-function createInitialState(): ApplicationFormState {
+function createEmptyState(): ApplicationFormState {
   return {
     q1: '',
     q2: '',
@@ -160,6 +162,13 @@ function createInitialState(): ApplicationFormState {
     q50Text: '',
     q51: '',
   }
+}
+
+function createInitialState(): ApplicationFormState {
+  if (isDev()) {
+    return { ...applicationSeedData }
+  }
+  return createEmptyState()
 }
 
 export type AppAnswerPayload = Record<string, string | null | undefined>
@@ -244,7 +253,7 @@ export function useFormStore() {
    * Expects keys q01–q50.
    */
   function applySavedAnswers(answers?: AppAnswerPayload | null) {
-    Object.assign(form.value, createInitialState())
+    Object.assign(form.value, createEmptyState())
     if (!answers) return
     const mutable = form.value as unknown as Record<string, string | string[]>
     for (let payloadIndex = 1; payloadIndex <= TOTAL_PAYLOAD_QUESTIONS; payloadIndex += 1) {
@@ -326,10 +335,17 @@ export function useFormStore() {
     }
   }
 
+  function applyDevSeedData() {
+    if (isDev()) {
+      Object.assign(form.value, applicationSeedData)
+    }
+  }
+
   return {
     form,
     first_name,
     toPayload,
     applySavedAnswers,
+    applyDevSeedData,
   }
 }

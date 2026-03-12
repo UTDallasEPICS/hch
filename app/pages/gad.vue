@@ -1,6 +1,8 @@
 <script setup lang="ts">
-  const toast = useToast()
-  const isSaving = ref(false)
+import { isDev, getGadSeedData } from '~/utils/devSeedData'
+
+const toast = useToast()
+const isSaving = ref(false)
 
   const { data: permissions } = await useFetch<{
     canViewScores: boolean
@@ -84,9 +86,36 @@
     try {
       const res = await $fetch('/api/gad/start', { method: 'POST' })
       applySavedAnswers(res?.answers)
+      if (!res?.answers && isDev()) {
+        const seedData = getGadSeedData()
+        if (seedData) {
+          form.g1 = seedData.g1
+          form.g2 = seedData.g2
+          form.g3 = seedData.g3
+          form.g4 = seedData.g4
+          form.g5 = seedData.g5
+          form.g6 = seedData.g6
+          form.g7 = seedData.g7
+          form.g8 = seedData.g8
+        }
+      }
     } catch (err: any) {
       const msg = err?.data?.statusMessage || err?.message || 'Unable to load form.'
       loadError.value = msg
+      if (isDev()) {
+        const seedData = getGadSeedData()
+        if (seedData) {
+          form.g1 = seedData.g1
+          form.g2 = seedData.g2
+          form.g3 = seedData.g3
+          form.g4 = seedData.g4
+          form.g5 = seedData.g5
+          form.g6 = seedData.g6
+          form.g7 = seedData.g7
+          form.g8 = seedData.g8
+          loadError.value = null
+        }
+      }
     }
   })
 

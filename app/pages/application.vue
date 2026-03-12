@@ -7,7 +7,7 @@
   const isSaving = ref(false)
   const currentStep = ref(1)
   const isReadOnly = ref(false)
-  const { form, toPayload, applySavedAnswers } = useFormStore()
+  const { form, toPayload, applySavedAnswers, applyDevSeedData } = useFormStore()
 
   const { data: permissions } = await useFetch<{
     canViewScores: boolean
@@ -250,6 +250,15 @@
       )
       applySavedAnswers(response?.answers)
       isReadOnly.value = Boolean(response?.submitted)
+      
+      // Apply dev seed data if no saved answers exist (check q01-q50 fields)
+      const hasRealAnswers = response?.answers && Object.entries(response.answers).some(([key, val]) => {
+        if (!key.startsWith('q')) return false
+        return val !== null && val !== undefined && val !== ''
+      })
+      if (!hasRealAnswers) {
+        applyDevSeedData()
+      }
     } catch (error: any) {
       toast.add({
         title: 'Unable to Load Application',
