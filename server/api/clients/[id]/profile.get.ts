@@ -179,14 +179,12 @@ export default defineEventHandler(async (event) => {
       const v = phqQuestions[key]
       sum += typeof v === 'number' ? v : 0
     }
-    phqScore = sum > 0 ? sum : null
-    if (phqScore != null) {
-      if (phqScore > 19) phqSeverity = 'Severe'
-      else if (phqScore > 14) phqSeverity = 'Moderately Severe'
-      else if (phqScore > 9) phqSeverity = 'Moderate'
-      else if (phqScore > 4) phqSeverity = 'Mild'
-      else phqSeverity = 'Minimal or None'
-    }
+    phqScore = sum
+    if (phqScore > 19) phqSeverity = 'Severe depression'
+    else if (phqScore > 14) phqSeverity = 'Moderately severe depression'
+    else if (phqScore > 9) phqSeverity = 'Moderate depression'
+    else if (phqScore > 4) phqSeverity = 'Mild depression'
+    else phqSeverity = 'Minimal or no depression'
   }
 
   // PCL totalScore: compute from questions if not stored (backward compat)
@@ -259,13 +257,17 @@ export default defineEventHandler(async (event) => {
     },
   ]
 
-  const metrics = tasks
-    .filter((t) => t.submitted && (t.score != null || t.severity != null))
-    .map((t) => ({
-      form: t.name,
-      score: t.score,
-      severity: t.severity,
-    }))
+  const canViewScores = hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewScores)
+  const metrics = canViewScores
+    ? tasks
+        .filter((t) => t.submitted && (t.score != null || t.severity != null))
+        .map((t) => ({ form: t.name, score: t.score, severity: t.severity }))
+    : []
+
+  const tasksForClient =
+    isOwnProfile && !canViewScores
+      ? tasks.map(({ score: _s, severity: _v, ...t }) => t)
+      : tasks
 
   return {
     id: user.id,
@@ -278,7 +280,7 @@ export default defineEventHandler(async (event) => {
     missedSessions: clientProfile?.missedSessions ?? 0,
     allFormsComplete,
     incompleteForms,
-    tasks,
+    tasks: tasksForClient,
     metrics,
     permissions: clientProfile?.permissions
       ? {
@@ -287,7 +289,13 @@ export default defineEventHandler(async (event) => {
           canViewPlan: clientProfile.permissions.canViewPlan,
         }
       : { canViewScores: false, canViewNotes: false, canViewPlan: false },
-    sessionNotes: isAdmin ? (clientProfile?.sessionNotes ?? []) : [],
-    plan: isAdmin ? clientProfile?.plan : null,
+    sessionNotes:
+      hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewNotes)
+        ? (clientProfile?.sessionNotes ?? [])
+        : [],
+    plan:
+      hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewPlan)
+        ? clientProfile?.plan
+        : null,
   }
 })

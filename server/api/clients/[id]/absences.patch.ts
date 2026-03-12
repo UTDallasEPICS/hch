@@ -2,6 +2,7 @@ import { createError, defineEventHandler, getHeaders, getRouterParam, readBody }
 import { auth } from '../../../utils/auth'
 import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
+import { saveBase64File } from '../../../utils/file-upload'
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
@@ -26,9 +27,37 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing client id' })
   }
 
-  const body = await readBody<{ missedSessions: number }>(event)
+  const body = await readBody<{
+    missedSessions: number
+    reasoning?: string
+    documentationBase64?: string
+    documentationFilename?: string
+    signatureData: string
+  }>(event)
   if (body?.missedSessions === undefined || !Number.isInteger(body.missedSessions) || body.missedSessions < 0) {
     throw createError({ statusCode: 400, statusMessage: 'missedSessions must be a non-negative integer' })
+  }
+  const hasReasoning = typeof body.reasoning === 'string' && body.reasoning.trim().length > 0
+  const hasDoc = typeof body.documentationBase64 === 'string' && body.documentationBase64.length > 0
+  if (!hasReasoning && !hasDoc) {
+    throw createError({ statusCode: 400, statusMessage: 'Provide reasoning or documentation (PDF/Word)' })
+  }
+  if (!body?.signatureData || typeof body.signatureData !== 'string') {
+    throw createError({ statusCode: 400, statusMessage: 'Admin signature is required' })
+  }
+  if (!body.signatureData.startsWith('data:image/png;base64,') || body.signatureData.length < 100) {
+    throw createError({ statusCode: 400, statusMessage: 'Invalid signature data format' })
+  }
+
+  let documentationPath: string | null = null
+  let documentationName: string | null = null
+  if (hasDoc && body.documentationBase64) {
+    const savedFile = await saveBase64File(
+      body.documentationBase64,
+      body.documentationFilename || 'document'
+    )
+    documentationPath = savedFile.path
+    documentationName = savedFile.originalName
   }
 
   const user = await prisma.user.findFirst({
@@ -45,10 +74,37 @@ export default defineEventHandler(async (event) => {
     client = await prisma.client.create({
       data: { userId: clientUserId, missedSessions: body.missedSessions },
     })
+    await prisma.changeAudit.create({
+      data: {
+        entityType: 'ABSENCE',
+        entityId: clientUserId,
+        oldValue: null,
+        newValue: JSON.stringify({ missedSessions: body.missedSessions }),
+        reasoning: body.reasoning?.trim() || null,
+        documentationPath,
+        documentationName,
+        signatureData: body.signatureData,
+        signedById: session.user.id,
+      },
+    })
   } else {
+    const oldSessions = client.missedSessions
     client = await prisma.client.update({
       where: { id: client.id },
       data: { missedSessions: body.missedSessions },
+    })
+    await prisma.changeAudit.create({
+      data: {
+        entityType: 'ABSENCE',
+        entityId: clientUserId,
+        oldValue: JSON.stringify({ missedSessions: oldSessions }),
+        newValue: JSON.stringify({ missedSessions: body.missedSessions }),
+        reasoning: body.reasoning?.trim() || null,
+        documentationPath,
+        documentationName,
+        signatureData: body.signatureData,
+        signedById: session.user.id,
+      },
     })
   }
 

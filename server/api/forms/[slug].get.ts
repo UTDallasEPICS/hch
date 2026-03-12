@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Missing form slug' })
   }
 
-  const form = await prisma.form.findUnique({
+  let form = await prisma.form.findUnique({
     where: { slug },
     ...(slug !== 'ace-form' && {
       include: {
@@ -19,6 +19,18 @@ export default defineEventHandler(async (event) => {
     }),
   })
 
+  if (!form && slug === 'ace-form') {
+    form = await prisma.form.upsert({
+      where: { slug: 'ace-form' },
+      create: {
+        title: 'ACE Questionnaire',
+        description:
+          'Adverse Childhood Experiences (ACE) Questionnaire. Answer Yes or No for each question.',
+        slug: 'ace-form',
+      },
+      update: {},
+    })
+  }
   if (!form) {
     throw createError({ statusCode: 404, message: 'Form not found' })
   }

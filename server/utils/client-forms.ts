@@ -90,15 +90,33 @@ export async function getIncompleteForms(
   return incomplete
 }
 
+/** Pre-waitlist: only Application required to move to waitlist */
+export async function isPreWaitlistComplete(
+  prisma: PrismaClient,
+  userId: string
+): Promise<boolean> {
+  const appForm = await prisma.appForm.findFirst({
+    where: { userId },
+    orderBy: { id: 'desc' },
+  })
+  return appForm?.status === 'COMPLETE'
+}
+
+/** Pre-waitlist incomplete forms (Application only) */
+export async function getPreWaitlistIncompleteForms(
+  prisma: PrismaClient,
+  userId: string
+): Promise<string[]> {
+  const complete = await isPreWaitlistComplete(prisma, userId)
+  return complete ? [] : ['application']
+}
+
+/** Active patient: ACE, GAD-7, PHQ-9, PCL-5 required (used for staff reference) */
 export async function isAllFormsComplete(
   prisma: PrismaClient,
   userId: string
 ): Promise<boolean> {
-  const [appForm, aceResponse, gadForm, phqForm, pclForm] = await Promise.all([
-    prisma.appForm.findFirst({
-      where: { userId },
-      orderBy: { id: 'desc' },
-    }),
+  const [aceResponse, gadForm, phqForm, pclForm] = await Promise.all([
     prisma.aceResponse.findFirst({
       where: { userId },
       orderBy: { completedAt: 'desc' },
@@ -117,7 +135,6 @@ export async function isAllFormsComplete(
     }),
   ])
 
-  if (appForm?.status !== 'COMPLETE') return false
   if (phqForm?.status !== 'COMPLETE') return false
   if (pclForm?.status !== 'COMPLETE') return false
 

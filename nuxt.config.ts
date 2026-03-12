@@ -5,6 +5,16 @@ export default defineNuxtConfig({
   modules: ['@nuxt/ui'],
   css: ['~/assets/css/main.css'],
   srcDir: 'app',
-  // Optional: ensure form routes are handled by the app (no prerender 404)
-  // routeRules: { '/forms/**': { ssr: true } },
+  nitro: {
+    // Allow larger payloads for justification flows (reasoning + signature + optional PDF/Word)
+    bodyLimit: '15mb',
+    // Serve uploaded files as static assets (for development)
+    publicAssets: [
+      {
+        dir: 'uploads',
+        baseURL: '/uploads',
+        maxAge: 60 * 60 * 24, // 1 day cache
+      },
+    ],
+  },
 })

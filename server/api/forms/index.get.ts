@@ -1,7 +1,20 @@
 import { prisma } from '../../utils/prisma'
 import { getAceFormQuestions } from '../../utils/ace-questions'
 
+const ACE_FORM_SLUG = 'ace-form'
+
 export default defineEventHandler(async () => {
+  await prisma.form.upsert({
+    where: { slug: ACE_FORM_SLUG },
+    create: {
+      title: 'ACE Questionnaire',
+      description:
+        'Adverse Childhood Experiences (ACE) Questionnaire. Answer Yes or No for each question.',
+      slug: ACE_FORM_SLUG,
+    },
+    update: {},
+  })
+
   const forms = await prisma.form.findMany({
     include: {
       formQuestions: {
@@ -14,7 +27,7 @@ export default defineEventHandler(async () => {
 
   return forms.map((f) => {
     // ACE form: questions from front-end constant
-    if (f.slug === 'ace-form') {
+    if (f.slug === ACE_FORM_SLUG) {
       const questions = getAceFormQuestions()
       return {
         id: f.id,
