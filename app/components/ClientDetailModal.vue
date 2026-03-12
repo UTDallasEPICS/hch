@@ -195,6 +195,8 @@
 
   const absencesValue = ref(0)
   const absencesSaving = ref(false)
+  const justificationModalOpen = ref(false)
+  const pendingAbsenceSave = ref(false)
   watch(
     () => profile.value?.missedSessions,
     (v) => {
@@ -203,15 +205,27 @@
     { immediate: true }
   )
 
-  async function saveAbsences() {
+  async function saveAbsencesWithJustification(payload: {
+    reasoning?: string
+    documentationBase64?: string
+    documentationFilename?: string
+    signatureData: string
+  }) {
     if (!props.clientId || absencesSaving.value) return
     try {
       absencesSaving.value = true
+      justificationModalOpen.value = false
       const res = await $fetch<{ missedSessions: number }>(
         `/api/clients/${props.clientId}/absences`,
         {
           method: 'PATCH',
-          body: { missedSessions: absencesValue.value },
+          body: {
+            missedSessions: absencesValue.value,
+            reasoning: payload.reasoning,
+            documentationBase64: payload.documentationBase64,
+            documentationFilename: payload.documentationFilename,
+            signatureData: payload.signatureData,
+          },
         }
       )
       if (profile.value) profile.value.missedSessions = res.missedSessions
@@ -225,6 +239,33 @@
       toast.add({ title: 'Error', description: msg, color: 'error' })
     } finally {
       absencesSaving.value = false
+    }
+  }
+
+  function onAbsencesSaveClick() {
+    const hasChanged = (profile.value?.missedSessions ?? 0) !== absencesValue.value
+    if (hasChanged) {
+      pendingAbsenceSave.value = true
+      justificationModalOpen.value = true
+    } else {
+      absencesEditing.value = false
+    }
+  }
+
+  function onJustificationSubmit(payload: {
+    reasoning?: string
+    documentation?: File
+    documentationBase64?: string
+    signatureData: string
+  }) {
+    if (pendingAbsenceSave.value) {
+      saveAbsencesWithJustification({
+        reasoning: payload.reasoning,
+        documentationBase64: payload.documentationBase64,
+        documentationFilename: payload.documentation?.name,
+        signatureData: payload.signatureData,
+      })
+      pendingAbsenceSave.value = false
     }
   }
 </script>
@@ -290,7 +331,11 @@
                 size="sm"
                 class="w-20"
               />
-              <UButton size="sm" color="primary" :loading="absencesSaving" @click="saveAbsences"
+              <UButton
+                size="sm"
+                color="primary"
+                :loading="absencesSaving"
+                @click="onAbsencesSaveClick"
                 >Save</UButton
               >
               <UButton size="sm" variant="ghost" @click="absencesEditing = false">Cancel</UButton>
@@ -526,4 +571,28 @@
       </div>
     </template>
   </UModal>
+
+  <Teleport to="body">
+    <ChangeWithJustificationModal
+      :open="justificationModalOpen"
+      title="Justify change"
+      description="This change requires a reason or supporting documentation, and your signature."
+      entity-type="absence"
+      submit-label="Confirm & save absences"
+      :loading="absencesSaving"
+      @close="
+        justificationModalOpen = false
+        pendingAbsenceSave = false
+      "
+      @submit="onJustificationSubmit"
+    >
+      <template v-if="pendingAbsenceSave">
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Changing absences from <strong>{{ profile?.missedSessions ?? 0 }}</strong> to
+          <strong>{{ absencesValue }}</strong
+          >.
+        </p>
+      </template>
+    </ChangeWithJustificationModal>
+  </Teleport>
 </template>

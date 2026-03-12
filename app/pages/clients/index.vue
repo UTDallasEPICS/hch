@@ -1,4 +1,6 @@
 <script setup lang="ts">
+  import { capitalizeName } from '~/utils/name'
+
   definePageMeta({ middleware: 'clients-admin' })
 
   type ClientStatus = 'Prospective' | 'Waitlist' | 'Active' | 'Archived'
@@ -53,8 +55,8 @@
   })
 
   function displayName(c: Client) {
-    if (c.lname) return `${c.fname} ${c.lname}`
-    return c.fname || c.name
+    const raw = c.lname ? `${c.fname} ${c.lname}` : c.fname || c.name || ''
+    return capitalizeName(raw)
   }
 
   function statusLabel(status: ClientStatus): string {
@@ -109,7 +111,7 @@
   function formatIncompleteForms(c: Client): string {
     if (c.status !== 'Prospective') return ''
     if (!c.incompleteForms?.length || c.allFormsComplete) {
-      return 'Congradulations! All Forms Complete'
+      return 'Congratulations! All forms complete'
     }
     const count = c.incompleteForms.length
     const names = c.incompleteForms.map((k) => FORM_LABELS[k] ?? k).join(', ')
@@ -119,20 +121,30 @@
   const toast = useToast()
   const updatingId = ref<string | null>(null)
 
-  const STATUS_ORDER: ClientStatus[] = ['Prospective', 'Waitlist', 'Active', 'Archived']
+  type StatusTransition = { from: ClientStatus; to: ClientStatus; label: string }
 
-  function getNextStatus(client: Client): ClientStatus | null {
-    if (client.status === 'Archived') return 'Active'
-    if (client.status === 'Prospective' && !client.allFormsComplete) return null
-    if (client.status === 'Active') {
-      const missedSessions = client.missedSessions ?? 0
-      const therapyWeek = client.therapyWeek ?? 0
-      const canArchive = missedSessions >= 2 || therapyWeek >= 26
-      return canArchive ? 'Archived' : null
-    }
-    const idx = STATUS_ORDER.indexOf(client.status)
-    if (idx < 0 || idx >= STATUS_ORDER.length - 1) return null
-    return STATUS_ORDER[idx + 1]!
+  const STATUS_TRANSITIONS: StatusTransition[] = [
+    { from: 'Prospective', to: 'Waitlist', label: '-> Waitlist' },
+    { from: 'Waitlist', to: 'Prospective', label: '-> Prospective' },
+    { from: 'Waitlist', to: 'Active', label: '-> Active' },
+    { from: 'Active', to: 'Waitlist', label: '-> Waitlist' },
+    { from: 'Active', to: 'Archived', label: '-> Archive' },
+    { from: 'Archived', to: 'Active', label: '-> Active' },
+  ]
+
+  function getAvailableTransitions(client: Client): StatusTransition[] {
+    return STATUS_TRANSITIONS.filter((t) => {
+      if (t.from !== client.status) return false
+      if (t.from === 'Prospective' && t.to === 'Waitlist' && !client.allFormsComplete) {
+        return false
+      }
+      if (t.from === 'Active' && t.to === 'Archived') {
+        const missedSessions = client.missedSessions ?? 0
+        const therapyWeek = client.therapyWeek ?? 0
+        return missedSessions >= 2 || therapyWeek >= 26
+      }
+      return true
+    })
   }
 
   const confirmModalOpen = ref(false)
@@ -353,14 +365,23 @@
                   }}
                 </td>
                 <td class="py-4 pr-4 text-right" @click.stop>
-                  <UButton
-                    v-if="getNextStatus(client) && updatingId !== client.id"
-                    size="md"
-                    variant="outline"
-                    color="primary"
-                    :label="`→ ${statusLabel(getNextStatus(client)!)}`"
-                    @click="openConfirmModal(client, getNextStatus(client)!)"
-                  />
+                  <div v-if="updatingId !== client.id" class="flex flex-wrap justify-end gap-1.5">
+                    <UButton
+                      v-for="t in getAvailableTransitions(client)"
+                      :key="`${t.from}-${t.to}`"
+                      size="xs"
+                      variant="outline"
+                      color="primary"
+                      :label="t.label"
+                      @click="openConfirmModal(client, t.to)"
+                    />
+                  </div>
+                  <div v-else class="flex justify-end">
+                    <UIcon
+                      name="i-heroicons-arrow-path"
+                      class="h-5 w-5 animate-spin text-gray-400"
+                    />
+                  </div>
                 </td>
               </tr>
             </tbody>
