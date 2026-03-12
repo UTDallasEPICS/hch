@@ -70,12 +70,15 @@
                 :variant="isTasksPage ? 'solid' : 'soft'"
               />
             </template>
+
+            <!--
             <UButton
               label="Calendar"
               to="/calendar"
               color="primary"
               :variant="isCalendarPage ? 'solid' : 'soft'"
             />
+          -->
             <UButton
               :icon="isDark ? 'i-heroicons-moon-20-solid' : 'i-heroicons-sun-20-solid'"
               color="neutral"
