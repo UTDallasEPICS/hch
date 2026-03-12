@@ -4,8 +4,6 @@
  * Payload keys q1–q50 match the API/backend.
  */
 
-import { isDev, applicationSeedData } from '~/utils/devSeedData'
-
 const TOTAL_PAYLOAD_QUESTIONS = 50
 
 function toFormQuestionNumber(payloadQuestionNumber: number): number | null {
@@ -164,12 +162,6 @@ function createEmptyState(): ApplicationFormState {
   }
 }
 
-function createInitialState(): ApplicationFormState {
-  if (isDev()) {
-    return { ...applicationSeedData }
-  }
-  return createEmptyState()
-}
 
 export type AppAnswerPayload = Record<string, string | null | undefined>
 
@@ -178,7 +170,7 @@ export type AppAnswerPayload = Record<string, string | null | undefined>
  * Q2 is exposed as first_name (PDF data key); internally stored as q2.
  */
 export function useFormStore() {
-  const form = useState<ApplicationFormState>('application-form-state', createInitialState)
+  const form = useState<ApplicationFormState>('application-form-state', createEmptyState)
 
   /** Semantic key for Q2: "First Name" → first_name (PDF) */
   const first_name = computed({
@@ -335,17 +327,10 @@ export function useFormStore() {
     }
   }
 
-  function applyDevSeedData() {
-    if (isDev()) {
-      Object.assign(form.value, applicationSeedData)
-    }
-  }
-
   return {
     form,
     first_name,
     toPayload,
     applySavedAnswers,
-    applyDevSeedData,
   }
 }

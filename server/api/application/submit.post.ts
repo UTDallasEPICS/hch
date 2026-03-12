@@ -115,6 +115,19 @@ export default defineEventHandler(async (event) => {
     },
   })
 
+  // Update user's name from application form (q02 = first name, q03 = last name)
+  const firstName = form.questions.q02?.trim()
+  const lastName = form.questions.q03?.trim()
+  if (firstName || lastName) {
+    const fullName = [firstName, lastName].filter(Boolean).join(' ')
+    if (fullName) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { name: fullName },
+      })
+    }
+  }
+
   return {
     submitted: true,
   }
