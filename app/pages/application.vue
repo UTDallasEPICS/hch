@@ -290,10 +290,11 @@
         console.log('[Application] After seed, q1:', form.value.q1)
       }
       
-      // Auto-populate user info from session (email and name) if not already filled
+      // Auto-populate user info from session (email and name)
+      // Email is ALWAYS populated from the logged-in user's session to avoid confusion
       if (response?.user) {
-        // Auto-fill email if empty
-        if (!form.value.q1 && response.user.email) {
+        // Always use the logged-in user's email (overrides seed data if present)
+        if (response.user.email) {
           form.value.q1 = response.user.email
         }
         // Auto-fill name if empty - name may be stored as "First||Last" or "First Last"
