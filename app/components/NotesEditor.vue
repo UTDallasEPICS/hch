@@ -25,7 +25,9 @@
   const selectedPreviousNote = ref<number | null>(null)
   const localPreviousNotes = ref([...props.previousNotes])
   const selectedNoteData = computed(() =>
-    selectedPreviousNote.value !== null ? localPreviousNotes.value[selectedPreviousNote.value] : null
+    selectedPreviousNote.value !== null
+      ? localPreviousNotes.value[selectedPreviousNote.value]
+      : null
   )
 
   const searchQuery = ref('')
@@ -55,11 +57,11 @@
   const editingDate = ref<string>('')
 
   const renderedNoteContent = computed(() =>
-  selectedNoteData.value ? marked(selectedNoteData.value.content) : ''
-  ) 
-    
+    selectedNoteData.value ? marked(selectedNoteData.value.content) : ''
+  )
+
   // Function to start editing a previous note
-  function startEditPrevious(note: typeof props.previousNotes[0]) {
+  function startEditPrevious(note: (typeof props.previousNotes)[0]) {
     selectedPreviousNote.value = localPreviousNotes.value.indexOf(note)
     editReason.value = ''
     signature.value = ''
@@ -77,7 +79,7 @@
     }
 
     // Load the previous note content into editor
-    const noteToEdit = props.previousNotes.find(n => n.id === editingNoteId.value)
+    const noteToEdit = props.previousNotes.find((n) => n.id === editingNoteId.value)
     if (noteToEdit) {
       noteContent.value = noteToEdit.content
       isEditingPrevious.value = true
@@ -85,111 +87,111 @@
 
     showEditModal.value = false
 
-    console.log('Edit confirmed:', { 
-      noteId: editingNoteId.value, 
-      reason: editReason.value, 
-      signature: signature.value })
+    console.log('Edit confirmed:', {
+      noteId: editingNoteId.value,
+      reason: editReason.value,
+      signature: signature.value,
+    })
   }
 
   async function saveNote() {
-  console.log('Manual save clicked')
+    console.log('Manual save clicked')
 
-  try {
-    if (isEditingPrevious.value && editingNoteId.value) {
-      //Editing previous note 
-      await $fetch('/api/notes/edit', {
-        method: 'POST',
-        body: {
-          noteId: editingNoteId.value,
-          clientId: props.client.id,
-          content: noteContent.value,
-          reason: editReason.value || '',
-          signature: signature.value || ''
+    try {
+      if (isEditingPrevious.value && editingNoteId.value) {
+        //Editing previous note
+        await $fetch('/api/notes/edit', {
+          method: 'POST',
+          body: {
+            noteId: editingNoteId.value,
+            clientId: props.client.id,
+            content: noteContent.value,
+            reason: editReason.value || '',
+            signature: signature.value || '',
+          },
+        })
+        console.log('Previous note edited and history saved')
+
+        // Update local notes so UI reflects the change immediately
+        const noteIndex = localPreviousNotes.value.findIndex((n) => n.id === editingNoteId.value)
+        if (noteIndex !== -1) {
+          const existing = localPreviousNotes.value[noteIndex]!
+          localPreviousNotes.value[noteIndex] = {
+            id: existing.id,
+            date: existing.date,
+            content: noteContent.value,
+            preview: noteContent.value.slice(0, 60) + '...',
+          }
+          selectedPreviousNote.value = noteIndex
         }
-      })
-      console.log('Previous note edited and history saved')
-      
-      // Update local notes so UI reflects the change immediately
-      const noteIndex = localPreviousNotes.value.findIndex(n => n.id === editingNoteId.value)
-      if (noteIndex !== -1) {
-        const existing = localPreviousNotes.value[noteIndex]!
-        localPreviousNotes.value[noteIndex] = {  
-          id: existing.id,
-          date: existing.date,
-          content: noteContent.value,
-          preview: noteContent.value.slice(0, 60) + '...'
+        noteContent.value = '' // clear editor
+      } else {
+        //New current note
+        await $fetch('/api/notes/create', {
+          method: 'POST',
+          body: {
+            clientId: props.client.id,
+            content: noteContent.value,
+          },
+        })
+        console.log('New note created')
+        noteContent.value = '' //clear editor after save
       }
-      selectedPreviousNote.value = noteIndex
+
+      // Success feedback
+      lastSaved.value = new Date()
+      saveStatus.value = 'saved'
+    } catch (err) {
+      console.error('Save failed:', err)
+      saveStatus.value = 'error'
+      alert('Failed to save note – check console')
     }
-    noteContent.value = '' // clear editor
-    } else {
-      //New current note 
+
+    isEditingPrevious.value = false
+    editingNoteId.value = null
+    editingDate.value = ''
+    editReason.value = ''
+    signature.value = ''
+  }
+
+  //Auto-save and status tracking
+  const saveStatus = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const lastSaved = ref<Date | null>(null)
+
+  // Debounced auto-save (only for current note, not during edit mode)
+  const autoSave = useDebounceFn(async () => {
+    if (isEditingPrevious.value || !noteContent.value.trim()) return
+
+    saveStatus.value = 'saving'
+    try {
       await $fetch('/api/notes/create', {
         method: 'POST',
         body: {
           clientId: props.client.id,
-          content: noteContent.value
-        }
+          content: noteContent.value,
+        },
       })
-      console.log('New note created')
-      noteContent.value = '' //clear editor after save
+      lastSaved.value = new Date()
+      saveStatus.value = 'saved'
+    } catch (err) {
+      console.error('Auto-save failed:', err)
+      saveStatus.value = 'error'
     }
+  }, 2500) // saves 2.5 seconds after you stop typing
 
-    // Success feedback
-    lastSaved.value = new Date()
-    saveStatus.value = 'saved'
+  // Auto-save watcher
+  watch(noteContent, () => {
+    if (!isEditingPrevious.value) {
+      saveStatus.value = 'saving'
+      autoSave()
+    }
+  })
 
-  } catch (err) {
-    console.error('Save failed:', err)
-    saveStatus.value = 'error'
-    alert('Failed to save note – check console')
+  function formatTime(date: Date) {
+    const now = new Date()
+    const diff = Math.floor((now.getTime() - date.getTime()) / 60000)
+    return diff < 1 ? 'just now' : `${diff} min ago`
   }
-
-  isEditingPrevious.value = false
-  editingNoteId.value = null
-  editingDate.value = ''
-  editReason.value = ''
-  signature.value = ''
-}
-
-//Auto-save and status tracking
-const saveStatus = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
-const lastSaved = ref<Date | null>(null)
-
-// Debounced auto-save (only for current note, not during edit mode)
-const autoSave = useDebounceFn(async () => {
-  if (isEditingPrevious.value || !noteContent.value.trim()) return
-
-  saveStatus.value = 'saving'
-  try {
-    await $fetch('/api/notes/create', {
-      method: 'POST',
-      body: {
-        clientId: props.client.id,
-        content: noteContent.value
-      }
-    })
-    lastSaved.value = new Date()
-    saveStatus.value = 'saved'
-  } catch (err) {
-    console.error('Auto-save failed:', err)
-    saveStatus.value = 'error'
-  }
-}, 2500) // saves 2.5 seconds after you stop typing
-
-// Auto-save watcher
-watch(noteContent, () => {
-  if (!isEditingPrevious.value) {
-    saveStatus.value = 'saving'
-    autoSave()
-  }
-})
-
-function formatTime(date: Date) {
-  const now = new Date()
-  const diff = Math.floor((now.getTime() - date.getTime()) / 60000)
-  return diff < 1 ? 'just now' : `${diff} min ago`
-}
 </script>
 
 <template>
@@ -329,7 +331,10 @@ function formatTime(date: Date) {
             <div
               class="relative flex-1 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm leading-relaxed text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
             >
-              <div class="prose prose-sm dark:prose-invert max-w-none" v-html="renderedNoteContent" />
+              <div
+                class="prose prose-sm dark:prose-invert max-w-none"
+                v-html="renderedNoteContent"
+              />
               <div class="absolute right-2 bottom-2">
                 <button
                   @click="startEditPrevious(selectedNoteData)"
@@ -340,7 +345,7 @@ function formatTime(date: Date) {
               </div>
             </div>
           </div>
-           
+
           <!-- Dynamic Editor Area (handles both current and previous/edit mode) -->
           <div class="flex flex-1 flex-col p-5">
             <div class="mb-4 flex items-center justify-between">
@@ -352,97 +357,103 @@ function formatTime(date: Date) {
                   Changes will be saved as a new version • Reason required
                 </p>
               </div>
-            <span v-if="!isEditingPrevious" class="text-primary-500 text-xs font-semibold uppercase">Current</span>
-          </div>
-
-          <NotesToolbar
-            v-model="noteContent"
-            class="flex-1 border rounded-xl overflow-hidden bg-white dark:bg-gray-900"
-          />
-
-          <!-- Save button – show only when there's content or in edit mode -->
-          <div class="mt-4 flex justify-end gap-2">
-            <!-- Auto-save status label -->
-            <div class="text-xs flex items-center gap-2 text-gray-500">
-              <span v-if="saveStatus === 'saving'" class="text-amber-600">● Saving...</span>
-              <span v-else-if="saveStatus === 'saved' && lastSaved" class="text-green-600">
-                Saved {{ formatTime(lastSaved) }}
-              </span>
-              <span v-else-if="saveStatus === 'error'" class="text-red-600">Failed to save</span>
+              <span
+                v-if="!isEditingPrevious"
+                class="text-primary-500 text-xs font-semibold uppercase"
+                >Current</span
+              >
             </div>
 
-          <UButton
-            v-if="noteContent.trim() || isEditingPrevious"
-            color="primary"
-            label="Save Note"
-            size="md"
-            @click="saveNote"
-            class="w-full md:w-auto"
-          />
+            <NotesToolbar
+              v-model="noteContent"
+              class="flex-1 overflow-hidden rounded-xl border bg-white dark:bg-gray-900"
+            />
+
+            <!-- Save button – show only when there's content or in edit mode -->
+            <div class="mt-4 flex justify-end gap-2">
+              <!-- Auto-save status label -->
+              <div class="flex items-center gap-2 text-xs text-gray-500">
+                <span v-if="saveStatus === 'saving'" class="text-amber-600">● Saving...</span>
+                <span v-else-if="saveStatus === 'saved' && lastSaved" class="text-green-600">
+                  Saved {{ formatTime(lastSaved) }}
+                </span>
+                <span v-else-if="saveStatus === 'error'" class="text-red-600">Failed to save</span>
+              </div>
+
+              <UButton
+                v-if="noteContent.trim() || isEditingPrevious"
+                color="primary"
+                label="Save Note"
+                size="md"
+                @click="saveNote"
+                class="w-full md:w-auto"
+              />
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
 
-      <!-- Form Details -->
-      <div v-if="selectedForm" class="border-t border-gray-200 px-6 py-4 dark:border-gray-800">
-        <div class="mb-3 flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ selectedForm }}</h2>
-          <button
-            @click="selectedForm = null"
-            class="text-lg font-bold text-gray-400 hover:text-gray-600"
-          >
-            ×
-          </button>
+        <!-- Form Details -->
+        <div v-if="selectedForm" class="border-t border-gray-200 px-6 py-4 dark:border-gray-800">
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ selectedForm }}</h2>
+            <button
+              @click="selectedForm = null"
+              class="text-lg font-bold text-gray-400 hover:text-gray-600"
+            >
+              ×
+            </button>
+          </div>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Form details will appear here.</p>
         </div>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Form details will appear here.</p>
-      </div>
 
-    <!-- Edit Modal -->
-    <div
-      v-if="showEditModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-    >
-      <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl md:max-w-md dark:bg-gray-900">
-        <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Edit Note</h2>
-
-        <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Reason for editing
-        </label>
-        <textarea
-          v-model="editReason"
-          rows="3"
-          placeholder="Describe why you are editing this note..."
-          class="focus:ring-primary-500 mb-4 w-full resize-none rounded-lg border border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 focus:ring-2 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-        ></textarea>
-
-        <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Signature
-        </label>
-        <input
-          v-model="signature"
-          type="text"
-          placeholder="Sign here..."
-          class="focus:ring-primary-500 w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-gray-900 focus:ring-2 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          style="font-family: 'Brush Script MT', cursive; font-size: 1.25rem"
-        />
-
-        <div class="mt-6 flex justify-end gap-3">
-          <button
-            @click="showEditModal = false"
-            class="rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+        <!-- Edit Modal -->
+        <div
+          v-if="showEditModal"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+        >
+          <div
+            class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl md:max-w-md dark:bg-gray-900"
           >
-            Cancel
-          </button>
-          <button
-            @click="confirmEdit"
-            class="bg-primary-500 hover:bg-primary-600 rounded-lg px-4 py-2 text-sm text-white"
-          >
-            Confirm Edit
-          </button>
+            <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Edit Note</h2>
+
+            <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Reason for editing
+            </label>
+            <textarea
+              v-model="editReason"
+              rows="3"
+              placeholder="Describe why you are editing this note..."
+              class="focus:ring-primary-500 mb-4 w-full resize-none rounded-lg border border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 focus:ring-2 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            ></textarea>
+
+            <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Signature
+            </label>
+            <input
+              v-model="signature"
+              type="text"
+              placeholder="Sign here..."
+              class="focus:ring-primary-500 w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-gray-900 focus:ring-2 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              style="font-family: 'Brush Script MT', cursive; font-size: 1.25rem"
+            />
+
+            <div class="mt-6 flex justify-end gap-3">
+              <button
+                @click="showEditModal = false"
+                class="rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                @click="confirmEdit"
+                class="bg-primary-500 hover:bg-primary-600 rounded-lg px-4 py-2 text-sm text-white"
+              >
+                Confirm Edit
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
   </div>
 </template>
