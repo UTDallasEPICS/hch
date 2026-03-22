@@ -3,11 +3,18 @@ import { prisma } from '../../utils/prisma'
 import { auth } from '../../utils/auth'
 
 export default defineEventHandler(async (event) => {
-  const session = await auth.api.getSession({
-    headers: event.headers,
-  })
+  console.log('API /notes/create called')
+
+  let session
+  try {
+    session = await auth.api.getSession({ headers: event.headers })
+    console.log('Session:', session ? 'exists' : 'missing')
+  } catch (err) {
+    console.error('Session fetch error:', err)
+  }
 
   if (!session?.user?.id) {
+    console.error('Unauthorized - no user ID in session')
     throw createError({
       statusCode: 401,
       statusMessage: 'Unauthorized - please log in',
@@ -15,40 +22,34 @@ export default defineEventHandler(async (event) => {
   }
 
   const userId = session.user.id
-  const body = await readBody(event)
+  console.log('User ID:', userId)
 
-  // Basic validation
-  if (!body.content?.trim()) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Content is required and cannot be empty',
-    })
-  }
+  const body = await readBody(event)
+  console.log('Request body:', body)
 
   if (!body.clientId) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'clientId is required',
-    })
+    console.error('Missing clientId')
+    throw createError({ statusCode: 400, message: 'clientId is required' })
+  }
+
+  if (!body.content?.trim()) {
+    console.error('Missing or empty content')
+    throw createError({ statusCode: 400, message: 'Content is required' })
   }
 
   try {
+    console.log('Attempting Prisma create...')
     const note = await prisma.note.create({
       data: {
-        userId,                 // secure: from session
+        userId,
         clientId: body.clientId,
         content: body.content,
       },
     })
-
-    return {
-      success: true,
-      message: 'Note created successfully',
-      note,
-    }
+    console.log('Note created successfully:', note.id)
+    return { success: true, note }
   } catch (err) {
-    console.error('Prisma create note error:', err)
-
+    console.error('Prisma create failed:', err)
     throw createError({
       statusCode: 500,
       statusMessage: 'Failed to save note in database',

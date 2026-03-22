@@ -208,60 +208,40 @@ async function submitPreviousEdit() {
 async function saveNote() {
   console.log('Manual save clicked')
   if (!noteContent.value.trim()) return
-  saveStatus.value = 'saving'
-  try {
-    // if (isEditingPreviousPanel.value 
-    // && editingNoteId.value) {
-    //   //Editing previous note 
-    //   await $fetch('/api/notes/edit', {
-    //     method: 'POST',
-    //     body: {
-    //       noteId: editingNoteId.value,
-    //       clientId: props.client.id,
-    //       content: noteContent.value,
-    //       reason: editReason.value || '',
-    //       signature: signature.value || ''
-    //     }
-    //   })
-    //   console.log('Previous note edited and history saved')
-      
-    //   // Update local notes so UI reflects the change immediately
-    //   const noteIndex = localPreviousNotes.value.findIndex(n => n.id === editingNoteId.value)
-    //   if (noteIndex !== -1) {
-    //     const existing = localPreviousNotes.value[noteIndex]!
-    //     localPreviousNotes.value[noteIndex] = {  
-    //       id: existing.id,
-    //       date: existing.date,
-    //       content: noteContent.value,
-    //       preview: noteContent.value.slice(0, 60) + '...'
-    //   }
-    //   selectedPreviousNote.value = noteIndex
-    // }
-    // noteContent.value = '' // clear editor
-    // } else {
-      //New current note 
-      const savedContent = noteContent.value
-      const response = await $fetch('/api/notes/create', {
-        method: 'POST',
-        body: {
-          clientId: props.client.id,
-          content: noteContent.value
-        }
-      }) as { note: { id: number; createdAt: string} }
-      console.log('New note created')
-      noteContent.value = '' //clear editor after save
-    // }
+  showSaveModal.value = true
+}
 
-    console.log('noteContent:', noteContent.value);
-    // Move current note into previous notes list
+async function confirmSaveNote() {
+  showSaveModal.value = false
+  saveStatus.value = 'saving'
+
+  try {
+    const savedContent = noteContent.value
+
+    const response = await $fetch('/api/notes/create', {
+      method: 'POST',
+      body: {
+        clientId: props.client.id,
+        content: savedContent
+      }
+    }) as { note: { id: number; createdAt: string } }
+
+    console.log('New note created:', response)
+
+    // Clear local draft
+    localStorage.removeItem(`note_draft_${props.client.id}`)
+
+    // Add to previous notes list (this is what moves it to sidebar)
     localPreviousNotes.value.unshift({
       id: response.note.id,
       date: new Date(response.note.createdAt).toLocaleDateString('en-US'),
-      preview: savedContent.slice(0, 60),
+      preview: savedContent.slice(0, 60) + (savedContent.length > 60 ? '...' : ''),
       content: savedContent,
     })
 
-    // Success feedback
+    // Clear editor → fresh current note
+    noteContent.value = ''
+
     lastSaved.value = new Date()
     saveStatus.value = 'saved'
 
@@ -288,32 +268,27 @@ const previousLastSaved = ref<Date | null>(null)
 
 // const selectedNoteEdits = ref<{ editedAt: string; reason: string }[]>([])
 
-// Debounced auto-save (only for current note, not during edit mode)
-const autoSave = useDebounceFn(async () => {
-  if (!noteContent.value.trim()) return
+// Only localStorage autosaves
+const saveToLocal = useDebounceFn(() => {
+  localStorage.setItem(`note_draft_${props.client.id}`, noteContent.value)
+  lastSaved.value = new Date()
+  saveStatus.value = 'saved'  // show "Saved just now" even for local
+}, 1200)  // faster feedback ~1.2 seconds
 
-  saveStatus.value = 'saving'
-  try {
-    await $fetch('/api/notes/create', {
-      method: 'POST',
-      body: {
-        clientId: props.client.id,
-        content: noteContent.value
-      }
-    })
-    lastSaved.value = new Date()
-    saveStatus.value = 'saved'
-  } catch (err) {
-    console.error('Auto-save failed:', err)
-    saveStatus.value = 'error'
-  }
-}, 2500) // saves 2.5 seconds after you stop typing
-
-// Auto-save watcher
 watch(noteContent, () => {
-  if (!isEditingPreviousPanel.value) {  // ← guards against saving during edit mode
+  if (!isEditingPreviousPanel.value) {   // no auto-save during edit of previous
     saveStatus.value = 'saving'
-    autoSave()
+    saveToLocal()
+  }
+})
+
+// Load draft when component mounts
+onMounted(() => {
+  const draft = localStorage.getItem(`note_draft_${props.client.id}`)
+  if (draft !== null) {
+    noteContent.value = draft
+    lastSaved.value = new Date() // pretend it was just saved
+    saveStatus.value = 'saved'
   }
 })
 
@@ -583,7 +558,7 @@ function formatTime(date: Date) {
         Cancel
       </button>
       <button
-        @click="showSaveModal = false; saveNote()"
+        @click="confirmSaveNote()"
         class="bg-primary-500 hover:bg-primary-600 rounded-lg px-4 py-2 text-sm text-white"
       >
         Save

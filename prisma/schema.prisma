@@ -364,8 +364,7 @@ model Note {
 model NoteEdit {
   id              Int      @id @default(autoincrement())
   noteId          Int  
-  editedContent   String? //what it was changed to   
-  originalContent String? //what it was before the edit 
+  originalContent String? 
   reason          String?
   signature       String?
   editedAt        DateTime @default(now())

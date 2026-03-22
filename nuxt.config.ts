@@ -7,4 +7,16 @@ export default defineNuxtConfig({
   srcDir: 'app',
   // Optional: ensure form routes are handled by the app (no prerender 404)
   // routeRules: { '/forms/**': { ssr: true } },
+  typescript: {
+    tsConfig: {
+      compilerOptions: {
+        allowSyntheticDefaultImports: true
+      }
+    }
+  },
+  vite: {
+    resolve: {
+      dedupe: ['prosemirror-model', 'prosemirror-state', 'prosemirror-view', 'prosemirror-transform']
+    }
+  }
 })
