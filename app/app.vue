@@ -12,6 +12,8 @@
       colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'
     },
   })
+
+  const isNotesPage = computed(() => route.path.startsWith('/notes-test'))
 </script>
 
 <template>
@@ -47,6 +49,7 @@
           </NuxtLink>
 
           <div class="flex items-center gap-2">
+            <template v-if="!isNotesPage">
             <UButton
               label="Dashboard"
               to="/"
@@ -59,14 +62,15 @@
               color="primary"
               :variant="isTasksPage ? 'solid' : 'soft'"
             />
-            <UButton
-              :icon="isDark ? 'i-heroicons-moon-20-solid' : 'i-heroicons-sun-20-solid'"
-              color="neutral"
-              variant="ghost"
-              @click="isDark = !isDark"
-              aria-label="Toggle Theme"
-            />
-          </div>
+          </template>
+          <UButton
+            :icon="isDark ? 'i-heroicons-moon-20-solid' : 'i-heroicons-sun-20-solid'"
+            color="neutral"
+            variant="ghost"
+            @click="isDark = !isDark"
+            aria-label="Toggle Theme"
+          />
+        </div>
         </UContainer>
       </header>
 

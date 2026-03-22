@@ -300,7 +300,7 @@ function formatTime(date: Date) {
 </script>
 
 <template>
-<div class="fixed inset-0 z-50 overflow-y-auto bg-gray-50 dark:bg-gray-950">
+<div class="overflow-y-auto bg-gray-50 dark:bg-gray-950">
   <div class="min-h-screen overflow-hidden border-x border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
 
     <!-- Sidebar overlay -->
