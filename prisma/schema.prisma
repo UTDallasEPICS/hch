@@ -303,6 +303,8 @@ model PclForm {
   id          Int          @id @default(autoincrement())
   userId      String
   status      String       @default("IN_PROGRESS")
+  totalScore  Int?
+  severity    String?
   submittedAt DateTime?
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   questions   PclQuestion?
