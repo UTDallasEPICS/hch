@@ -37,7 +37,7 @@
   const searchQuery = ref('')
   const filteredNotes = computed(() =>
     localPreviousNotes.value.filter(
-      (note) =>
+      (note: { id: number; date: string; preview: string; content: string }) =>
         note.date.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
         note.preview.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
         note.content.toLowerCase().includes(searchQuery.value.toLowerCase())
@@ -142,7 +142,7 @@ async function selectNote(note: typeof props.previousNotes[0]) {
   })
 
   if (!pendingEdits.value.has(editingNoteId.value)) {
-    const noteToEdit = localPreviousNotes.value.find(n => n.id === editingNoteId.value)
+    const noteToEdit = localPreviousNotes.value.find((n: { id: number }) => n.id === editingNoteId.value)
     if (noteToEdit) pendingEdits.value.set(editingNoteId.value, noteToEdit.content)
   }
 
@@ -175,7 +175,7 @@ async function submitPreviousEdit() {
       },
     })
 
-    const noteIndex = localPreviousNotes.value.findIndex(n => n.id === editingNoteId.value)
+    const noteIndex = localPreviousNotes.value.findIndex((n: { id: number }) => n.id === editingNoteId.value)
     if (noteIndex !== -1) {
       const existing = localPreviousNotes.value[noteIndex]!
       localPreviousNotes.value[noteIndex] = {
@@ -463,12 +463,15 @@ function formatTime(date: Date) {
           </div>
 
           <!-- Editable with toolbar -->
-          <div v-else class="flex flex-1 flex-col gap-2">
+          <div v-else class="flex flex-1 flex-col gap-2 min-h-0">
             <p class="text-xs text-amber-600">Editing previous note — save to confirm changes.</p>
-            <NotesToolbar
-              v-model="previousNoteContent"
-              class="h-48 md:h-64 border rounded-xl overflow-hidden bg-white dark:bg-gray-900"
-            />
+            <!-- Make it expand and scrollable like the current note -->
+            <div class="flex-1 min-h-[400px] border border-gray-300 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
+              <NotesToolbar
+                v-model="previousNoteContent"
+                class="h-full w-full"
+              />
+            </div>
             <div class="flex justify-end gap-2 mt-2">
               <UButton color="primary" label="Submit changes" size="sm" @click="showSubmitModal = true" />
             </div>

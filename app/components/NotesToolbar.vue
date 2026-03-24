@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { EditorToolbarItem } from '@nuxt/ui'
+//import type { EditorToolbarItem } from '@nuxt/ui'
+type EditorToolbarItem = any;
 
 const props = defineProps<{
   modelValue: string
@@ -13,11 +14,11 @@ const emit = defineEmits<{
 const localContent = ref(props.modelValue)
 const editor = ref<any>(null)
 
-watch(() => props.modelValue, (newVal) => {
+watch(() => props.modelValue, (newVal: string) => {
   localContent.value = newVal
 })
 
-watch(localContent, (newVal) => {
+watch(localContent, (newVal: string) => {
   emit('update:modelValue', newVal)
 }, { deep: true })
 
@@ -62,30 +63,32 @@ const items: EditorToolbarItem[][] = [
 <template>
   <div class="flex h-full w-full min-h-[300px] flex-col border rounded-xl overflow-hidden bg-white dark:bg-gray-900">
     <!-- Editor -->
-    <UEditor
-    v-slot="{ editor }"  
-    v-model="localContent"
-      :content-type="contentType || 'markdown'"
-      placeholder="Start typing your clinical notes here..."
-      class="flex-1 prose prose-sm sm:prose text-left dark:prose-invert"
-      :class="sizeClassMap[selectedSize]"
-    >
-      <UEditorToolbar
-        :editor="editor"
-        :items="items"
-        layout="fixed"
-        class="w-full border-b bg-gray-50 dark:bg-gray-800"
+    <ClientOnly>
+      <UEditor
+        v-slot="{ editor }" 
+        v-model="localContent"
+        :content-type="contentType || 'markdown'"
+        placeholder="Start typing your clinical notes here..."
+        class="flex-1 prose prose-sm sm:prose text-left dark:prose-invert"
+        :class="sizeClassMap[selectedSize]"
       >
-      <!-- Font size dropdown inside the toolbar -->
-        <template v-slot:["fontSize"]>
-          <USelect
-            v-model="selectedSize"
-            :items="fontSizes"
-            size="xs"
-            class="w-28"
-          />
-        </template>
-      </UEditorToolbar>
-    </UEditor>
+        <UEditorToolbar
+          :editor="editor"
+          :items="items"
+          layout="fixed"
+          class="w-full border-b bg-gray-50 dark:bg-gray-800"
+        >
+        <!-- Font size dropdown inside the toolbar -->
+          <template v-slot:["fontSize"]>
+            <USelect
+              v-model="selectedSize"
+              :items="fontSizes"
+              size="xs"
+              class="w-28"
+            />
+          </template>
+        </UEditorToolbar>
+      </UEditor>
+    </ClientOnly>
   </div>
 </template>
