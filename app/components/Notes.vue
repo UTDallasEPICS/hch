@@ -528,7 +528,7 @@ function formatTime(date: Date) {
             label="Save Note"
             size="md"
             @click="showSaveModal = true"
-            class="w-full md:w-auto"
+            class="w-auto"
           />
         </div>
       </div>
