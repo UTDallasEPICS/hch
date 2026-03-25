@@ -24,3 +24,18 @@ export function joinName(fname: string, lname: string): string {
   if (!l) return f
   return `${f}${NAME_DELIMITER}${l}`
 }
+
+/**
+ * Formats stored `user.name` (may use NAME_DELIMITER between first/last) for emails and display.
+ * Removes `||` and applies title case (e.g. "bob||builder" → "Bob Builder").
+ */
+export function formatStoredUserNameForDisplay(stored: string): string {
+  const { fname, lname } = parseName(stored)
+  const combined = [fname, lname].filter((s) => s.trim().length > 0).join(' ')
+  if (!combined) return ''
+  return combined
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ')
+}

@@ -338,6 +338,46 @@
           >
             Save Permissions
           </UButton>
+          <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+            Clients can also request notes via the dashboard; those requests are reviewed on the
+            <NuxtLink
+              to="/clients/session-notes-requests"
+              class="text-primary-600 dark:text-primary-400 font-medium underline"
+              >session note requests</NuxtLink
+            >
+            page.
+          </p>
+        </section>
+
+        <section
+          v-if="
+            (profile as { sessionNotesRequests?: { status: string; createdAt: string }[] })
+              ?.sessionNotesRequests?.length
+          "
+        >
+          <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
+            <UIcon name="i-heroicons-clipboard-document-list" class="h-4 w-4" />
+            Session note request log
+          </h3>
+          <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+            <li
+              v-for="req in (profile as { sessionNotesRequests: { id: string; status: string; requestKind: string; createdAt: string }[] }).sessionNotesRequests"
+              :key="req.id"
+              class="flex flex-wrap gap-2"
+            >
+              <span>{{ new Date(req.createdAt).toLocaleString() }}</span>
+              <span>{{ req.requestKind === 'FULL' ? 'Full' : 'Summary' }}</span>
+              <UBadge
+                :color="
+                  req.status === 'APPROVED' ? 'success' : req.status === 'REJECTED' ? 'error' : 'warning'
+                "
+                variant="subtle"
+                size="xs"
+              >
+                {{ req.status }}
+              </UBadge>
+            </li>
+          </ul>
         </section>
 
         <!-- Client Tasks -->

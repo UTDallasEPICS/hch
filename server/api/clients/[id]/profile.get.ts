@@ -10,6 +10,7 @@ import {
 import { parseName } from '../../../utils/name'
 import { getAceFormQuestions } from '../../../utils/ace-questions'
 import type { ClientStatus } from '../../../../../prisma/generated/client'
+import { ensureDefaultDeclarationTemplates } from '../../../utils/declaration-templates'
 
 const APP_TOTAL = 50
 const GAD_TOTAL = 7
@@ -27,6 +28,8 @@ export default defineEventHandler(async (event) => {
   if (!session?.user?.id) {
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
   }
+
+  await ensureDefaultDeclarationTemplates(prisma)
 
   const clientUserId = getRouterParam(event, 'id')
   if (!clientUserId) {
@@ -51,6 +54,10 @@ export default defineEventHandler(async (event) => {
         include: {
           permissions: true,
           sessionNotes: { orderBy: { createdAt: 'desc' } },
+          sessionNotesRequests: {
+            orderBy: { createdAt: 'desc' },
+            include: { declarationTemplate: true },
+          },
           plan: true,
         },
       },
@@ -263,6 +270,72 @@ export default defineEventHandler(async (event) => {
     },
   ]
 
+  const requests = clientProfile?.sessionNotesRequests ?? []
+  const latestApproved = [...requests]
+    .filter((r) => r.status === 'APPROVED' && r.decidedAt)
+    .sort((a, b) => b.decidedAt!.getTime() - a.decidedAt!.getTime())[0]
+
+  const legacyNotes = Boolean(clientProfile?.permissions?.canViewNotes)
+  const hasPendingRequest = requests.some((r) => r.status === 'PENDING')
+
+  let sessionNotesAccess: {
+    hasAccess: boolean
+    mode: 'full' | 'summary' | null
+    summaryText: string | null
+    hasPendingRequest: boolean
+  } = {
+    hasAccess: false,
+    mode: null,
+    summaryText: null,
+    hasPendingRequest: hasPendingRequest,
+  }
+
+  if (hasAdminAccess || (isOwnProfile && legacyNotes)) {
+    sessionNotesAccess = {
+      hasAccess: true,
+      mode: 'full',
+      summaryText: null,
+      hasPendingRequest: hasPendingRequest,
+    }
+  } else if (isOwnProfile && latestApproved) {
+    if (latestApproved.requestKind === 'FULL') {
+      sessionNotesAccess = {
+        hasAccess: true,
+        mode: 'full',
+        summaryText: null,
+        hasPendingRequest: hasPendingRequest,
+      }
+    } else {
+      sessionNotesAccess = {
+        hasAccess: true,
+        mode: 'summary',
+        summaryText: latestApproved.approvedSummaryText ?? null,
+        hasPendingRequest: hasPendingRequest,
+      }
+    }
+  }
+
+  const showRawSessionNotes =
+    hasAdminAccess ||
+    (isOwnProfile && legacyNotes) ||
+    (isOwnProfile &&
+      latestApproved?.status === 'APPROVED' &&
+      latestApproved.requestKind === 'FULL')
+
+  const sessionNotesRequestsPayload = requests.map((r) => ({
+    id: r.id,
+    requestKind: r.requestKind,
+    status: r.status,
+    createdAt: r.createdAt.toISOString(),
+    decidedAt: r.decidedAt?.toISOString() ?? null,
+    declarationText: r.declarationTemplate.content,
+    declarationTemplateId: r.declarationTemplateId,
+    declarationVersion: r.declarationTemplate.version,
+    signatureData: r.signatureData,
+    rejectionReason: r.rejectionReason,
+    approvedSummaryText: r.approvedSummaryText,
+  }))
+
   const canViewScores = hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewScores)
   const metrics = canViewScores
     ? tasks
@@ -295,10 +368,9 @@ export default defineEventHandler(async (event) => {
           canViewPlan: clientProfile.permissions.canViewPlan,
         }
       : { canViewScores: false, canViewNotes: false, canViewPlan: false },
-    sessionNotes:
-      hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewNotes)
-        ? (clientProfile?.sessionNotes ?? [])
-        : [],
+    sessionNotesAccess,
+    sessionNotesRequests: sessionNotesRequestsPayload,
+    sessionNotes: showRawSessionNotes ? (clientProfile?.sessionNotes ?? []) : [],
     plan:
       hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewPlan)
         ? clientProfile?.plan

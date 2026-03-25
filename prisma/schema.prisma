@@ -19,6 +19,17 @@ enum ClientStatus {
   ARCHIVED
 }
 
+enum SessionNotesRequestKind {
+  FULL
+  SUMMARY
+}
+
+enum SessionNotesRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model Client {
   id             String       @id @default(cuid())
   userId         String       @unique
@@ -29,6 +40,7 @@ model Client {
   permissions    ClientPermission?
   sessionNotes   SessionNote[]
   plan           ClientPlan?
+  sessionNotesRequests SessionNotesRequest[]
 
   @@index([status])
   @@map("client")
@@ -55,6 +67,42 @@ model SessionNote {
 
   @@index([clientId])
   @@map("session_note")
+}
+
+// Canonical declaration copy per request kind + version (avoids duplicating long text on every request).
+model DeclarationTemplate {
+  id                   String                  @id @default(cuid())
+  requestKind          SessionNotesRequestKind
+  version              Int
+  content              String
+  createdAt            DateTime                @default(now())
+  sessionNotesRequests SessionNotesRequest[]
+
+  @@unique([requestKind, version])
+  @@map("declaration_template")
+}
+
+// Client requests to view session notes (full or summary); requires admin approval + signature.
+model SessionNotesRequest {
+  id                    String                  @id @default(cuid())
+  clientId              String
+  client                Client                  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  requestKind           SessionNotesRequestKind
+  status                SessionNotesRequestStatus @default(PENDING)
+  signatureData         String // base64 PNG
+  declarationTemplateId String
+  declarationTemplate   DeclarationTemplate     @relation(fields: [declarationTemplateId], references: [id], onDelete: Restrict)
+  createdAt             DateTime                @default(now())
+  decidedAt             DateTime?
+  decidedByUserId       String?
+  decidedBy             User?                   @relation(fields: [decidedByUserId], references: [id], onDelete: SetNull)
+  rejectionReason       String?
+  approvedSummaryText   String? // required when approving SUMMARY; shown to client instead of raw notes
+
+  @@index([clientId])
+  @@index([status])
+  @@index([declarationTemplateId])
+  @@map("session_notes_request")
 }
 
 model ClientPlan {
@@ -112,6 +160,7 @@ model User {
   PclQuestions   PclQuestion[]
   client         Client?
   changeAudits   ChangeAudit[]
+  sessionNotesRequestsDecided SessionNotesRequest[]
 
   @@unique([email])
   @@map("user")

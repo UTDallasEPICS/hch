@@ -54,6 +54,14 @@
     getCachedData: () => undefined,
   })
 
+  const { data: pendingNoteRequests } = await useFetch<{ id: string }[]>(
+    '/api/session-notes-requests',
+    {
+      getCachedData: () => undefined,
+    }
+  )
+  const pendingNoteRequestCount = computed(() => pendingNoteRequests.value?.length ?? 0)
+
   function displayName(c: Client) {
     const raw = c.lname ? `${c.fname} ${c.lname}` : (c.fname || c.name || '')
     return capitalizeName(raw)
@@ -216,6 +224,15 @@
           Filterable List of Clients. Manage Status and Therapy Progress.
         </p>
       </div>
+      <NuxtLink
+        to="/clients/session-notes-requests"
+        class="text-primary-600 hover:text-primary-700 dark:text-primary-400 inline-flex items-center gap-2 text-sm font-medium"
+      >
+        Session note requests
+        <UBadge v-if="pendingNoteRequestCount > 0" color="warning" variant="subtle" size="sm">
+          {{ pendingNoteRequestCount }} pending
+        </UBadge>
+      </NuxtLink>
     </div>
 
     <div

@@ -2,6 +2,10 @@ import 'dotenv/config'
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import { PrismaClient } from './generated/client'
 import { joinName } from '../server/utils/name'
+import {
+  ensureDefaultDeclarationTemplates,
+  backfillSessionNotesRequestTemplates,
+} from '../server/utils/declaration-templates'
 
 const connectionString = process.env.DATABASE_URL ?? 'file:./dev.db'
 const adapter = new PrismaBetterSqlite3({ url: connectionString })
@@ -9,6 +13,10 @@ const prisma = new PrismaClient({ adapter })
 
 async function main() {
   console.log('Start seeding...')
+
+  await ensureDefaultDeclarationTemplates(prisma)
+  await backfillSessionNotesRequestTemplates(prisma)
+  console.log('Declaration templates ensured and session note requests backfilled.')
 
   const userNames: Record<string, { fname: string; lname: string }> = {
     'bob@b.com': { fname: 'Bob', lname: 'Builder' },
