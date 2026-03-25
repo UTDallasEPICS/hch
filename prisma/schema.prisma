@@ -162,6 +162,8 @@ model User {
   changeAudits   ChangeAudit[]
   sessionNotesRequestsDecided SessionNotesRequest[]
 
+  Notes          Note[]
+
   @@unique([email])
   @@map("user")
 }
@@ -442,6 +444,8 @@ model PclQuestion {
   formId Int    @unique
   userId String
 
+  worstEvent String?
+
   q01 Int?
   q02 Int?
   q03 Int?
@@ -467,4 +471,32 @@ model PclQuestion {
   user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model Note {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  clientId  String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  edits NoteEdit[]
+
+  @@index([userId])
+  @@index([clientId])
+}
+
+model NoteEdit {
+  id              Int      @id @default(autoincrement())
+  noteId          Int  
+  originalContent String? 
+  reason          String?
+  signature       String?
+  editedAt        DateTime @default(now())
+
+  note Note   @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([noteId])
 }

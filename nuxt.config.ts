@@ -2,8 +2,11 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
+
   modules: ['@nuxt/ui'],
+
   css: ['~/assets/css/main.css'],
+
   srcDir: 'app',
   nitro: {
     // Allow larger payloads for justification flows (reasoning + signature + optional PDF/Word)
@@ -16,5 +19,21 @@ export default defineNuxtConfig({
         maxAge: 60 * 60 * 24, // 1 day cache
       },
     ],
+  },
+
+  typescript: {
+    strict: true,
+    shim: false,
+  },
+
+  vite: {
+    resolve: {
+      dedupe: [
+        'prosemirror-model',
+        'prosemirror-state',
+        'prosemirror-view',
+        'prosemirror-transform',
+      ],
+    },
   },
 })
