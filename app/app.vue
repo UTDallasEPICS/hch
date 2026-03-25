@@ -10,6 +10,10 @@
   const isTasksPage = computed(() => route.path === '/taskPage')
   const isDashboardPage = computed(() => route.path === '/')
   const isClientsPage = computed(() => route.path === '/clients' || route.path.startsWith('/clients/'))
+  /** Temporary: notes playground until session notes are wired in the app flow */
+  const isNotesTestPage = computed(
+    () => route.path === '/notes-test' || route.path.startsWith('/notes-test/')
+  )
 
   function goTo(path: string) {
     if (route.path !== path) {
@@ -25,8 +29,6 @@
       colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'
     },
   })
-
-  const isNotesPage = computed(() => route.path.startsWith('/notes-test'))
 </script>
 
 <template>
@@ -62,7 +64,6 @@
           </NuxtLink>
 
           <div class="flex items-center gap-2">
-            <template v-if="!isNotesPage">
             <UButton
               label="Dashboard"
               color="primary"
@@ -83,7 +84,13 @@
               :variant="isClientsPage ? 'solid' : 'soft'"
               @click="goTo('/clients')"
             />
-          </template>
+            <UButton
+              v-if="isAdmin"
+              label="Notes"
+              color="primary"
+              :variant="isNotesTestPage ? 'solid' : 'soft'"
+              @click="goTo('/notes-test')"
+            />
           <UButton
             :icon="isDark ? 'i-heroicons-moon-20-solid' : 'i-heroicons-sun-20-solid'"
             color="neutral"

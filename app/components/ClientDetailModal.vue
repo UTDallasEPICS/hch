@@ -16,18 +16,23 @@
   const profile = ref<Record<string, unknown> | null>(null)
   const pending = ref(false)
   const error = ref<Error | null>(null)
+  let profileLoadSeq = 0
 
   async function loadProfile() {
     if (!props.clientId) return
+    const seq = ++profileLoadSeq
     pending.value = true
     error.value = null
     try {
-      profile.value = await $fetch(`/api/clients/${props.clientId}/profile`)
+      const data = await $fetch(`/api/clients/${props.clientId}/profile`)
+      if (seq !== profileLoadSeq) return
+      profile.value = data
     } catch (e) {
+      if (seq !== profileLoadSeq) return
       error.value = e instanceof Error ? e : new Error(String(e))
       profile.value = null
     } finally {
-      pending.value = false
+      if (seq === profileLoadSeq) pending.value = false
     }
   }
 

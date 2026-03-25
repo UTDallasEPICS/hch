@@ -53,7 +53,6 @@ export default defineEventHandler(async (event) => {
       client: {
         include: {
           permissions: true,
-          sessionNotes: { orderBy: { createdAt: 'desc' } },
           sessionNotesRequests: {
             orderBy: { createdAt: 'desc' },
             include: { declarationTemplate: true },
@@ -69,6 +68,14 @@ export default defineEventHandler(async (event) => {
   }
 
   const clientProfile = user.client
+  const resolvedClientRowId =
+    clientProfile?.id ??
+    (
+      await prisma.client.findUnique({
+        where: { userId: clientUserId },
+        select: { id: true },
+      })
+    )?.id
   const { fname, lname } = parseName(user.name)
 
   // Fetch form progress (what client sees on tasks page)
@@ -348,6 +355,48 @@ export default defineEventHandler(async (event) => {
       ? tasks.map(({ score: _s, severity: _v, ...t }) => t)
       : tasks
 
+  // Session notes: always scoped by canonical Client.id (SessionNote + Note tables).
+  let sessionNotesPayload: { id: string; content: string; createdAt: string }[] = []
+  if (showRawSessionNotes && resolvedClientRowId) {
+    let sessionRows: { id: string; content: string; createdAt: Date }[] = []
+    try {
+      sessionRows = await prisma.sessionNote.findMany({
+        where: { clientId: resolvedClientRowId },
+        orderBy: { createdAt: 'desc' },
+      })
+    } catch {
+      sessionRows = []
+    }
+    const fromSession = sessionRows.map((s) => ({
+      id: s.id,
+      content: s.content,
+      createdAt: s.createdAt.toISOString(),
+    }))
+    if (hasAdminAccess) {
+      let editorNotes: { id: number; content: string; createdAt: Date }[] = []
+      try {
+        editorNotes = await prisma.note.findMany({
+          where: {
+            OR: [{ clientId: clientUserId }, { clientId: resolvedClientRowId }],
+          },
+          orderBy: { createdAt: 'desc' },
+        })
+      } catch {
+        editorNotes = []
+      }
+      const fromEditor = editorNotes.map((n) => ({
+        id: String(n.id),
+        content: n.content,
+        createdAt: n.createdAt.toISOString(),
+      }))
+      sessionNotesPayload = [...fromSession, ...fromEditor].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+    } else {
+      sessionNotesPayload = fromSession
+    }
+  }
+
   return {
     id: user.id,
     fname,
@@ -370,7 +419,7 @@ export default defineEventHandler(async (event) => {
       : { canViewScores: false, canViewNotes: false, canViewPlan: false },
     sessionNotesAccess,
     sessionNotesRequests: sessionNotesRequestsPayload,
-    sessionNotes: showRawSessionNotes ? (clientProfile?.sessionNotes ?? []) : [],
+    sessionNotes: sessionNotesPayload,
     plan:
       hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewPlan)
         ? clientProfile?.plan

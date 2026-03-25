@@ -1,20 +1,10 @@
-import { defineEventHandler, readBody, createError } from 'h3'
+import { createError, defineEventHandler, readBody } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { auth } from '../../utils/auth'
 
 export default defineEventHandler(async (event) => {
-  console.log('API /notes/create called')
-
-  let session
-  try {
-    session = await auth.api.getSession({ headers: event.headers })
-    console.log('Session:', session ? 'exists' : 'missing')
-  } catch (err) {
-    console.error('Session fetch error:', err)
-  }
-
+  const session = await auth.api.getSession({ headers: event.headers })
   if (!session?.user?.id) {
-    console.error('Unauthorized - no user ID in session')
     throw createError({
       statusCode: 401,
       statusMessage: 'Unauthorized - please log in',
@@ -22,34 +12,45 @@ export default defineEventHandler(async (event) => {
   }
 
   const userId = session.user.id
-  console.log('User ID:', userId)
-
-  const body = await readBody(event)
-  console.log('Request body:', body)
+  const body = await readBody<{ clientId: string; content: string }>(event)
 
   if (!body.clientId) {
-    console.error('Missing clientId')
-    throw createError({ statusCode: 400, message: 'clientId is required' })
+    throw createError({ statusCode: 400, statusMessage: 'clientId is required' })
   }
 
   if (!body.content?.trim()) {
-    console.error('Missing or empty content')
-    throw createError({ statusCode: 400, message: 'Content is required' })
+    throw createError({ statusCode: 400, statusMessage: 'Content is required' })
+  }
+
+  let clientRow = await prisma.client.findFirst({
+    where: { OR: [{ id: body.clientId }, { userId: body.clientId }] },
+  })
+
+  if (!clientRow) {
+    const u = await prisma.user.findFirst({
+      where: { id: body.clientId, role: 'CLIENT' },
+      include: { client: true },
+    })
+    if (u?.client) clientRow = u.client
+    else if (u) {
+      clientRow = await prisma.client.create({ data: { userId: u.id } })
+    }
+  }
+
+  if (!clientRow) {
+    throw createError({ statusCode: 400, statusMessage: 'Client not found' })
   }
 
   try {
-    console.log('Attempting Prisma create...')
     const note = await prisma.note.create({
       data: {
         userId,
-        clientId: body.clientId,
-        content: body.content,
+        clientId: clientRow.id,
+        content: body.content.trim(),
       },
     })
-    console.log('Note created successfully:', note.id)
     return { success: true, note }
-  } catch (err) {
-    console.error('Prisma create failed:', err)
+  } catch {
     throw createError({
       statusCode: 500,
       statusMessage: 'Failed to save note in database',
