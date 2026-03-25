@@ -64,9 +64,23 @@ model SessionNote {
   content   String
   createdAt DateTime @default(now())
   client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  edits     SessionNoteEdit[]
 
   @@index([clientId])
   @@map("session_note")
+}
+
+model SessionNoteEdit {
+  id              String      @id @default(cuid())
+  sessionNoteId   String
+  originalContent String?
+  reason          String?
+  signature       String?
+  editedAt        DateTime    @default(now())
+  sessionNote     SessionNote @relation(fields: [sessionNoteId], references: [id], onDelete: Cascade)
+
+  @@index([sessionNoteId])
+  @@map("session_note_edit")
 }
 
 // Canonical declaration copy per request kind + version (avoids duplicating long text on every request).

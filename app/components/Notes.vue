@@ -4,77 +4,168 @@
   import { marked } from 'marked'
   import { useWindowSize } from '@vueuse/core'
 
-  const props = defineProps<{
-    client: { name: string; id: string }
-    currentNote: {
-      id: number
-      date: string
-      content: string
-    }
-    previousNotes: {
-      id: number
-      date: string
-      preview: string
-      content: string
-    }[]
-    forms: {
-      label: string
-      status: 'complete' | 'pending'
-    }[]
-  }>()
+  type SessionNoteRow = { id: string; content: string; createdAt: string }
 
-  const sidebarOpen = ref(true);
+  type SelectedNote =
+    | { source: 'editor'; id: number; date: string; content: string; preview: string }
+    | { source: 'session'; id: string; date: string; content: string; preview: string }
+
+  const props = withDefaults(
+    defineProps<{
+      client: { name: string; id: string }
+      currentNote: {
+        id: number
+        date: string
+        content: string
+      }
+      previousNotes: {
+        id: number
+        date: string
+        preview: string
+        content: string
+      }[]
+      forms: {
+        label: string
+        status: 'complete' | 'pending'
+      }[]
+      sessionNotes?: SessionNoteRow[]
+      initialFocusNoteId?: string | null
+      backHref?: string
+    }>(),
+    {
+      sessionNotes: () => [],
+      initialFocusNoteId: null,
+      backHref: '/taskPage',
+    }
+  )
+
+  const sidebarOpen = ref(true)
 
   const showSaveModal = ref(false)
   const showSubmitModal = ref(false)
 
   const selectedPreviousNote = ref<number | null>(null)
+  const selectedSessionNoteId = ref<string | null>(null)
   const localPreviousNotes = ref([...props.previousNotes])
-  const selectedNoteData = computed(() =>
-    selectedPreviousNote.value !== null ? localPreviousNotes.value[selectedPreviousNote.value] : null
+  const localSessionNotes = ref<SessionNoteRow[]>([...props.sessionNotes])
+
+  watch(
+    () => props.previousNotes,
+    (v) => {
+      localPreviousNotes.value = [...v]
+    },
+    { deep: true }
   )
 
+  watch(
+    () => props.sessionNotes,
+    (v) => {
+      localSessionNotes.value = [...v]
+    },
+    { deep: true }
+  )
+
+  const selectedNoteData = computed((): SelectedNote | null => {
+    if (selectedSessionNoteId.value) {
+      const sn = localSessionNotes.value.find((n) => n.id === selectedSessionNoteId.value)
+      if (!sn) return null
+      return {
+        source: 'session',
+        id: sn.id,
+        date: new Date(sn.createdAt).toLocaleString('en-US'),
+        content: sn.content,
+        preview: sn.content.slice(0, 60) + (sn.content.length > 60 ? '...' : ''),
+      }
+    }
+    if (selectedPreviousNote.value !== null) {
+      const n = localPreviousNotes.value[selectedPreviousNote.value]
+      if (!n) return null
+      return {
+        source: 'editor',
+        id: n.id,
+        date: n.date,
+        content: n.content,
+        preview: n.preview,
+      }
+    }
+    return null
+  })
+
   const searchQuery = ref('')
+  const q = computed(() => searchQuery.value.toLowerCase().trim())
+
   const filteredNotes = computed(() =>
     localPreviousNotes.value.filter(
-      (note: { id: number; date: string; preview: string; content: string }) =>
-        note.date.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        note.preview.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        note.content.toLowerCase().includes(searchQuery.value.toLowerCase())
+      (note) =>
+        !q.value ||
+        note.date.toLowerCase().includes(q.value) ||
+        note.preview.toLowerCase().includes(q.value) ||
+        note.content.toLowerCase().includes(q.value)
     )
+  )
+
+  const filteredSessionNotes = computed(() =>
+    localSessionNotes.value.filter((sn) => {
+      if (!q.value) return true
+      const d = new Date(sn.createdAt).toLocaleDateString('en-US').toLowerCase()
+      return sn.content.toLowerCase().includes(q.value) || d.includes(q.value)
+    })
   )
 
   function closeSelectedNote() {
     selectedPreviousNote.value = null
+    selectedSessionNoteId.value = null
+    editingNoteId.value = null
+    editingSessionNoteId.value = null
     isEditingPreviousPanel.value = false
-}
-
-const selectedNoteEdits = ref<{ editedAt: string; reason: string }[]>([])
-const { width } = useWindowSize()
-
-async function selectNote(note: typeof props.previousNotes[0]) {
-  selectedPreviousNote.value = localPreviousNotes.value.indexOf(note)
-  editingNoteId.value = note.id
-  isEditingPreviousPanel.value = hasPendingEdit(note.id)
-  
-  // Fetch edit history
-  selectedNoteEdits.value = []
-  try {
-    const edits = await $fetch(`/api/notes/${note.id}/edits`) as { editedAt: string; reason: string }[]
-    selectedNoteEdits.value = edits
-  } catch (err) {
-    console.error('Failed to fetch edit history:', err)
   }
 
-  // Only close sidebar on mobile
-  if (width.value < 768) {
-    sidebarOpen.value = false
+  const selectedNoteEdits = ref<{ editedAt: string; reason: string }[]>([])
+  const { width } = useWindowSize()
+
+  async function selectNote(note: (typeof props.previousNotes)[0]) {
+    selectedSessionNoteId.value = null
+    editingSessionNoteId.value = null
+    selectedPreviousNote.value = localPreviousNotes.value.indexOf(note)
+    editingNoteId.value = note.id
+    isEditingPreviousPanel.value = hasPendingEdit(note.id)
+
+    selectedNoteEdits.value = []
+    try {
+      selectedNoteEdits.value = await $fetch(`/api/notes/${note.id}/edits`)
+    } catch (err) {
+      console.error('Failed to fetch edit history:', err)
+    }
+
+    if (width.value < 768) {
+      sidebarOpen.value = false
+    }
   }
-}
+
+  async function selectSessionNote(sn: SessionNoteRow) {
+    selectedPreviousNote.value = null
+    editingNoteId.value = null
+    selectedSessionNoteId.value = sn.id
+    editingSessionNoteId.value = sn.id
+    isEditingPreviousPanel.value = hasPendingSessionEdit(sn.id)
+
+    selectedNoteEdits.value = []
+    try {
+      selectedNoteEdits.value = await $fetch(`/api/session-notes/${sn.id}/edits`)
+    } catch (err) {
+      console.error('Failed to fetch session note edit history:', err)
+    }
+
+    if (width.value < 768) {
+      sidebarOpen.value = false
+    }
+  }
 
   const noteContent = ref(props.currentNote.content || '')
   const pendingEdits = ref<Map<number, string>>(new Map())
   const pendingMeta = ref<Map<number, { reason: string; signature: string }>>(new Map())
+  const pendingSessionEdits = ref<Map<string, string>>(new Map())
+  const pendingSessionMeta = ref<Map<string, { reason: string; signature: string }>>(new Map())
   const showEditModal = ref(false)
   const editReason = ref('')
   const signature = ref('')
@@ -83,15 +174,31 @@ async function selectNote(note: typeof props.previousNotes[0]) {
 
   const isEditingPreviousPanel = ref(false)
   const editingNoteId = ref<number | null>(null)
-  
+  const editingSessionNoteId = ref<string | null>(null)
+
   const editingDate = ref<string>('')
 
   const previousNoteContent = computed({
     get() {
-      if (editingNoteId.value === null) return ''
-      return pendingEdits.value.get(editingNoteId.value) ?? selectedNoteData.value?.content ?? ''
+      if (!isEditingPreviousPanel.value) return ''
+      if (editingSessionNoteId.value !== null) {
+        const id = editingSessionNoteId.value
+        return (
+          pendingSessionEdits.value.get(id) ??
+          localSessionNotes.value.find((n) => n.id === id)?.content ??
+          ''
+        )
+      }
+      if (editingNoteId.value !== null) {
+        return pendingEdits.value.get(editingNoteId.value) ?? selectedNoteData.value?.content ?? ''
+      }
+      return ''
     },
     set(val: string) {
+      if (editingSessionNoteId.value !== null) {
+        pendingSessionEdits.value.set(editingSessionNoteId.value, val)
+        return
+      }
       if (editingNoteId.value !== null) {
         pendingEdits.value.set(editingNoteId.value, val)
       }
@@ -100,6 +207,10 @@ async function selectNote(note: typeof props.previousNotes[0]) {
 
   function hasPendingEdit(noteId: number) {
     return pendingEdits.value.has(noteId)
+  }
+
+  function hasPendingSessionEdit(noteId: string) {
+    return pendingSessionEdits.value.has(noteId)
   }
 
   function discardPendingEdit(noteId: number) {
@@ -111,99 +222,206 @@ async function selectNote(note: typeof props.previousNotes[0]) {
   function cancelEditingPreviousPanel() {
     isEditingPreviousPanel.value = false
   }
-  
+
   const renderedNoteContent = computed(() =>
     selectedNoteData.value ? marked(selectedNoteData.value.content) : ''
-  ) 
-    
-  // Function to start editing a previous note
-  function startEditPrevious(note: typeof props.previousNotes[0]) {
-    selectedPreviousNote.value = localPreviousNotes.value.indexOf(note)
-    editingNoteId.value = note.id        // ← already there
-    editingDate.value = note.date        // ← already there
-    isEditingPreviousPanel.value = false  // ← add this line
-    const meta = pendingMeta.value.get(note.id)
+  )
+
+  function startEditPrevious() {
+    const sd = selectedNoteData.value
+    if (!sd) return
+    if (sd.source === 'editor') {
+      editingNoteId.value = sd.id
+      editingSessionNoteId.value = null
+    } else {
+      editingSessionNoteId.value = sd.id
+      editingNoteId.value = null
+    }
+    editingDate.value = sd.date
+    isEditingPreviousPanel.value = false
+    const meta =
+      sd.source === 'editor' ? pendingMeta.value.get(sd.id) : pendingSessionMeta.value.get(sd.id)
     editReason.value = meta?.reason ?? ''
     signature.value = meta?.signature ?? ''
     showEditModal.value = true
-}
+  }
 
   function confirmEdit() {
-    if (!editingNoteId.value) return
+    const sd = selectedNoteData.value
+    if (!sd) return
 
     if (!editReason.value.trim() || !signature.value.trim()) {
       alert('Please provide reason and signature')
       return
     }
 
-  pendingMeta.value.set(editingNoteId.value, {
-    reason: editReason.value,
-    signature: signature.value,
-  })
-
-  if (!pendingEdits.value.has(editingNoteId.value)) {
-    const noteToEdit = localPreviousNotes.value.find((n: { id: number }) => n.id === editingNoteId.value)
-    if (noteToEdit) pendingEdits.value.set(editingNoteId.value, noteToEdit.content)
-  }
-
-  isEditingPreviousPanel.value = true
-  showEditModal.value = false
-  }
-
-const isSavingPrevious = ref(false)
-
-async function submitPreviousEdit() {
-  if (!editingNoteId.value) return
-
-  const draft = pendingEdits.value.get(editingNoteId.value)
-  const meta = pendingMeta.value.get(editingNoteId.value)
-
-  if (!draft?.trim()) return
-  //if (!draft?.trim()) { alert('Note content cannot be empty.'); return }
-  if (!meta?.reason.trim() || !meta?.signature.trim()) { alert('Reason and signature are required.'); return }
-
-  isSavingPrevious.value = true
-  try {
-    await $fetch('/api/notes/edit', {
-      method: 'POST',
-      body: {
-        noteId: editingNoteId.value,
-        clientId: props.client.id,
-        content: draft,
-        reason: meta.reason,
-        signature: meta.signature,
-      },
-    })
-
-    const noteIndex = localPreviousNotes.value.findIndex((n: { id: number }) => n.id === editingNoteId.value)
-    if (noteIndex !== -1) {
-      const existing = localPreviousNotes.value[noteIndex]!
-      localPreviousNotes.value[noteIndex] = {
-        id: existing.id,
-        date: existing.date,
-        content: draft,
-        preview: draft.slice(0, 60) + '...'
+    if (sd.source === 'session') {
+      pendingSessionMeta.value.set(sd.id, {
+        reason: editReason.value,
+        signature: signature.value,
+      })
+      if (!pendingSessionEdits.value.has(sd.id)) {
+        pendingSessionEdits.value.set(sd.id, sd.content)
       }
-      selectedPreviousNote.value = noteIndex
+      editingSessionNoteId.value = sd.id
+      editingNoteId.value = null
+    } else {
+      pendingMeta.value.set(sd.id, {
+        reason: editReason.value,
+        signature: signature.value,
+      })
+      if (!pendingEdits.value.has(sd.id)) {
+        pendingEdits.value.set(sd.id, sd.content)
+      }
+      editingNoteId.value = sd.id
+      editingSessionNoteId.value = null
     }
 
-    pendingEdits.value.delete(editingNoteId.value)
-    pendingMeta.value.delete(editingNoteId.value)
-    isEditingPreviousPanel.value = false
-    editingNoteId.value = null
-    editReason.value = ''
-    signature.value = ''
-    previousLastSaved.value = new Date()
-    previousSaveStatus.value = 'saved'
-
-  } catch (err) {
-    console.error('Save failed:', err)
-    previousSaveStatus.value = 'error'
-    alert('Failed to save note – check console')
-  } finally {
-    isSavingPrevious.value = false
+    isEditingPreviousPanel.value = true
+    showEditModal.value = false
   }
-}
+
+  const isSavingPrevious = ref(false)
+
+  const didApplyInitialFocus = ref(false)
+
+  function applyInitialFocus() {
+    const id = props.initialFocusNoteId
+    if (!id || didApplyInitialFocus.value) return
+
+    const num = Number(id)
+    const isNumeric = String(num) === id && !Number.isNaN(num) && num !== 0
+
+    if (isNumeric) {
+      const note = localPreviousNotes.value.find((n) => n.id === num)
+      if (note) {
+        void selectNote(note)
+        didApplyInitialFocus.value = true
+      }
+      return
+    }
+
+    const sn = localSessionNotes.value.find((n) => n.id === id)
+    if (sn) {
+      void selectSessionNote(sn)
+      didApplyInitialFocus.value = true
+    }
+  }
+
+  watch(
+    [() => props.initialFocusNoteId, localPreviousNotes, localSessionNotes],
+    () => nextTick(() => applyInitialFocus()),
+    { deep: true, immediate: true }
+  )
+
+  async function submitPreviousEdit() {
+    if (editingSessionNoteId.value !== null) {
+      const sid = editingSessionNoteId.value
+      const draft = pendingSessionEdits.value.get(sid)
+      const meta = pendingSessionMeta.value.get(sid)
+      if (!draft?.trim()) return
+      if (!meta?.reason.trim() || !meta?.signature.trim()) {
+        alert('Reason and signature are required.')
+        return
+      }
+
+      isSavingPrevious.value = true
+      try {
+        await $fetch(`/api/clients/${props.client.id}/session-notes/${sid}`, {
+          method: 'PATCH',
+          body: {
+            content: draft,
+            reason: meta.reason,
+            signature: meta.signature,
+          },
+        })
+
+        const idx = localSessionNotes.value.findIndex((n) => n.id === sid)
+        if (idx !== -1) {
+          const row = localSessionNotes.value[idx]!
+          localSessionNotes.value[idx] = {
+            ...row,
+            content: draft,
+          }
+        }
+
+        pendingSessionEdits.value.delete(sid)
+        pendingSessionMeta.value.delete(sid)
+        isEditingPreviousPanel.value = false
+        editingSessionNoteId.value = null
+
+        try {
+          selectedNoteEdits.value = await $fetch(`/api/session-notes/${sid}/edits`)
+        } catch {
+          selectedNoteEdits.value = []
+        }
+
+        editReason.value = ''
+        signature.value = ''
+        previousLastSaved.value = new Date()
+        previousSaveStatus.value = 'saved'
+      } catch (err) {
+        console.error('Save failed:', err)
+        previousSaveStatus.value = 'error'
+        alert('Failed to save session note – check console')
+      } finally {
+        isSavingPrevious.value = false
+      }
+      return
+    }
+
+    if (!editingNoteId.value) return
+
+    const draft = pendingEdits.value.get(editingNoteId.value)
+    const meta = pendingMeta.value.get(editingNoteId.value)
+
+    if (!draft?.trim()) return
+    if (!meta?.reason.trim() || !meta?.signature.trim()) {
+      alert('Reason and signature are required.')
+      return
+    }
+
+    isSavingPrevious.value = true
+    try {
+      await $fetch('/api/notes/edit', {
+        method: 'POST',
+        body: {
+          noteId: editingNoteId.value,
+          clientId: props.client.id,
+          content: draft,
+          reason: meta.reason,
+          signature: meta.signature,
+        },
+      })
+
+      const noteIndex = localPreviousNotes.value.findIndex((n) => n.id === editingNoteId.value)
+      if (noteIndex !== -1) {
+        const existing = localPreviousNotes.value[noteIndex]!
+        localPreviousNotes.value[noteIndex] = {
+          id: existing.id,
+          date: existing.date,
+          content: draft,
+          preview: draft.slice(0, 60) + (draft.length > 60 ? '...' : ''),
+        }
+        selectedPreviousNote.value = noteIndex
+      }
+
+      pendingEdits.value.delete(editingNoteId.value)
+      pendingMeta.value.delete(editingNoteId.value)
+      isEditingPreviousPanel.value = false
+      editingNoteId.value = null
+      editReason.value = ''
+      signature.value = ''
+      previousLastSaved.value = new Date()
+      previousSaveStatus.value = 'saved'
+    } catch (err) {
+      console.error('Save failed:', err)
+      previousSaveStatus.value = 'error'
+      alert('Failed to save note – check console')
+    } finally {
+      isSavingPrevious.value = false
+    }
+  }
 
 async function saveNote() {
   console.log('Manual save clicked')
@@ -253,6 +471,7 @@ async function confirmSaveNote() {
 
   isEditingPreviousPanel.value = false
   editingNoteId.value = null
+  editingSessionNoteId.value = null
   editingDate.value = ''
   editReason.value = ''
   signature.value = ''
@@ -341,7 +560,7 @@ function formatTime(date: Date) {
         color="neutral"
         size="sm"
         class="hidden md:flex"
-        to="/taskPage"
+        :to="backHref"
       />
     </div>
 
@@ -392,10 +611,16 @@ function formatTime(date: Date) {
           </div>
         </div>
         <div class="overflow-y-auto flex-1">
+          <p
+            v-if="localPreviousNotes.length > 0"
+            class="px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-gray-400"
+          >
+            Editor notes
+          </p>
           <template v-if="filteredNotes.length > 0">
             <div
               v-for="note in filteredNotes"
-              :key="note.id"
+              :key="'e-' + note.id"
               @click="selectNote(note)"
               class="cursor-pointer border-b border-gray-100 px-4 py-3 transition-colors dark:border-gray-800"
               :class="selectedPreviousNote === localPreviousNotes.indexOf(note) ? 'bg-gray-100 dark:bg-gray-800' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'"
@@ -412,7 +637,41 @@ function formatTime(date: Date) {
               <p class="mt-0.5 truncate text-xs text-gray-400">{{ note.preview }}</p>
             </div>
           </template>
-          <div v-else class="px-4 py-6 text-center text-xs text-gray-400">No notes found</div>
+          <template v-if="localSessionNotes.length > 0">
+            <p
+              class="border-t border-gray-100 px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:border-gray-800"
+            >
+              Session log
+            </p>
+            <div
+              v-for="sn in filteredSessionNotes"
+              :key="'s-' + sn.id"
+              @click="selectSessionNote(sn)"
+              class="cursor-pointer border-b border-gray-100 px-4 py-3 transition-colors dark:border-gray-800"
+              :class="selectedSessionNoteId === sn.id ? 'bg-gray-100 dark:bg-gray-800' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'"
+            >
+              <div class="flex items-center justify-between gap-1">
+                <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {{ new Date(sn.createdAt).toLocaleDateString('en-US') }}
+                </p>
+                <span v-if="hasPendingSessionEdit(sn.id)" title="Unsaved edit">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-amber-500 block">
+                    <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/>
+                    <circle cx="8" cy="8" r="2.5" fill="currentColor"/>
+                  </svg>
+                </span>
+              </div>
+              <p class="mt-0.5 truncate text-xs text-gray-400">
+                {{ sn.content.slice(0, 60) }}{{ sn.content.length > 60 ? '...' : '' }}
+              </p>
+            </div>
+          </template>
+          <div
+            v-if="filteredNotes.length === 0 && filteredSessionNotes.length === 0"
+            class="px-4 py-6 text-center text-xs text-gray-400"
+          >
+            No notes found
+          </div>
         </div>
       </template>
 
@@ -438,8 +697,16 @@ function formatTime(date: Date) {
             class="flex flex-1 flex-col divide-y divide-gray-200 overflow-hidden md:flex-row md:divide-x md:divide-y-0 dark:divide-gray-800">
           <!-- Previous Note -->
           <div v-if="selectedNoteData" class="flex flex-col p-5 min-w-0 md:flex-1">
-            <div class="mb-3 flex items-center justify-between">
-              <p class="text-sm font-medium text-gray-400">{{ selectedNoteData.date }}</p>
+            <div class="mb-3 flex items-center justify-between gap-2">
+              <div>
+                <p class="text-sm font-medium text-gray-400">{{ selectedNoteData.date }}</p>
+                <p
+                  v-if="selectedNoteData.source === 'session'"
+                  class="text-[10px] font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-400"
+                >
+                  Session log note
+                </p>
+              </div>
               <button
                 @click="closeSelectedNote"
                 class="text-lg leading-none font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
@@ -454,7 +721,8 @@ function formatTime(date: Date) {
             <div class="prose prose-sm dark:prose-invert max-w-none" v-html="renderedNoteContent" />
             <div class="absolute right-2 bottom-2">
               <button
-                @click="startEditPrevious(selectedNoteData)"
+                type="button"
+                @click="startEditPrevious()"
                 class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-500 transition hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
               >
                 Edit

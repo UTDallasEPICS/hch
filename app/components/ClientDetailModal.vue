@@ -55,7 +55,7 @@
   function displayName() {
     const p = profile.value
     if (!p) return ''
-    const raw = p.lname ? `${p.fname} ${p.lname}` : (p.fname || p.name || '')
+    const raw = p.lname ? `${p.fname} ${p.lname}` : p.fname || p.name || ''
     return capitalizeName(String(raw))
   }
 
@@ -292,7 +292,11 @@
                 size="sm"
                 class="w-20"
               />
-              <UButton size="sm" color="primary" :loading="absencesSaving" @click="onAbsencesSaveClick"
+              <UButton
+                size="sm"
+                color="primary"
+                :loading="absencesSaving"
+                @click="onAbsencesSaveClick"
                 >Save</UButton
               >
               <UButton size="sm" variant="ghost" @click="absencesEditing = false">Cancel</UButton>
@@ -324,10 +328,7 @@
               <UCheckbox v-model="perms.canViewScores" />
               <span class="text-sm">View their scores</span>
             </label>
-            <label class="flex cursor-pointer items-center gap-2">
-              <UCheckbox v-model="perms.canViewNotes" />
-              <span class="text-sm">View their session notes</span>
-            </label>
+
             <label class="flex cursor-pointer items-center gap-2">
               <UCheckbox v-model="perms.canViewPlan" />
               <span class="text-sm">View their plan</span>
@@ -366,7 +367,16 @@
           </h3>
           <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
             <li
-              v-for="req in (profile as { sessionNotesRequests: { id: string; status: string; requestKind: string; createdAt: string }[] }).sessionNotesRequests"
+              v-for="req in (
+                profile as {
+                  sessionNotesRequests: {
+                    id: string
+                    status: string
+                    requestKind: string
+                    createdAt: string
+                  }[]
+                }
+              ).sessionNotesRequests"
               :key="req.id"
               class="flex flex-wrap gap-2"
             >
@@ -374,7 +384,11 @@
               <span>{{ req.requestKind === 'FULL' ? 'Full' : 'Summary' }}</span>
               <UBadge
                 :color="
-                  req.status === 'APPROVED' ? 'success' : req.status === 'REJECTED' ? 'error' : 'warning'
+                  req.status === 'APPROVED'
+                    ? 'success'
+                    : req.status === 'REJECTED'
+                      ? 'error'
+                      : 'warning'
                 "
                 variant="subtle"
                 size="xs"
@@ -474,15 +488,23 @@
               class="rounded border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800"
             >
               <p class="text-sm whitespace-pre-wrap">{{ note.content }}</p>
-              <div class="mt-2 flex items-center justify-between">
+              <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
                 <p class="text-xs text-gray-500">{{ new Date(note.createdAt).toLocaleString() }}</p>
-                <NuxtLink
-                  :to="`/clients/${clientId}/notes/${note.id}`"
-                  target="_blank"
-                  class="text-primary-600 hover:text-primary-700 dark:text-primary-400 text-xs font-medium"
-                >
-                  Open in new tab
-                </NuxtLink>
+                <div class="flex flex-wrap items-center gap-3">
+                  <NuxtLink
+                    :to="`/clients/${clientId}/notes/${note.id}`"
+                    target="_blank"
+                    class="text-primary-600 hover:text-primary-700 dark:text-primary-400 text-xs font-medium"
+                  >
+                    Open in new tab
+                  </NuxtLink>
+                  <NuxtLink
+                    :to="`/clients/${clientId}/notes-editor?focus=${encodeURIComponent(note.id)}`"
+                    class="text-primary-600 hover:text-primary-700 dark:text-primary-400 text-xs font-medium"
+                  >
+                    Edit in editor
+                  </NuxtLink>
+                </div>
               </div>
             </div>
           </div>
@@ -503,7 +525,7 @@
           >
             <div
               v-if="planContent"
-              class="line-clamp-3 text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none"
+              class="prose prose-sm dark:prose-invert line-clamp-3 max-w-none text-sm text-gray-700 dark:text-gray-300"
               v-html="parseMarkdown(planContent)"
             />
             <p v-else class="text-sm text-gray-500 italic dark:text-gray-400">No plan yet.</p>
@@ -527,13 +549,17 @@
         entity-type="absence"
         submit-label="Confirm & save absences"
         :loading="absencesSaving"
-        @close="justificationModalOpen = false; pendingAbsenceSave = false"
+        @close="
+          justificationModalOpen = false
+          pendingAbsenceSave = false
+        "
         @submit="onJustificationSubmit"
       >
         <template v-if="pendingAbsenceSave">
           <p class="text-sm text-gray-600 dark:text-gray-400">
             Changing absences from <strong>{{ profile?.missedSessions ?? 0 }}</strong> to
-            <strong>{{ absencesValue }}</strong>.
+            <strong>{{ absencesValue }}</strong
+            >.
           </p>
         </template>
       </ChangeWithJustificationModal>
