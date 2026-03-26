@@ -2,8 +2,13 @@ import { createError, defineEventHandler, getHeaders, getRouterParam } from 'h3'
 import { auth } from '../../../utils/auth'
 import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
-import { isAllFormsComplete, getIncompleteForms, FORM_LABELS } from '../../../utils/client-forms'
-import { parseName } from '../../../utils/name'
+import {
+  isAllFormsComplete,
+  isWaitlistFormsComplete,
+  getIncompleteForms,
+  FORM_LABELS,
+} from '../../../utils/client-forms'
+import { joinName, parseName } from '../../../utils/name'
 import { getAceFormQuestions } from '../../../utils/ace-questions'
 import type { ClientStatus } from '../../../../prisma/generated/client'
 
@@ -50,6 +55,18 @@ export default defineEventHandler(async (event) => {
           plan: true,
         },
       },
+      appForms: {
+        orderBy: { id: 'desc' },
+        take: 1,
+        include: {
+          questions: {
+            select: {
+              q02: true,
+              q03: true,
+            },
+          },
+        },
+      },
     },
   })
 
@@ -58,7 +75,10 @@ export default defineEventHandler(async (event) => {
   }
 
   const clientProfile = user.client
-  const { fname, lname } = parseName(user.name)
+  const latestAnswers = user.appForms[0]?.questions
+  const fallbackName = joinName(latestAnswers?.q02 ?? '', latestAnswers?.q03 ?? '')
+  const resolvedName = user.name?.trim() ? user.name : fallbackName
+  const { fname, lname } = parseName(resolvedName)
 
   // Fetch form progress (what client sees on tasks page)
   const [appForm, aceResponse, gadForm, phqForm, pclForm] = await Promise.all([
@@ -153,8 +173,12 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const allFormsComplete = await isAllFormsComplete(prisma, clientUserId)
-  const incompleteForms = await getIncompleteForms(prisma, clientUserId)
+  const currentStatus = (clientProfile?.status ?? 'Prospective') as ClientStatus
+  const allFormsComplete =
+    currentStatus === 'Waitlist'
+      ? await isWaitlistFormsComplete(prisma, clientUserId)
+      : await isAllFormsComplete(prisma, clientUserId)
+  const incompleteForms = await getIncompleteForms(prisma, clientUserId, currentStatus)
 
   // ACE score: count of "Yes" answers; severity per interpretation breakdown
   const aceScore = aceSubmitted
@@ -272,9 +296,9 @@ export default defineEventHandler(async (event) => {
     id: user.id,
     fname,
     lname,
-    name: user.name,
+    name: resolvedName,
     email: user.email,
-    status: (clientProfile?.status ?? 'Prospective') as ClientStatus,
+    status: currentStatus,
     therapyWeek: clientProfile?.therapyWeek ?? null,
     missedSessions: clientProfile?.missedSessions ?? 0,
     allFormsComplete,

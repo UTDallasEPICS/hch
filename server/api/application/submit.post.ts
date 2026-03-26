@@ -1,6 +1,7 @@
 import { createError, defineEventHandler, getHeaders } from 'h3'
 import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
+import { joinName } from '../../utils/name'
 
 const TOTAL_QUESTIONS = 50
 
@@ -105,15 +106,32 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  await prisma.appForm.update({
-    where: {
-      id: form.id,
-    },
-    data: {
-      status: 'COMPLETE',
-      submittedAt: new Date(),
-    },
-  })
+  const firstName = typeof form.questions.q02 === 'string' ? form.questions.q02.trim() : ''
+  const lastName = typeof form.questions.q03 === 'string' ? form.questions.q03.trim() : ''
+  const fullName = joinName(firstName, lastName)
+
+  const operations = [
+    prisma.appForm.update({
+      where: {
+        id: form.id,
+      },
+      data: {
+        status: 'COMPLETE',
+        submittedAt: new Date(),
+      },
+    }),
+  ]
+
+  if (fullName) {
+    operations.push(
+      prisma.user.update({
+        where: { id: userId },
+        data: { name: fullName },
+      })
+    )
+  }
+
+  await prisma.$transaction(operations)
 
   return {
     submitted: true,

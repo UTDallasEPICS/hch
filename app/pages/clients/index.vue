@@ -7,6 +7,8 @@
 
   const FORM_LABELS: Record<string, string> = {
     application: 'Application',
+    physicianStatement: 'Physician Statement (PDF Upload)',
+    releaseOfInformationAuthorization: 'ROI Authorization (PDF Upload)',
     ace: 'ACE',
     gad: 'GAD-7',
     phq: 'PHQ-9',
@@ -95,13 +97,13 @@
 
   function statusHint(c: Client): string {
     if (c.status === 'Prospective' && !c.allFormsComplete) {
-      return 'To move to waitlist, need to complete all forms'
+      return 'To move to waitlist, the client needs to complete all forms'
     }
     return ''
   }
 
   const showFormsRemainingColumn = computed(
-    () => clients.value?.some((c) => c.status === 'Prospective') ?? false
+    () => clients.value?.some((c) => c.status === 'Prospective' || c.status === 'Waitlist') ?? false
   )
 
   const showWeekNoColumn = computed(
@@ -109,9 +111,9 @@
   )
 
   function formatIncompleteForms(c: Client): string {
-    if (c.status !== 'Prospective') return ''
+    if (c.status !== 'Prospective' && c.status !== 'Waitlist') return ''
     if (!c.incompleteForms?.length || c.allFormsComplete) {
-      return 'Congratulations! All forms complete'
+      return 'User has completed all forms'
     }
     const count = c.incompleteForms.length
     const names = c.incompleteForms.map((k) => FORM_LABELS[k] ?? k).join(', ')
@@ -127,7 +129,6 @@
     { from: 'Prospective', to: 'Waitlist', label: '-> Waitlist' },
     { from: 'Waitlist', to: 'Prospective', label: '-> Prospective' },
     { from: 'Waitlist', to: 'Active', label: '-> Active' },
-    { from: 'Active', to: 'Waitlist', label: '-> Waitlist' },
     { from: 'Active', to: 'Archived', label: '-> Archive' },
     { from: 'Archived', to: 'Active', label: '-> Active' },
   ]
@@ -138,10 +139,8 @@
       if (t.from === 'Prospective' && t.to === 'Waitlist' && !client.allFormsComplete) {
         return false
       }
-      if (t.from === 'Active' && t.to === 'Archived') {
-        const missedSessions = client.missedSessions ?? 0
-        const therapyWeek = client.therapyWeek ?? 0
-        return missedSessions >= 2 || therapyWeek >= 26
+      if (t.from === 'Waitlist' && t.to === 'Active' && !client.allFormsComplete) {
+        return false
       }
       return true
     })
