@@ -3,6 +3,38 @@
 
   type ClientStatus = 'INCOMPLETE' | 'WAITLIST' | 'ACTIVE' | 'ARCHIVED'
 
+  /** Matches `/api/clients/[id]/profile` response shape used in this modal */
+  interface ClientProfile {
+    fname?: string | null
+    lname?: string | null
+    name?: string | null
+    status: ClientStatus
+    therapyWeek: number | null
+    missedSessions: number
+    permissions: {
+      canViewScores: boolean
+      canViewNotes: boolean
+      canViewPlan: boolean
+    }
+    plan?: { content?: string | null } | null
+    tasks: {
+      key: string
+      name: string
+      answered: number
+      total: number
+      submitted: boolean
+      score?: number | null
+      severity?: string | null
+    }[]
+    sessionNotesRequests: {
+      id: string
+      requestKind: string
+      status: string
+      createdAt: string
+    }[]
+    sessionNotes: { id: string; content: string; createdAt: string }[]
+  }
+
   const props = defineProps<{
     clientId: string | null
     open: boolean
@@ -13,7 +45,7 @@
     refreshed: []
   }>()
 
-  const profile = ref<Record<string, unknown> | null>(null)
+  const profile = ref<ClientProfile | null>(null)
   const pending = ref(false)
   const error = ref<Error | null>(null)
   let profileLoadSeq = 0
@@ -24,7 +56,7 @@
     pending.value = true
     error.value = null
     try {
-      const data = await $fetch(`/api/clients/${props.clientId}/profile`)
+      const data = await $fetch<ClientProfile>(`/api/clients/${props.clientId}/profile`)
       if (seq !== profileLoadSeq) return
       profile.value = data
     } catch (e) {
@@ -212,6 +244,11 @@
     }
   }
 
+  function closeJustificationModal() {
+    justificationModalOpen.value = false
+    pendingAbsenceSave.value = false
+  }
+
   function onJustificationSubmit(payload: {
     reasoning?: string
     documentation?: File
@@ -355,28 +392,14 @@
           </p>
         </section>
 
-        <section
-          v-if="
-            (profile as { sessionNotesRequests?: { status: string; createdAt: string }[] })
-              ?.sessionNotesRequests?.length
-          "
-        >
+        <section v-if="profile.sessionNotesRequests?.length">
           <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
             <UIcon name="i-heroicons-clipboard-document-list" class="h-4 w-4" />
             Session note request log
           </h3>
           <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
             <li
-              v-for="req in (
-                profile as {
-                  sessionNotesRequests: {
-                    id: string
-                    status: string
-                    requestKind: string
-                    createdAt: string
-                  }[]
-                }
-              ).sessionNotesRequests"
+              v-for="req in profile.sessionNotesRequests"
               :key="req.id"
               class="flex flex-wrap gap-2"
             >
@@ -549,10 +572,7 @@
         entity-type="absence"
         submit-label="Confirm & save absences"
         :loading="absencesSaving"
-        @close="
-          justificationModalOpen = false
-          pendingAbsenceSave = false
-        "
+        @close="closeJustificationModal"
         @submit="onJustificationSubmit"
       >
         <template v-if="pendingAbsenceSave">
