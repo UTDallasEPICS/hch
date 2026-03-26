@@ -36,6 +36,7 @@
     () => route.path === '/clients' || route.path.startsWith('/clients/')
   )
   const isAuthenticated = computed(() => Boolean(session.value))
+  const isCalendarPage = computed(() => route.path === '/calendar')
   const isDark = computed({
     get() {
       return colorMode.value === 'dark'
@@ -99,6 +100,12 @@
                 to="/clients"
                 color="primary"
                 :variant="isClientsPage ? 'solid' : 'soft'"
+              />
+              <UButton
+                label="Calendar"
+                to="/calendar"
+                color="primary"
+                :variant="isCalendarPage ? 'solid' : 'soft'"
               />
             </template>
             <UButton

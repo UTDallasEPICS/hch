@@ -1,8 +1,8 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
 
+/* --- Theme Variables --- */
 @theme static {
-  /* Primary: #213C4E and palette (light mode) — matches forms */
   --color-primary-50: #e8ecef;
   --color-primary-100: #d1d9df;
   --color-primary-200: #a3b3bf;
@@ -16,7 +16,16 @@
   --color-primary-950: #070c12;
 }
 
-/* Dark mode: same palette as forms */
+:root {
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: transparent;
+  --fc-border-color: rgba(0, 0, 0, 0.08);
+  --fc-daygrid-event-dot-width: 6px;
+  --fc-list-event-hover-bg-color: transparent;
+  --fc-event-text-color: #111827;
+  --fc-page-text-color: #111827;
+}
+
 .dark {
   --color-primary-50: #e2eef5;
   --color-primary-100: #c5dceb;
@@ -29,4 +38,175 @@
   --color-primary-800: #2b4d62;
   --color-primary-900: #224055;
   --color-primary-950: #1a3344;
+
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: transparent;
+  --fc-border-color: rgba(255, 255, 255, 0.08);
+  --fc-event-text-color: #e5e7eb;
+  --fc-page-text-color: #e5e7eb;
+}
+
+/* --- FullCalendar Core Overrides --- */
+.fc-scrollgrid {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.fc-event {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  border: none !important;
+}
+
+/* --- TimeGrid (Week/Day) Overlap Fixes --- */
+.fc-timegrid-event-harness {
+  margin: 1px !important; /* Tiny gap for legibility */
+}
+
+.fc-timegrid-event {
+  background: transparent !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  box-shadow: none !important;
+}
+
+.fc-timegrid-event-main {
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex-grow: 1 !important;
+  min-width: 0 !important; /* Allows truncation logic to trigger */
+  overflow: hidden !important;
+}
+
+.fc-timegrid-slot {
+  height: 60px;
+}
+
+/* --- Monthly View (DayGrid) Styling --- */
+
+/* This targets the block events in the month view */
+.fc-daygrid-block-event,
+.fc-daygrid-event {
+  background-color: rgba(59, 130, 246, 0.15) !important; /* Translucent Blue */
+  border: none !important;
+  color: rgb(59, 130, 246) !important; /* Matches the text color to the blue theme */
+}
+
+/* Hover state to keep it consistent */
+.fc-daygrid-event:hover {
+  background-color: rgba(59, 130, 246, 0.25) !important;
+}
+
+/* --- Custom Event Content Styling --- */
+.custom-event-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  padding: 4px 6px;
+  border-radius: 6px;
+  box-sizing: border-box;
+  font-size: 11px;
+  line-height: 1.2;
+  overflow: hidden;
+}
+
+.event-title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event-meta {
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- List View Styling --- */
+.fc-list-event-dot {
+  display: none !important;
+}
+
+.fc-list-day-cushion {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.dark .fc-list-day-cushion {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.fc-list-event td {
+  padding: 6px 0 !important;
+  border: none !important;
+}
+
+/* --- Dark Mode UI Specifics --- */
+.dark .fc {
+  color: #e5e7eb;
+}
+.dark .fc-theme-standard td,
+.dark .fc-theme-standard th {
+  border-color: #374151;
+}
+.dark .fc-col-header-cell {
+  background-color: #111827;
+  color: #e5e7eb;
+}
+.dark .fc-daygrid-day {
+  background-color: #030712;
+}
+.dark .fc-day-today {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+}
+
+.dark .fc-button {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+  color: #e5e7eb !important;
+}
+
+.dark .fc-button-active {
+  background-color: #2563eb !important;
+}
+
+/* --- Mobile / Sticky --- */
+@media (max-width: 768px) {
+  .fc-list-day-cushion {
+    font-size: 14px;
+    padding: 14px 0;
+  }
+  .fc-list-event td {
+    padding: 10px 0 !important;
+  }
+}
+
+.fc-timegrid-axis-frame,
+.fc-timegrid-slot-label-frame {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: inherit;
+}
+
+.fc-col-header-cell {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: inherit;
+}
+
+/* --- Overlay/Modals --- */
+[data-slot='overlay'] {
+  z-index: 10000;
+}
+[data-slot='content'] {
+  z-index: 10001;
 }

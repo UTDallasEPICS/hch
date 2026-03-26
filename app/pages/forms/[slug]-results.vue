@@ -116,14 +116,12 @@
       </template>
 
       <template v-else-if="form">
-        <!-- Header -->
         <div
           v-if="form.slug === 'ace-form'"
           class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-green-800"
         >
           You have already completed this assessment.
         </div>
-
         <div class="mb-8">
           <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
             {{ form.title }} - Results
