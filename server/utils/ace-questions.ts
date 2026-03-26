@@ -16,7 +16,13 @@ export const ACE_QUESTIONS = [
   'Did a household member go to prison?',
 ] as const
 
-export function getAceFormQuestions(): Array<{ id: string; text: string; type: string; alias: string; order: number }> {
+export function getAceFormQuestions(): Array<{
+  id: string
+  text: string
+  type: string
+  alias: string
+  order: number
+}> {
   return ACE_QUESTIONS.map((text, i) => ({
     id: `ace_${i + 1}`,
     text,
