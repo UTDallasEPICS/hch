@@ -304,14 +304,10 @@
   async function createSession() {
     console.log('sending appointment', { ...form })
     try {
-      // hardcode existing admin until authentication is wired up
-      const adminId = 'IIvIHMMxlkZ3tPYt4bc7JGWrcF83iyF5'
-
       await $fetch('/api/appointments/create', {
         method: 'POST',
         body: {
           clientId: form.clientId,
-          adminId,
           title: form.title,
           description: form.description,
           date: form.date,
