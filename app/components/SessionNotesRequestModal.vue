@@ -36,8 +36,19 @@
   function initSignatureCanvas() {
     const canvas = sigCanvasRef.value
     if (!canvas) return
+
+    const rect = canvas.getBoundingClientRect()
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = Math.max(1, Math.floor(rect.width * dpr))
+    canvas.height = Math.max(1, Math.floor(rect.height * dpr))
+
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.scale(dpr, dpr)
+    ctx.clearRect(0, 0, rect.width, rect.height)
+
     sigCtx.value = ctx
     ctx.strokeStyle = '#111827'
     ctx.lineWidth = 2
@@ -48,12 +59,21 @@
     const canvas = sigCanvasRef.value
     if (!canvas) return { x: 0, y: 0 }
     const rect = canvas.getBoundingClientRect()
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+
     if ('touches' in e) {
       const touch = e.touches[0]
       if (!touch) return { x: 0, y: 0 }
-      return { x: touch.clientX - rect.left, y: touch.clientY - rect.top }
+      return {
+        x: ((touch.clientX - rect.left) * scaleX) / (window.devicePixelRatio || 1),
+        y: ((touch.clientY - rect.top) * scaleY) / (window.devicePixelRatio || 1),
+      }
     }
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    return {
+      x: ((e.clientX - rect.left) * scaleX) / (window.devicePixelRatio || 1),
+      y: ((e.clientY - rect.top) * scaleY) / (window.devicePixelRatio || 1),
+    }
   }
 
   function startDrawing(e: MouseEvent | TouchEvent) {
@@ -112,7 +132,11 @@
     }
     if (!signatureDataUrl.value) {
       signatureError.value = 'Please sign in the box'
-      toast.add({ title: 'Signature required', description: 'Draw your digital signature.', color: 'error' })
+      toast.add({
+        title: 'Signature required',
+        description: 'Draw your digital signature.',
+        color: 'error',
+      })
       return
     }
     emit('submit', {
@@ -140,7 +164,9 @@
       </p>
 
       <div class="mb-4 space-y-2">
-        <label class="flex cursor-pointer items-start gap-2 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+        <label
+          class="flex cursor-pointer items-start gap-2 rounded-lg border border-gray-200 p-3 dark:border-gray-700"
+        >
           <input v-model="requestKind" type="radio" value="FULL" class="mt-1" />
           <span>
             <span class="font-medium text-gray-900 dark:text-white">Full session notes</span>
@@ -149,7 +175,9 @@
             </span>
           </span>
         </label>
-        <label class="flex cursor-pointer items-start gap-2 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+        <label
+          class="flex cursor-pointer items-start gap-2 rounded-lg border border-gray-200 p-3 dark:border-gray-700"
+        >
           <input v-model="requestKind" type="radio" value="SUMMARY" class="mt-1" />
           <span>
             <span class="font-medium text-gray-900 dark:text-white">Summary only</span>
@@ -182,8 +210,6 @@
           <canvas
             ref="sigCanvasRef"
             class="block h-32 w-full cursor-crosshair touch-none"
-            width="400"
-            height="128"
             @mousedown="startDrawing"
             @mousemove="draw"
             @mouseup="stopDrawing"
@@ -201,7 +227,9 @@
         </div>
         <div class="mt-1 flex items-center gap-2">
           <UButton variant="ghost" size="xs" @click="clearSignature">Clear</UButton>
-          <p v-if="signatureError" class="text-sm text-red-600 dark:text-red-400">{{ signatureError }}</p>
+          <p v-if="signatureError" class="text-sm text-red-600 dark:text-red-400">
+            {{ signatureError }}
+          </p>
         </div>
       </div>
 

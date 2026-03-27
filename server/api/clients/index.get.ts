@@ -7,8 +7,13 @@ import {
   isWaitlistFormsComplete,
   getIncompleteForms,
 } from '../../utils/client-forms'
+import {
+  isClientStatusLabel,
+  toClientStatusLabel,
+  toDbClientStatus,
+} from '../../utils/client-status'
 import { joinName, parseName } from '../../utils/name'
-import type { ClientStatus } from '../../../../prisma/generated/client'
+import type { ClientStatus } from '../../../prisma/generated/client'
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
@@ -38,20 +43,20 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const statusFilter = query.status as string | undefined
 
-  const validStatuses = ['Prospective', 'Waitlist', 'Active', 'Archived']
-  const hasStatusFilter = statusFilter && validStatuses.includes(statusFilter)
+  const hasStatusFilter = Boolean(statusFilter && isClientStatusLabel(statusFilter))
+  const dbStatusFilter = toDbClientStatus(statusFilter)
 
   const users = await prisma.user.findMany({
     where: {
       role: 'CLIENT',
       ...(hasStatusFilter &&
-        (statusFilter === 'Prospective'
+        (dbStatusFilter === 'INCOMPLETE'
           ? {
-              OR: [{ client: null }, { client: { status: 'Prospective' as ClientStatus } }],
+              OR: [{ client: null }, { client: { status: 'INCOMPLETE' as ClientStatus } }],
             }
           : {
               client: {
-                status: statusFilter as ClientStatus,
+                status: dbStatusFilter as ClientStatus,
               },
             })),
     },
@@ -76,15 +81,16 @@ export default defineEventHandler(async (event) => {
   const clients = await Promise.all(
     users.map(async (user) => {
       const clientProfile = user.client
-      const storedStatus = clientProfile?.status ?? 'Prospective'
+      const storedStatus = (clientProfile?.status ?? 'INCOMPLETE') as ClientStatus
+      const statusLabel = toClientStatusLabel(storedStatus)
       const therapyWeek = clientProfile?.therapyWeek ?? null
       const missedSessions = clientProfile?.missedSessions ?? 0
       const allFormsComplete =
-        storedStatus === 'Waitlist'
+        storedStatus === 'WAITLIST'
           ? await isWaitlistFormsComplete(prisma, user.id)
           : await isAllFormsComplete(prisma, user.id)
       const incompleteForms =
-        storedStatus === 'Prospective' || storedStatus === 'Waitlist'
+        storedStatus === 'INCOMPLETE' || storedStatus === 'WAITLIST'
           ? await getIncompleteForms(prisma, user.id, storedStatus)
           : []
       const latestAnswers = user.appForms[0]?.questions
@@ -98,7 +104,7 @@ export default defineEventHandler(async (event) => {
         lname,
         name: resolvedName,
         email: user.email,
-        status: storedStatus,
+        status: statusLabel,
         allFormsComplete,
         therapyWeek,
         missedSessions,

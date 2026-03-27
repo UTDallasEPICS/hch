@@ -2,14 +2,10 @@ import { createError, defineEventHandler, getHeaders, getRouterParam } from 'h3'
 import { auth } from '../../../utils/auth'
 import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
-import {
-  isAllFormsComplete,
-  getIncompleteForms,
-  FORM_LABELS,
-} from '../../../utils/client-forms'
+import { isAllFormsComplete, getIncompleteForms, FORM_LABELS } from '../../../utils/client-forms'
 import { parseName } from '../../../utils/name'
 import { getAceFormQuestions } from '../../../utils/ace-questions'
-import type { ClientStatus } from '../../../../../prisma/generated/client'
+import type { ClientStatus } from '../../../../prisma/generated/client'
 import { ensureDefaultDeclarationTemplates } from '../../../utils/declaration-templates'
 
 const APP_TOTAL = 50
@@ -123,9 +119,7 @@ export default defineEventHandler(async (event) => {
     ? (JSON.parse(aceResponse.responses) as Record<string, string>)
     : {}
   const aceAnswered = aceQuestions.filter(
-    (q) =>
-      aceResponses[q.alias] !== undefined &&
-      String(aceResponses[q.alias]).trim().length > 0
+    (q) => aceResponses[q.alias] !== undefined && String(aceResponses[q.alias]).trim().length > 0
   ).length
   const aceForm = await prisma.form.findUnique({ where: { slug: 'ace-form' } })
   const aceAssignment = aceForm
@@ -325,9 +319,7 @@ export default defineEventHandler(async (event) => {
   const showRawSessionNotes =
     hasAdminAccess ||
     (isOwnProfile && legacyNotes) ||
-    (isOwnProfile &&
-      latestApproved?.status === 'APPROVED' &&
-      latestApproved.requestKind === 'FULL')
+    (isOwnProfile && latestApproved?.status === 'APPROVED' && latestApproved.requestKind === 'FULL')
 
   const sessionNotesRequestsPayload = requests.map((r) => ({
     id: r.id,
@@ -343,7 +335,8 @@ export default defineEventHandler(async (event) => {
     approvedSummaryText: r.approvedSummaryText,
   }))
 
-  const canViewScores = hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewScores)
+  const canViewScores =
+    hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewScores)
   const metrics = canViewScores
     ? tasks
         .filter((t) => t.submitted && (t.score != null || t.severity != null))
@@ -351,9 +344,7 @@ export default defineEventHandler(async (event) => {
     : []
 
   const tasksForClient =
-    isOwnProfile && !canViewScores
-      ? tasks.map(({ score: _s, severity: _v, ...t }) => t)
-      : tasks
+    isOwnProfile && !canViewScores ? tasks.map(({ score: _s, severity: _v, ...t }) => t) : tasks
 
   // Session notes: always scoped by canonical Client.id (SessionNote + Note tables).
   let sessionNotesPayload: { id: string; content: string; createdAt: string }[] = []

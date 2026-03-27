@@ -272,7 +272,8 @@
     :open="open"
     :title="displayName() || 'Client Details'"
     :ui="{
-      content: 'max-w-3xl w-full',
+      overlay: 'z-[70]',
+      content: 'max-w-3xl w-full z-[70]',
       body: 'max-h-[70vh] overflow-y-auto p-6',
     }"
     @update:open="(v: boolean) => !v && emit('close')"
@@ -563,26 +564,26 @@
         </section>
       </div>
     </template>
-
-    <Teleport to="body">
-      <ChangeWithJustificationModal
-        :open="justificationModalOpen"
-        title="Justify change"
-        description="This change requires a reason or supporting documentation, and your signature."
-        entity-type="absence"
-        submit-label="Confirm & save absences"
-        :loading="absencesSaving"
-        @close="closeJustificationModal"
-        @submit="onJustificationSubmit"
-      >
-        <template v-if="pendingAbsenceSave">
-          <p class="text-sm text-gray-600 dark:text-gray-400">
-            Changing absences from <strong>{{ profile?.missedSessions ?? 0 }}</strong> to
-            <strong>{{ absencesValue }}</strong
-            >.
-          </p>
-        </template>
-      </ChangeWithJustificationModal>
-    </Teleport>
   </UModal>
+
+  <Teleport to="body">
+    <ChangeWithJustificationModal
+      :open="justificationModalOpen"
+      title="Justify change"
+      description="This change requires a reason or supporting documentation, and your signature."
+      entity-type="absence"
+      submit-label="Confirm & save absences"
+      :loading="absencesSaving"
+      @close="closeJustificationModal"
+      @submit="onJustificationSubmit"
+    >
+      <template v-if="pendingAbsenceSave">
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Changing absences from <strong>{{ profile?.missedSessions ?? 0 }}</strong> to
+          <strong>{{ absencesValue }}</strong
+          >.
+        </p>
+      </template>
+    </ChangeWithJustificationModal>
+  </Teleport>
 </template>

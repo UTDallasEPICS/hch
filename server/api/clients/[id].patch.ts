@@ -2,9 +2,10 @@ import { createError, defineEventHandler, getHeaders, getRouterParam, readBody }
 import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
 import { isAllFormsComplete } from '../../utils/client-forms'
-import type { ClientStatus } from '../../../../prisma/generated/client'
+import type { ClientStatus } from '../../../prisma/generated/client'
+import { isClientStatusLabel, toDbClientStatus } from '../../utils/client-status'
 
-const VALID_STATUSES: ClientStatus[] = ['Prospective', 'Waitlist', 'Active', 'Archived']
+const VALID_STATUSES = ['Prospective', 'Waitlist', 'Active', 'Archived'] as const
 const MAX_THERAPY_WEEKS = 26
 
 export default defineEventHandler(async (event) => {
@@ -30,7 +31,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = await readBody<{
-    status?: ClientStatus
+    status?: string
     therapyWeek?: number | null
     missedSessions?: number
   }>(event)
@@ -55,13 +56,16 @@ export default defineEventHandler(async (event) => {
   }
 
   if (body.status !== undefined) {
-    if (!VALID_STATUSES.includes(body.status)) {
+    if (!isClientStatusLabel(body.status)) {
       throw createError({
         statusCode: 400,
         statusMessage: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`,
       })
     }
-    if (body.status === 'Waitlist') {
+
+    const targetStatus = toDbClientStatus(body.status)
+
+    if (targetStatus === 'WAITLIST') {
       const allFormsComplete = await isAllFormsComplete(prisma, userId)
       if (!allFormsComplete) {
         throw createError({
@@ -70,18 +74,18 @@ export default defineEventHandler(async (event) => {
         })
       }
     }
-    if (body.status === 'Active') {
-      const currentStatus = user.client?.status ?? 'Prospective'
-      if (currentStatus !== 'Waitlist' && currentStatus !== 'Archived') {
+    if (targetStatus === 'ACTIVE') {
+      const currentStatus = user.client?.status ?? 'INCOMPLETE'
+      if (currentStatus !== 'WAITLIST' && currentStatus !== 'ARCHIVED') {
         throw createError({
           statusCode: 400,
           statusMessage: 'Client must be on waitlist before they can be marked active',
         })
       }
     }
-    if (body.status === 'Archived') {
-      const currentStatus = user.client?.status ?? 'Prospective'
-      if (currentStatus !== 'Active') {
+    if (targetStatus === 'ARCHIVED') {
+      const currentStatus = user.client?.status ?? 'INCOMPLETE'
+      if (currentStatus !== 'ACTIVE') {
         throw createError({
           statusCode: 400,
           statusMessage: 'Client must be active before they can be archived',
@@ -113,7 +117,7 @@ export default defineEventHandler(async (event) => {
     client = await prisma.client.create({
       data: {
         userId,
-        status: (body.status as ClientStatus) ?? 'Prospective',
+        status: body.status ? toDbClientStatus(body.status) : 'INCOMPLETE',
         therapyWeek: therapyWeek ?? null,
         missedSessions: missedSessions ?? 0,
       },
@@ -125,7 +129,7 @@ export default defineEventHandler(async (event) => {
     therapyWeek?: number | null
     missedSessions?: number
   } = {}
-  if (body.status !== undefined) updateData.status = body.status
+  if (body.status !== undefined) updateData.status = toDbClientStatus(body.status)
   if (therapyWeek !== undefined) updateData.therapyWeek = therapyWeek
   if (missedSessions !== undefined) updateData.missedSessions = missedSessions
 

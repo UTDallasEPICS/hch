@@ -43,6 +43,15 @@ export async function saveBase64File(
   }
 }
 
+export async function saveSignaturePng(signatureDataUrl: string): Promise<string> {
+  if (!signatureDataUrl.startsWith('data:image/png;base64,')) {
+    throw new Error('Invalid signature data format')
+  }
+
+  const saved = await saveBase64File(signatureDataUrl, 'signature.png')
+  return saved.path
+}
+
 function extractRelativePath(pathOrUrl: string): string {
   if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
     try {
@@ -100,6 +109,7 @@ export function getMimeType(filename: string): string {
   const ext = filename.toLowerCase()
   if (ext.endsWith('.pdf')) return 'application/pdf'
   if (ext.endsWith('.doc')) return 'application/msword'
-  if (ext.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  if (ext.endsWith('.docx'))
+    return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   return 'application/octet-stream'
 }

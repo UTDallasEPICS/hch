@@ -4,6 +4,7 @@ import { prisma } from '../../utils/prisma'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
+import { toClientStatusLabel } from '../../utils/client-status'
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
 
@@ -35,7 +36,7 @@ export default defineEventHandler(async (event) => {
     where: { userId: session.user.id },
     select: { status: true },
   })
-  const status = client?.status ?? 'Prospective'
+  const status = toClientStatusLabel(client?.status)
   if (status !== 'Prospective' && status !== 'Waitlist') {
     throw createError({
       statusCode: 403,

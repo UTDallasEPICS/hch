@@ -1,7 +1,3 @@
 <template>
-  <UApp>
-    <UModalProvider>
-      <NuxtPage />
-    </UModalProvider>
-  </UApp>
+  <slot />
 </template>

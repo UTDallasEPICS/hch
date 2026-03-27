@@ -31,15 +31,15 @@ enum SessionNotesRequestStatus {
 }
 
 model Client {
-  id             String       @id @default(cuid())
-  userId         String       @unique
-  status         ClientStatus @default(INCOMPLETE)
-  therapyWeek    Int?         // 0-26, max weeks of therapy
-  missedSessions Int          @default(0) // count of missed therapy sessions
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  permissions    ClientPermission?
-  sessionNotes   SessionNote[]
-  plan           ClientPlan?
+  id                   String                @id @default(cuid())
+  userId               String                @unique
+  status               ClientStatus          @default(INCOMPLETE)
+  therapyWeek          Int? // 0-26, max weeks of therapy
+  missedSessions       Int                   @default(0) // count of missed therapy sessions
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permissions          ClientPermission?
+  sessionNotes         SessionNote[]
+  plan                 ClientPlan?
   sessionNotesRequests SessionNotesRequest[]
 
   @@index([status])
@@ -48,22 +48,22 @@ model Client {
 
 // Controls what clients can see on their dashboard
 model ClientPermission {
-  id              String   @id @default(cuid())
-  clientId        String   @unique
-  canViewScores   Boolean  @default(false)
-  canViewNotes    Boolean  @default(false)
-  canViewPlan     Boolean  @default(false)
-  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id            String  @id @default(cuid())
+  clientId      String  @unique
+  canViewScores Boolean @default(false)
+  canViewNotes  Boolean @default(false)
+  canViewPlan   Boolean @default(false)
+  client        Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@map("client_permission")
 }
 
 model SessionNote {
-  id        String   @id @default(cuid())
+  id        String            @id @default(cuid())
   clientId  String
   content   String
-  createdAt DateTime @default(now())
-  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdAt DateTime          @default(now())
+  client    Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
   edits     SessionNoteEdit[]
 
   @@index([clientId])
@@ -98,18 +98,18 @@ model DeclarationTemplate {
 
 // Client requests to view session notes (full or summary); requires admin approval + signature.
 model SessionNotesRequest {
-  id                    String                  @id @default(cuid())
+  id                    String                    @id @default(cuid())
   clientId              String
-  client                Client                  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client                Client                    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   requestKind           SessionNotesRequestKind
   status                SessionNotesRequestStatus @default(PENDING)
   signatureData         String // base64 PNG
   declarationTemplateId String
-  declarationTemplate   DeclarationTemplate     @relation(fields: [declarationTemplateId], references: [id], onDelete: Restrict)
-  createdAt             DateTime                @default(now())
+  declarationTemplate   DeclarationTemplate       @relation(fields: [declarationTemplateId], references: [id], onDelete: Restrict)
+  createdAt             DateTime                  @default(now())
   decidedAt             DateTime?
   decidedByUserId       String?
-  decidedBy             User?                   @relation(fields: [decidedByUserId], references: [id], onDelete: SetNull)
+  decidedBy             User?                     @relation(fields: [decidedByUserId], references: [id], onDelete: SetNull)
   rejectionReason       String?
   approvedSummaryText   String? // required when approving SUMMARY; shown to client instead of raw notes
 
@@ -132,18 +132,18 @@ model ClientPlan {
 
 // Audit trail for changes requiring reasoning + documentation + admin signature
 model ChangeAudit {
-  id                  String   @id @default(cuid())
-  entityType          String   // 'ABSENCE' | 'TREATMENT_PLAN' | etc.
-  entityId            String   // client userId or clientId
-  oldValue            String?  // JSON
-  newValue            String?  // JSON
-  reasoning           String?
-  documentationPath   String?  // Path to uploaded PDF/Word file (optional)
-  documentationName   String?  // Original filename for display
-  signatureData       String   // base64 PNG of signature
-  signedById          String
-  signedAt            DateTime @default(now())
-  signedBy            User     @relation(fields: [signedById], references: [id], onDelete: Cascade)
+  id                String   @id @default(cuid())
+  entityType        String // 'ABSENCE' | 'TREATMENT_PLAN' | etc.
+  entityId          String // client userId or clientId
+  oldValue          String? // JSON
+  newValue          String? // JSON
+  reasoning         String?
+  documentationPath String? // Path to uploaded PDF/Word file (optional)
+  documentationName String? // Original filename for display
+  signatureData     String // base64 PNG of signature
+  signedById        String
+  signedAt          DateTime @default(now())
+  signedBy          User     @relation(fields: [signedById], references: [id], onDelete: Cascade)
 
   @@index([entityType, entityId])
   @@map("change_audit")
@@ -170,16 +170,71 @@ model User {
   phqForm         PhqForm[]
   phqQuestions    PhqQuestion[]
 
-  PclForms       PclForm[]
-  PclQuestions   PclQuestion[]
-  client         Client?
-  changeAudits   ChangeAudit[]
-  sessionNotesRequestsDecided SessionNotesRequest[]
+  PclForms                              PclForm[]
+  PclQuestions                          PclQuestion[]
+  client                                Client?
+  changeAudits                          ChangeAudit[]
+  sessionNotesRequestsDecided           SessionNotesRequest[]
+  appointmentsAsClient                  Appointment[]                          @relation("ClientAppointments")
+  appointmentsAsAdmin                   Appointment[]                          @relation("AdminAppointments")
+  physicianStatementForm                PhysicianStatementForm?
+  releaseOfInformationAuthorizationForm ReleaseOfInformationAuthorizationForm?
 
-  Notes          Note[]
+  Notes Note[]
 
   @@unique([email])
   @@map("user")
+}
+
+model Appointment {
+  id          String   @id @default(cuid())
+  clientId    String
+  adminId     String
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  status      String   @default("SCHEDULED")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  client      User     @relation("ClientAppointments", fields: [clientId], references: [id], onDelete: Restrict)
+  admin       User     @relation("AdminAppointments", fields: [adminId], references: [id], onDelete: Restrict)
+
+  @@index([clientId])
+  @@index([adminId])
+  @@map("Appointment")
+}
+
+model PhysicianStatementForm {
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  status           String    @default("NOT_SUBMITTED")
+  originalFileName String?
+  storedFileName   String?
+  mimeType         String?
+  uploadedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("PhysicianStatementForm")
+}
+
+model ReleaseOfInformationAuthorizationForm {
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  status           String    @default("NOT_SUBMITTED")
+  originalFileName String?
+  storedFileName   String?
+  mimeType         String?
+  uploadedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("ReleaseOfInformationAuthorizationForm")
 }
 
 // Form metadata (e.g. ACE Questionnaire)
@@ -379,7 +434,7 @@ model GadForm {
   severity    String?
   submittedAt DateTime?
 
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   questions GadQuestion?
 
   @@index([userId])
@@ -495,7 +550,7 @@ model Note {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   edits NoteEdit[]
 
   @@index([userId])
@@ -504,13 +559,13 @@ model Note {
 
 model NoteEdit {
   id              Int      @id @default(autoincrement())
-  noteId          Int  
-  originalContent String? 
+  noteId          Int
+  originalContent String?
   reason          String?
   signature       String?
   editedAt        DateTime @default(now())
 
-  note Note   @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
 
   @@index([noteId])
 }

@@ -1,7 +1,7 @@
 import { createError, defineEventHandler, getHeaders } from 'h3'
 import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
-import type { ClientStatus } from '../../../../prisma/generated/client'
+import { toClientStatusLabel } from '../../utils/client-status'
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
@@ -23,6 +23,6 @@ export default defineEventHandler(async (event) => {
   })
 
   return {
-    status: (client?.status ?? 'Prospective') as ClientStatus,
+    status: toClientStatusLabel(client?.status),
   }
 })

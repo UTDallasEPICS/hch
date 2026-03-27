@@ -32,7 +32,9 @@
 
   const isTasksPage = computed(() => route.path === '/taskPage')
   const isDashboardPage = computed(() => route.path === '/')
-  const isClientsPage = computed(() => route.path === '/clients' || route.path.startsWith('/clients/'))
+  const isClientsPage = computed(
+    () => route.path === '/clients' || route.path.startsWith('/clients/')
+  )
   const isCalendarPage = computed(() => route.path === '/calendar')
   /** Temporary: notes playground until session notes are wired in the app flow */
   const isNotesTestPage = computed(
@@ -41,7 +43,7 @@
 
   function goTo(path: string) {
     if (route.path !== path) {
-      reloadNuxtApp({ path })
+      navigateTo(path)
     }
   }
 
@@ -63,7 +65,9 @@
       <header
         class="sticky top-0 z-50 border-b border-gray-200 bg-white backdrop-blur-md dark:border-gray-800 dark:bg-gray-900"
       >
-        <UContainer class="py-3 sm:flex sm:h-16 sm:items-center sm:py-0">
+        <UContainer
+          class="max-w-none px-4 py-3 sm:flex sm:h-16 sm:items-center sm:px-6 sm:py-0 lg:px-8"
+        >
           <div class="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex items-center justify-between gap-3">
               <NuxtLink
@@ -103,7 +107,9 @@
               />
             </div>
 
-            <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:justify-end sm:overflow-visible sm:pb-0">
+            <div
+              class="flex items-center gap-2 overflow-x-auto pb-1 sm:justify-end sm:overflow-visible sm:pb-0"
+            >
               <UButton
                 label="Dashboard"
                 color="primary"
@@ -148,7 +154,9 @@
       </header>
 
       <main class="flex-1">
-        <NuxtPage :page-key="(r) => r.fullPath" />
+        <NuxtLayout>
+          <NuxtPage :page-key="(r) => r.fullPath" />
+        </NuxtLayout>
       </main>
     </div>
   </UApp>

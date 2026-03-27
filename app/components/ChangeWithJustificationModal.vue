@@ -1,213 +1,236 @@
 <script setup lang="ts">
-/**
- * Reusable modal for edits that require:
- * - Reasoning (text) OR valid documentation (PDF/Word)
- * - Admin digital signature
- *
- * Use for: absence edits, treatment plan changes, and any future changes
- * with the same requirements.
- */
+  /**
+   * Reusable modal for edits that require:
+   * - Reasoning (text) OR valid documentation (PDF/Word)
+   * - Admin digital signature
+   *
+   * Use for: absence edits, treatment plan changes, and any future changes
+   * with the same requirements.
+   */
 
-export interface ChangeJustificationPayload {
-  reasoning?: string
-  documentation?: File
-  documentationBase64?: string
-  signatureData: string
-}
+  export interface ChangeJustificationPayload {
+    reasoning?: string
+    documentation?: File
+    documentationBase64?: string
+    signatureData: string
+  }
 
-const props = withDefaults(
-  defineProps<{
-    open: boolean
-    title: string
-    description?: string
-    /** e.g. 'absence', 'treatment plan' - for display hints */
-    entityType?: string
-    /** Callback to encode file to base64 before emit (optional) */
-    submitLabel?: string
-    loading?: boolean
-  }>(),
-  { description: '', entityType: '', submitLabel: 'Confirm & Submit', loading: false }
-)
+  const props = withDefaults(
+    defineProps<{
+      open: boolean
+      title: string
+      description?: string
+      /** e.g. 'absence', 'treatment plan' - for display hints */
+      entityType?: string
+      /** Callback to encode file to base64 before emit (optional) */
+      submitLabel?: string
+      loading?: boolean
+    }>(),
+    { description: '', entityType: '', submitLabel: 'Confirm & Submit', loading: false }
+  )
 
-const emit = defineEmits<{
-  close: []
-  submit: [payload: ChangeJustificationPayload]
-}>()
+  const emit = defineEmits<{
+    close: []
+    submit: [payload: ChangeJustificationPayload]
+  }>()
 
-const toast = useToast()
+  const toast = useToast()
 
-const reasoning = ref('')
-const documentationFile = ref<File | null>(null)
-const documentationError = ref('')
-const signatureDataUrl = ref('')
-const signatureError = ref('')
+  const reasoning = ref('')
+  const documentationFile = ref<File | null>(null)
+  const documentationError = ref('')
+  const signatureDataUrl = ref('')
+  const signatureError = ref('')
 
-// Reset on open
-watch(
-  () => props.open,
-  (open) => {
-    if (open) {
-      reasoning.value = ''
-      documentationFile.value = null
-      documentationError.value = ''
-      signatureDataUrl.value = ''
-      signatureError.value = ''
-      nextTick(() => initSignatureCanvas())
+  // Reset on open
+  watch(
+    () => props.open,
+    (open) => {
+      if (open) {
+        reasoning.value = ''
+        documentationFile.value = null
+        documentationError.value = ''
+        signatureDataUrl.value = ''
+        signatureError.value = ''
+        nextTick(() => initSignatureCanvas())
+      }
     }
-  }
-)
+  )
 
-const ACCEPTED_TYPES = [
-  'application/pdf',
-  'application/msword', // .doc
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-]
+  const ACCEPTED_TYPES = [
+    'application/pdf',
+    'application/msword', // .doc
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+  ]
 
-const ACCEPTED_EXT = ['.pdf', '.doc', '.docx']
+  const ACCEPTED_EXT = ['.pdf', '.doc', '.docx']
 
-function isAcceptedFile(file: File): boolean {
-  return ACCEPTED_TYPES.includes(file.type) || ACCEPTED_EXT.some((ext) => file.name.toLowerCase().endsWith(ext))
-}
-
-function onFileChange(e: Event) {
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  documentationError.value = ''
-  if (!file) {
-    documentationFile.value = null
-    return
-  }
-  if (!isAcceptedFile(file)) {
-    documentationError.value = 'Please upload a PDF or Word document (.pdf, .doc, .docx)'
-    documentationFile.value = null
-    input.value = ''
-    return
-  }
-  const maxSize = 10 * 1024 * 1024 // 10MB
-  if (file.size > maxSize) {
-    documentationError.value = 'File must be under 10MB'
-    documentationFile.value = null
-    input.value = ''
-    return
-  }
-  documentationFile.value = file
-}
-
-function clearDocumentation() {
-  documentationFile.value = null
-  documentationError.value = ''
-  if (docUploadRef.value) docUploadRef.value.value = ''
-}
-
-function hasJustification(): boolean {
-  const hasReasoning = !!String(reasoning.value).trim()
-  const hasDoc = !!documentationFile.value
-  return hasReasoning || hasDoc
-}
-
-function hasValidSignature(): boolean {
-  return !!signatureDataUrl.value
-}
-
-// Signature pad (canvas-based)
-const sigCanvasRef = ref<HTMLCanvasElement | null>(null)
-const docUploadRef = ref<HTMLInputElement | null>(null)
-const isDrawing = ref(false)
-const sigCtx = ref<CanvasRenderingContext2D | null>(null)
-
-function initSignatureCanvas() {
-  const canvas = sigCanvasRef.value
-  if (!canvas) return
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-  sigCtx.value = ctx
-  ctx.strokeStyle = '#111827'
-  ctx.lineWidth = 2
-  ctx.lineCap = 'round'
-}
-
-function getCanvasCoords(e: MouseEvent | TouchEvent): { x: number; y: number } {
-  const canvas = sigCanvasRef.value
-  if (!canvas) return { x: 0, y: 0 }
-  const rect = canvas.getBoundingClientRect()
-  if ('touches' in e) {
-    const touch = e.touches[0]
-    if (!touch) return { x: 0, y: 0 }
-    return { x: touch.clientX - rect.left, y: touch.clientY - rect.top }
-  }
-  return { x: e.clientX - rect.left, y: e.clientY - rect.top }
-}
-
-function startDrawing(e: MouseEvent | TouchEvent) {
-  e.preventDefault()
-  const { x, y } = getCanvasCoords(e)
-  sigCtx.value?.beginPath()
-  sigCtx.value?.moveTo(x, y)
-  isDrawing.value = true
-  signatureError.value = ''
-}
-
-function draw(e: MouseEvent | TouchEvent) {
-  e.preventDefault()
-  if (!isDrawing.value) return
-  const { x, y } = getCanvasCoords(e)
-  sigCtx.value?.lineTo(x, y)
-  sigCtx.value?.stroke()
-}
-
-function stopDrawing() {
-  isDrawing.value = false
-  const canvas = sigCanvasRef.value
-  if (canvas) {
-    signatureDataUrl.value = canvas.toDataURL('image/png')
-  }
-}
-
-function clearSignature() {
-  const canvas = sigCanvasRef.value
-  const ctx = sigCtx.value
-  if (!canvas || !ctx) return
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
-  signatureDataUrl.value = ''
-}
-
-async function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
-
-async function handleSubmit() {
-  if (!hasJustification()) {
-    toast.add({ title: 'Please provide reasoning or upload documentation', color: 'error' })
-    return
-  }
-  if (!hasValidSignature()) {
-    signatureError.value = 'Please provide your signature'
-    toast.add({ title: 'Please provide your digital signature', color: 'error' })
-    return
+  function isAcceptedFile(file: File): boolean {
+    return (
+      ACCEPTED_TYPES.includes(file.type) ||
+      ACCEPTED_EXT.some((ext) => file.name.toLowerCase().endsWith(ext))
+    )
   }
 
-  let documentationBase64: string | undefined
-  if (documentationFile.value) {
-    try {
-      documentationBase64 = await fileToBase64(documentationFile.value)
-    } catch (e) {
-      toast.add({ title: 'Failed to read document', color: 'error' })
+  function onFileChange(e: Event) {
+    const input = e.target as HTMLInputElement
+    const file = input.files?.[0]
+    documentationError.value = ''
+    if (!file) {
+      documentationFile.value = null
       return
     }
+    if (!isAcceptedFile(file)) {
+      documentationError.value = 'Please upload a PDF or Word document (.pdf, .doc, .docx)'
+      documentationFile.value = null
+      input.value = ''
+      return
+    }
+    const maxSize = 10 * 1024 * 1024 // 10MB
+    if (file.size > maxSize) {
+      documentationError.value = 'File must be under 10MB'
+      documentationFile.value = null
+      input.value = ''
+      return
+    }
+    documentationFile.value = file
   }
 
-  emit('submit', {
-    reasoning: String(reasoning.value).trim() || undefined,
-    documentation: documentationFile.value ?? undefined,
-    documentationBase64,
-    signatureData: signatureDataUrl.value,
-  })
-}
+  function clearDocumentation() {
+    documentationFile.value = null
+    documentationError.value = ''
+    if (docUploadRef.value) docUploadRef.value.value = ''
+  }
+
+  function hasJustification(): boolean {
+    const hasReasoning = !!String(reasoning.value).trim()
+    const hasDoc = !!documentationFile.value
+    return hasReasoning || hasDoc
+  }
+
+  function hasValidSignature(): boolean {
+    return !!signatureDataUrl.value
+  }
+
+  // Signature pad (canvas-based)
+  const sigCanvasRef = ref<HTMLCanvasElement | null>(null)
+  const docUploadRef = ref<HTMLInputElement | null>(null)
+  const isDrawing = ref(false)
+  const sigCtx = ref<CanvasRenderingContext2D | null>(null)
+
+  function initSignatureCanvas() {
+    const canvas = sigCanvasRef.value
+    if (!canvas) return
+
+    const rect = canvas.getBoundingClientRect()
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = Math.max(1, Math.floor(rect.width * dpr))
+    canvas.height = Math.max(1, Math.floor(rect.height * dpr))
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.scale(dpr, dpr)
+    ctx.clearRect(0, 0, rect.width, rect.height)
+
+    sigCtx.value = ctx
+    ctx.strokeStyle = '#111827'
+    ctx.lineWidth = 2
+    ctx.lineCap = 'round'
+  }
+
+  function getCanvasCoords(e: MouseEvent | TouchEvent): { x: number; y: number } {
+    const canvas = sigCanvasRef.value
+    if (!canvas) return { x: 0, y: 0 }
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+
+    if ('touches' in e) {
+      const touch = e.touches[0]
+      if (!touch) return { x: 0, y: 0 }
+      return {
+        x: ((touch.clientX - rect.left) * scaleX) / (window.devicePixelRatio || 1),
+        y: ((touch.clientY - rect.top) * scaleY) / (window.devicePixelRatio || 1),
+      }
+    }
+    return {
+      x: ((e.clientX - rect.left) * scaleX) / (window.devicePixelRatio || 1),
+      y: ((e.clientY - rect.top) * scaleY) / (window.devicePixelRatio || 1),
+    }
+  }
+
+  function startDrawing(e: MouseEvent | TouchEvent) {
+    e.preventDefault()
+    const { x, y } = getCanvasCoords(e)
+    sigCtx.value?.beginPath()
+    sigCtx.value?.moveTo(x, y)
+    isDrawing.value = true
+    signatureError.value = ''
+  }
+
+  function draw(e: MouseEvent | TouchEvent) {
+    e.preventDefault()
+    if (!isDrawing.value) return
+    const { x, y } = getCanvasCoords(e)
+    sigCtx.value?.lineTo(x, y)
+    sigCtx.value?.stroke()
+  }
+
+  function stopDrawing() {
+    isDrawing.value = false
+    const canvas = sigCanvasRef.value
+    if (canvas) {
+      signatureDataUrl.value = canvas.toDataURL('image/png')
+    }
+  }
+
+  function clearSignature() {
+    const canvas = sigCanvasRef.value
+    const ctx = sigCtx.value
+    if (!canvas || !ctx) return
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    signatureDataUrl.value = ''
+  }
+
+  async function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
+  async function handleSubmit() {
+    if (!hasJustification()) {
+      toast.add({ title: 'Please provide reasoning or upload documentation', color: 'error' })
+      return
+    }
+    if (!hasValidSignature()) {
+      signatureError.value = 'Please provide your signature'
+      toast.add({ title: 'Please provide your digital signature', color: 'error' })
+      return
+    }
+
+    let documentationBase64: string | undefined
+    if (documentationFile.value) {
+      try {
+        documentationBase64 = await fileToBase64(documentationFile.value)
+      } catch (e) {
+        toast.add({ title: 'Failed to read document', color: 'error' })
+        return
+      }
+    }
+
+    emit('submit', {
+      reasoning: String(reasoning.value).trim() || undefined,
+      documentation: documentationFile.value ?? undefined,
+      documentationBase64,
+      signatureData: signatureDataUrl.value,
+    })
+  }
 </script>
 
 <template>
@@ -215,8 +238,8 @@ async function handleSubmit() {
     :open="open"
     :title="title"
     :ui="{
-      overlay: 'z-[60]',
-      content: 'max-w-xl w-full z-[60]',
+      overlay: 'z-[200]',
+      content: 'max-w-xl w-full z-[210]',
       body: 'max-h-[85vh] overflow-y-auto p-6',
     }"
     @update:open="(v: boolean) => !v && emit('close')"
@@ -311,8 +334,6 @@ async function handleSubmit() {
           <canvas
             ref="sigCanvasRef"
             class="block h-32 w-full cursor-crosshair touch-none"
-            width="400"
-            height="128"
             @mousedown="startDrawing"
             @mousemove="draw"
             @mouseup="stopDrawing"

@@ -5,6 +5,7 @@
  */
 import type { PrismaClient } from '../../prisma/generated/client'
 import type { ClientStatus } from '../../prisma/generated/client'
+import { toDbClientStatus } from './client-status'
 
 const ACE_QUESTION_COUNT = 10
 const GAD_QUESTION_COUNT = 7
@@ -22,9 +23,11 @@ export const FORM_LABELS: Record<string, string> = {
 export async function getIncompleteForms(
   prisma: PrismaClient,
   userId: string,
-  status: ClientStatus = 'Prospective'
+  status: ClientStatus | string = 'INCOMPLETE'
 ): Promise<string[]> {
-  if (status === 'Waitlist') {
+  const normalizedStatus = toDbClientStatus(status)
+
+  if (normalizedStatus === 'WAITLIST') {
     return getWaitlistIncompleteForms(prisma, userId)
   }
 
@@ -62,7 +65,7 @@ export async function isPreWaitlistComplete(
   prisma: PrismaClient,
   userId: string
 ): Promise<boolean> {
-  const incomplete = await getIncompleteForms(prisma, userId, 'Prospective')
+  const incomplete = await getIncompleteForms(prisma, userId, 'INCOMPLETE')
   return incomplete.length === 0
 }
 
@@ -71,7 +74,7 @@ export async function getPreWaitlistIncompleteForms(
   prisma: PrismaClient,
   userId: string
 ): Promise<string[]> {
-  return getIncompleteForms(prisma, userId, 'Prospective')
+  return getIncompleteForms(prisma, userId, 'INCOMPLETE')
 }
 
 /** Waitlist completion: ACE, GAD-7, PHQ-9, PCL-5 required. */
