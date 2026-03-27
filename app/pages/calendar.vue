@@ -154,6 +154,8 @@
     slotDuration: '00:30:00',
     snapDuration: '00:05:00',
     slotMinHeight: 50,
+    slotMinTime: '06:00:00',
+    slotMaxTime: '21:00:00',
     allDaySlot: false,
     slotEventOverlap: true,
 
@@ -373,7 +375,7 @@
         <UButton
           v-if="session.data?.user?.role === 'ADMIN'"
           icon="i-heroicons-plus"
-          class="fixed top-6 right-6 z-50 rounded-full shadow-lg lg:hidden"
+          class="fixed right-6 bottom-8 z-50 rounded-full shadow-lg lg:hidden"
           size="xl"
           @click="openCreateModal"
         />

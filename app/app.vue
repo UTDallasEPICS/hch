@@ -55,36 +55,55 @@
       <header
         class="sticky top-0 z-50 border-b border-gray-200 bg-white backdrop-blur-md dark:border-gray-800 dark:bg-gray-900"
       >
-        <UContainer class="flex h-16 items-center justify-between">
-          <NuxtLink to="/" class="flex items-center gap-2 font-bold text-gray-900 dark:text-white">
-            <img
-              src="/HCH%20Light%20Mode%20Logo.png"
-              alt="Hope Cope Heal logo"
-              width="160"
-              height="32"
-              style="height: 32px; width: auto"
-              class="h-8 w-auto dark:hidden"
-            />
-            <img
-              src="/HCH%20Dark%20Mode%20Logo.png"
-              alt="Hope Cope Heal logo"
-              width="160"
-              height="32"
-              style="height: 32px; width: auto"
-              class="hidden h-8 w-auto dark:block"
-            />
-            <span class="text-sm leading-none whitespace-nowrap sm:hidden">Hope.Cope.Heal.</span>
-            <span class="hidden text-xl leading-none whitespace-nowrap sm:inline"
-              >Hope. Cope. Heal.</span
-            >
-          </NuxtLink>
+        <UContainer class="py-3 sm:flex sm:h-16 sm:items-center sm:py-0">
+          <div class="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex items-center justify-between gap-3">
+              <NuxtLink
+                to="/"
+                class="flex min-w-0 items-center gap-2 font-bold text-gray-900 dark:text-white"
+              >
+                <img
+                  src="/HCH%20Light%20Mode%20Logo.png"
+                  alt="Hope Cope Heal logo"
+                  width="160"
+                  height="32"
+                  style="height: 32px; width: auto"
+                  class="h-8 w-auto dark:hidden"
+                />
+                <img
+                  src="/HCH%20Dark%20Mode%20Logo.png"
+                  alt="Hope Cope Heal logo"
+                  width="160"
+                  height="32"
+                  style="height: 32px; width: auto"
+                  class="hidden h-8 w-auto dark:block"
+                />
+                <span class="text-sm leading-none whitespace-nowrap sm:hidden"
+                  >Hope.Cope.Heal.</span
+                >
+                <span class="hidden text-xl leading-none whitespace-nowrap sm:inline"
+                  >Hope. Cope. Heal.</span
+                >
+              </NuxtLink>
 
-          <div class="flex items-center gap-2">
-            <template v-if="isAuthenticated">
+              <UButton
+                :icon="isDark ? 'i-heroicons-moon-20-solid' : 'i-heroicons-sun-20-solid'"
+                color="neutral"
+                variant="ghost"
+                @click="isDark = !isDark"
+                aria-label="Toggle Theme"
+              />
+            </div>
+
+            <div
+              v-if="isAuthenticated"
+              class="flex items-center gap-2 overflow-x-auto pb-1 sm:justify-end sm:overflow-visible sm:pb-0"
+            >
               <UButton
                 label="Dashboard"
                 to="/"
                 color="primary"
+                class="shrink-0"
                 :variant="isDashboardPage ? 'solid' : 'soft'"
               />
               <UButton
@@ -92,6 +111,7 @@
                 label="Tasks"
                 to="/taskPage"
                 color="primary"
+                class="shrink-0"
                 :variant="isTasksPage ? 'solid' : 'soft'"
               />
               <UButton
@@ -99,22 +119,17 @@
                 label="Clients"
                 to="/clients"
                 color="primary"
+                class="shrink-0"
                 :variant="isClientsPage ? 'solid' : 'soft'"
               />
               <UButton
                 label="Calendar"
                 to="/calendar"
                 color="primary"
+                class="shrink-0"
                 :variant="isCalendarPage ? 'solid' : 'soft'"
               />
-            </template>
-            <UButton
-              :icon="isDark ? 'i-heroicons-moon-20-solid' : 'i-heroicons-sun-20-solid'"
-              color="neutral"
-              variant="ghost"
-              @click="isDark = !isDark"
-              aria-label="Toggle Theme"
-            />
+            </div>
           </div>
         </UContainer>
       </header>
