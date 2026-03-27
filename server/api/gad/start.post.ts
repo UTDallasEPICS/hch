@@ -16,25 +16,48 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
   }
 
+  const currentUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, email: true },
+  })
+  const canViewScores =
+    isAdmin(currentUser?.role ?? null, currentUser?.email ?? null) ||
+    (await getClientPermissions(userId)).canViewScores
+
+  // Find latest form
   const existingForm = await prisma.gadForm.findFirst({
     where: { userId },
     orderBy: { id: 'desc' },
-    include: {
-      questions: true,
-    },
   })
 
   if (existingForm) {
+    if (existingForm.status === 'COMPLETE' && !canViewScores) {
+      throw createError({
+        statusCode: 403,
+        statusMessage:
+          'You do not have permission to view scores. Your administrator has not enabled this feature for your account. Please contact your clinician for any further inquiries.',
+      })
+    }
+    let questions = await prisma.gadQuestion.findFirst({
+      where: { formId: existingForm.id },
+    })
+
+    if (!questions) {
+      questions = await prisma.gadQuestion.create({
+        data: {
+          formId: existingForm.id,
+          userId,
+        },
+      })
+    }
+
     return {
       formId: existingForm.id,
-      status: existingForm.status,
-      totalScore: existingForm.totalScore,
-      severity: existingForm.severity,
-      answers: existingForm.questions,
+      answers: questions,
     }
   }
 
-  // create new form
+  // Create new form
   const createdForm = await prisma.gadForm.create({
     data: { userId },
   })
@@ -48,9 +71,6 @@ export default defineEventHandler(async (event) => {
 
   return {
     formId: createdForm.id,
-    status: createdForm.status,
-    totalScore: null,
-    severity: null,
     answers: createdQuestions,
   }
 })

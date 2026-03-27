@@ -21,7 +21,8 @@
   const difficulty = ref<number | null>(null)
   const TOTAL_ITEMS = 10 // 9 questions + difficulty
   const completedCount = computed(
-    () => responses.value.filter((v) => v >= 0).length + (difficulty.value !== null ? 1 : 0)
+    () =>
+      responses.value.filter((v) => v >= 0).length + (difficulty.value !== null ? 1 : 0)
   )
   const progressPercent = computed(() =>
     TOTAL_ITEMS ? Math.round((completedCount.value / TOTAL_ITEMS) * 100) : 0
@@ -48,45 +49,46 @@
     return 'error'
   }
 
-  function buildPayload() {
-    return {
-      q1: responses.value[0],
-      q2: responses.value[1],
-      q3: responses.value[2],
-      q4: responses.value[3],
-      q5: responses.value[4],
-      q6: responses.value[5],
-      q7: responses.value[6],
-      q8: responses.value[7],
-      q9: responses.value[8],
-      difficulty: difficulty.value,
-    }
-  }
+  async function saveForm() {
+  try {
+    isSaving.value = true
 
-  async function saveAndExit() {
-    if (isSubmitted.value) {
-      await navigateTo('/taskPage')
-      return
-    }
+    await $fetch('/api/phq/save', {
+      method: 'POST',
+      body: {
+        q1: responses.value[0],
+        q2: responses.value[1],
+        q3: responses.value[2],
+        q4: responses.value[3],
+        q5: responses.value[4],
+        q6: responses.value[5],
+        q7: responses.value[6],
+        q8: responses.value[7],
+        q9: responses.value[8],
+        q10: difficulty.value,
+      },
+    })
 
-    try {
-      isSaving.value = true
+    toast.add({
+      title: 'Saved',
+      color: 'success',
+    })
 
-      await $fetch('/api/phq/save', {
-        method: 'POST',
-        body: buildPayload(),
-      })
+    await navigateTo('/taskPage')
+  } catch (error: any) {
+    const description =
+      error?.data?.statusMessage ||
+      error?.data?.message ||
+      error?.statusMessage ||
+      'Unable to save your responses. Please try again.'
 
-      await navigateTo('/taskPage')
-    } catch (error) {
-      toast.add({
-        title: 'Save failed',
-        description: 'Could not save your responses.',
-        color: 'error',
-      })
-    } finally {
-      isSaving.value = false
-    }
+    toast.add({
+      title: 'Save failed',
+      description,
+      color: 'error',
+    })
+  } finally {
+    isSaving.value = false
   }
 
   async function submitForm() {
@@ -134,49 +136,18 @@
     } finally {
       isSaving.value = false
     }
+  } catch (err: any) {
+    loadError.value =
+      err?.data?.statusMessage || err?.message || 'Unable to load form.'
   }
+})
 
-  onMounted(async () => {
-    try {
-      const data = await $fetch('/api/phq/start', {
-        method: 'POST',
-      })
-
-      if (data?.answers) {
-        responses.value = [
-          data.answers.q1 ?? -1,
-          data.answers.q2 ?? -1,
-          data.answers.q3 ?? -1,
-          data.answers.q4 ?? -1,
-          data.answers.q5 ?? -1,
-          data.answers.q6 ?? -1,
-          data.answers.q7 ?? -1,
-          data.answers.q8 ?? -1,
-          data.answers.q9 ?? -1,
-        ]
-
-        difficulty.value =
-          typeof data.answers.difficulty === 'number' ? data.answers.difficulty : null
-      }
-
-      isSubmitted.value = Boolean(data?.submitted)
-    } catch (error) {
-      console.error('Failed to load saved answers')
-    }
-  })
 </script>
 
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
-    <UContainer class="flex max-w-3xl flex-col gap-6 py-10">
-      <div
-        v-if="isSubmitted"
-        class="mt-4 rounded-lg border border-green-200 bg-green-50 p-4 text-green-800"
-      >
-        You have already completed this assessment.
-      </div>
-
-      <div v-if="!isSubmitted" class="mb-2">
+    <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+      <div v-if="canViewScores" class="mb-6">
         <div class="flex items-center justify-between text-sm">
           <span class="font-medium text-gray-700 dark:text-gray-300"
             >{{ progressPercent }}% Complete</span
@@ -192,39 +163,31 @@
           />
         </div>
       </div>
-      <!-- Title -->
-      <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
-        PHQ-9 - Patient Health Questionnaire-9
-      </h1>
 
-      <div
-        v-if="isSubmitted"
-        class="rounded-xl border border-gray-200 bg-white p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-      >
-        <div class="text-center">
-          <div class="mb-4">
-            <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Your Score</span>
-          </div>
-          <div class="mb-4">
-            <span class="text-primary-600 dark:text-primary-400 text-6xl font-bold">
-              {{ totalScore }}
-            </span>
-            <span class="ml-2 text-2xl text-gray-500 dark:text-gray-400">/ 27</span>
-          </div>
-          <div class="mt-6">
-            <UBadge :color="getSeverityColor(severity)" size="lg" variant="subtle" class="mb-2">
-              {{ severity }} Depression
-            </UBadge>
-          </div>
-        </div>
+      <div class="mb-8">
+        <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
+          PHQ-9 - Patient Health Questionnaire-9
+        </h1>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          Over the last 2 weeks, how often have you been bothered by any of the following problems?
+        </p>
       </div>
 
-      <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-        Over the last 2 weeks, how often have you been bothered by any of the following problems?
-      </p>
+      <UAlert
+        v-if="loadError"
+        icon="i-heroicons-exclamation-triangle-20-solid"
+        color="error"
+        variant="subtle"
+        title="PHQ-9: Error loading form"
+        :description="loadError"
+      />
+      <div v-if="loadError" class="mt-4">
+        <NuxtLink to="/taskPage">
+          <UButton variant="outline" size="lg">Back to Tasks</UButton>
+        </NuxtLink>
+      </div>
 
-      <!-- Questions -->
-      <fieldset :disabled="isSubmitted" class="contents">
+      <form v-else class="space-y-8" @submit.prevent="saveForm">
         <div
           v-for="(question, index) in questions"
           :key="index"
@@ -312,42 +275,7 @@
             </label>
           </div>
         </div>
-      </fieldset>
-
-      <div
-        v-if="!isSubmitted && !isComplete"
-        class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800"
-      >
-        Please answer all questions before submitting.
-      </div>
-
-      <!-- Save and Exit Button -->
-      <div class="mt-auto flex justify-end gap-3 pt-6">
-        <UButton
-          v-if="isSubmitted"
-          label="Back to Tasks"
-          variant="outline"
-          size="lg"
-          @click="saveAndExit"
-        />
-        <UButton
-          v-else
-          label="Save and Exit"
-          color="error"
-          variant="soft"
-          size="lg"
-          :loading="isSaving"
-          @click="saveAndExit"
-        />
-        <UButton
-          v-if="!isSubmitted && isComplete"
-          label="Submit"
-          color="primary"
-          size="lg"
-          :loading="isSaving"
-          @click="submitForm"
-        />
-      </div>
-    </UContainer>
+      </form>
+    </main>
   </div>
 </template>

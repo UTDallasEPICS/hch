@@ -12,7 +12,7 @@ type AnswersBody = {
   q7?: number
   q8?: number
   q9?: number
-  difficulty?: number
+  q10?: number
 }
 
 const TOTAL_QUESTIONS = 9
@@ -77,11 +77,9 @@ export default defineEventHandler(async (event) => {
     const dbKey = `q${index}`
     const payloadKey = `q${index}` as keyof AnswersBody
     const value = body?.[payloadKey]
-    const normalized = typeof value === 'number' && value >= 0 ? value : null
-    data[dbKey] = normalized
-    if (typeof normalized === 'number') {
-      totalScore += normalized
-    }
+    const numVal = typeof value === 'number' ? value : null
+    data[dbKey] = numVal
+    if (index <= 9) totalScore += numVal ?? 0
   }
 
   const normalizedDifficulty =

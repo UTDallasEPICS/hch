@@ -18,6 +18,8 @@ export interface SavedFile {
   originalName: string
 }
 
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
+
 export async function saveBase64File(
   base64DataUrl: string,
   originalFilename: string
@@ -41,30 +43,25 @@ export async function saveBase64File(
   await fs.writeFile(filePath, buffer)
 
   return {
-    path: `uploads/audit-docs/${filename}`,
+    path: `${BASE_URL}/uploads/audit-docs/${filename}`,
     originalName: originalFilename,
   }
 }
 
-export async function saveSignaturePng(base64DataUrl: string): Promise<string> {
-  await ensureSignaturesDir()
-
-  const matches = base64DataUrl.match(/^data:image\/png;base64,(.+)$/)
-  if (!matches) {
-    throw new Error('Invalid PNG signature data URL format')
+function extractRelativePath(pathOrUrl: string): string {
+  if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
+    try {
+      const url = new URL(pathOrUrl)
+      return url.pathname.slice(1)
+    } catch {
+      return pathOrUrl
+    }
   }
-
-  const base64Data = matches[1]
-  const buffer = Buffer.from(base64Data, 'base64')
-  const filename = `${randomUUID()}.png`
-  const filePath = join(SIGNATURES_DIR, filename)
-
-  await fs.writeFile(filePath, buffer)
-
-  return `server/uploads/signatures/${filename}`
+  return pathOrUrl.startsWith('/') ? pathOrUrl.slice(1) : pathOrUrl
 }
 
-export async function deleteFile(relativePath: string): Promise<void> {
+export async function deleteFile(pathOrUrl: string): Promise<void> {
+  const relativePath = extractRelativePath(pathOrUrl)
   const fullPath = join(process.cwd(), relativePath)
   try {
     await fs.unlink(fullPath)
@@ -73,12 +70,14 @@ export async function deleteFile(relativePath: string): Promise<void> {
   }
 }
 
-export async function readFile(relativePath: string): Promise<Buffer> {
+export async function readFile(pathOrUrl: string): Promise<Buffer> {
+  const relativePath = extractRelativePath(pathOrUrl)
   const fullPath = join(process.cwd(), relativePath)
   return fs.readFile(fullPath)
 }
 
-export async function fileExists(relativePath: string): Promise<boolean> {
+export async function fileExists(pathOrUrl: string): Promise<boolean> {
+  const relativePath = extractRelativePath(pathOrUrl)
   const fullPath = join(process.cwd(), relativePath)
   try {
     await fs.access(fullPath)

@@ -1,31 +1,11 @@
-import { createError, defineEventHandler, getHeaders, readBody } from 'h3'
+import { createError, defineEventHandler, getHeaders } from 'h3'
 import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
 
-type GadSubmitBody = {
-  answers: {
-    g1?: number | string | null
-    g2?: number | string | null
-    g3?: number | string | null
-    g4?: number | string | null
-    g5?: number | string | null
-    g6?: number | string | null
-    g7?: number | string | null
-    g8?: number | string | null
-  }
-  totalScore: number
-  severity: string
-}
-
-function toNullableInt(value: number | string | null | undefined) {
-  if (value === null || value === undefined || value === '') return null
-  const parsed = typeof value === 'number' ? value : Number.parseInt(value, 10)
-  return Number.isNaN(parsed) ? null : parsed
-}
+const TOTAL = 7
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
-
   for (const [key, value] of Object.entries(getHeaders(event))) {
     if (value !== undefined) requestHeaders.set(key, value)
   }
@@ -37,64 +17,34 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
   }
 
-  const body = await readBody<GadSubmitBody>(event)
-
   const form = await prisma.gadForm.findFirst({
     where: { userId },
     orderBy: { id: 'desc' },
+    include: { questions: true },
   })
 
-  if (!form) {
-    throw createError({ statusCode: 404, statusMessage: 'Form not found' })
+  const q = form?.questions
+  if (!form || !q) {
+    throw createError({ statusCode: 400, statusMessage: 'GAD form not started' })
   }
 
-  if (form.status === 'SUBMITTED') {
+  const answers = [q.g01, q.g02, q.g03, q.g04, q.g05, q.g06, q.g07]
+  const answered = answers.filter((v) => v !== null && v !== undefined).length
+
+  if (answered !== TOTAL) {
     throw createError({
       statusCode: 400,
-      statusMessage: 'Already submitted',
+      statusMessage: 'Please complete all required questions before submitting',
     })
   }
-
-  const questions = await prisma.gadQuestion.findFirst({
-    where: { formId: form.id },
-  })
-
-  if (!questions) {
-    throw createError({ statusCode: 404, statusMessage: 'Questions not found' })
-  }
-
-  const g1 = toNullableInt(body.answers.g1)
-  const g2 = toNullableInt(body.answers.g2)
-  const g3 = toNullableInt(body.answers.g3)
-  const g4 = toNullableInt(body.answers.g4)
-  const g5 = toNullableInt(body.answers.g5)
-  const g6 = toNullableInt(body.answers.g6)
-  const g7 = toNullableInt(body.answers.g7)
-  const g8 = toNullableInt(body.answers.g8)
-
-  await prisma.gadQuestion.update({
-    where: { id: questions.id },
-    data: {
-      g01: g1,
-      g02: g2,
-      g03: g3,
-      g04: g4,
-      g05: g5,
-      g06: g6,
-      g07: g7,
-      g08: g8,
-    },
-  })
 
   await prisma.gadForm.update({
     where: { id: form.id },
     data: {
-      totalScore: body.totalScore,
-      severity: body.severity,
-      status: 'SUBMITTED',
+      status: 'COMPLETE',
       submittedAt: new Date(),
     },
   })
 
-  return { success: true }
+  return { submitted: true }
 })

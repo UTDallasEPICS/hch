@@ -210,3 +210,16 @@
 [data-slot='content'] {
   z-index: 10001;
 }
+
+/* Editor placeholder - only show on first empty line */
+.tiptap p.is-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #9ca3af;
+  pointer-events: none;
+  height: 0;
+}
+
+.tiptap p.is-empty:not(:first-child)::before {
+  content: none;
+}

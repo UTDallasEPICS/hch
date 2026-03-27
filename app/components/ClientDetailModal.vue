@@ -30,6 +30,38 @@
     plan: ClientPlan
   }
 
+  /** Matches `/api/clients/[id]/profile` response shape used in this modal */
+  interface ClientProfile {
+    fname?: string | null
+    lname?: string | null
+    name?: string | null
+    status: ClientStatus
+    therapyWeek: number | null
+    missedSessions: number
+    permissions: {
+      canViewScores: boolean
+      canViewNotes: boolean
+      canViewPlan: boolean
+    }
+    plan?: { content?: string | null } | null
+    tasks: {
+      key: string
+      name: string
+      answered: number
+      total: number
+      submitted: boolean
+      score?: number | null
+      severity?: string | null
+    }[]
+    sessionNotesRequests: {
+      id: string
+      requestKind: string
+      status: string
+      createdAt: string
+    }[]
+    sessionNotes: { id: string; content: string; createdAt: string }[]
+  }
+
   const props = defineProps<{
     clientId: string | null
     open: boolean
@@ -43,18 +75,23 @@
   const profile = ref<ClientProfile | null>(null)
   const pending = ref(false)
   const error = ref<Error | null>(null)
+  let profileLoadSeq = 0
 
   async function loadProfile() {
     if (!props.clientId) return
+    const seq = ++profileLoadSeq
     pending.value = true
     error.value = null
     try {
-      profile.value = await $fetch(`/api/clients/${props.clientId}/profile`)
+      const data = await $fetch<ClientProfile>(`/api/clients/${props.clientId}/profile`)
+      if (seq !== profileLoadSeq) return
+      profile.value = data
     } catch (e) {
+      if (seq !== profileLoadSeq) return
       error.value = e instanceof Error ? e : new Error(String(e))
       profile.value = null
     } finally {
-      pending.value = false
+      if (seq === profileLoadSeq) pending.value = false
     }
   }
 
@@ -77,8 +114,8 @@
   function displayName() {
     const p = profile.value
     if (!p) return ''
-    if (p.lname) return `${p.fname} ${p.lname}`
-    return p.fname || p.name || ''
+    const raw = p.lname ? `${p.fname} ${p.lname}` : p.fname || p.name || ''
+    return capitalizeName(String(raw))
   }
 
   function statusLabel(status: ClientStatus): string {
@@ -280,6 +317,11 @@
     }
   }
 
+  function closeJustificationModal() {
+    justificationModalOpen.value = false
+    pendingAbsenceSave.value = false
+  }
+
   function onJustificationSubmit(payload: {
     reasoning?: string
     documentation?: File
@@ -386,7 +428,78 @@
           </div>
         </div>
 
-        <!-- Tasks -->
+        <!-- Permissions -->
+        <section>
+          <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
+            <UIcon name="i-heroicons-shield-check" class="h-4 w-4" />
+            Client Permissions
+          </h3>
+          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+            Control what this client can see on their dashboard.
+          </p>
+          <div class="flex flex-wrap gap-4">
+            <label class="flex cursor-pointer items-center gap-2">
+              <UCheckbox v-model="perms.canViewScores" />
+              <span class="text-sm">View their scores</span>
+            </label>
+
+            <label class="flex cursor-pointer items-center gap-2">
+              <UCheckbox v-model="perms.canViewPlan" />
+              <span class="text-sm">View their plan</span>
+            </label>
+          </div>
+          <UButton
+            size="sm"
+            color="primary"
+            variant="soft"
+            class="mt-2"
+            :loading="permsSaving"
+            @click="savePermissions"
+          >
+            Save Permissions
+          </UButton>
+          <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+            Clients can also request notes via the dashboard; those requests are reviewed on the
+            <NuxtLink
+              to="/clients/session-notes-requests"
+              class="text-primary-600 dark:text-primary-400 font-medium underline"
+              >session note requests</NuxtLink
+            >
+            page.
+          </p>
+        </section>
+
+        <section v-if="profile.sessionNotesRequests?.length">
+          <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
+            <UIcon name="i-heroicons-clipboard-document-list" class="h-4 w-4" />
+            Session note request log
+          </h3>
+          <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+            <li
+              v-for="req in profile.sessionNotesRequests"
+              :key="req.id"
+              class="flex flex-wrap gap-2"
+            >
+              <span>{{ new Date(req.createdAt).toLocaleString() }}</span>
+              <span>{{ req.requestKind === 'FULL' ? 'Full' : 'Summary' }}</span>
+              <UBadge
+                :color="
+                  req.status === 'APPROVED'
+                    ? 'success'
+                    : req.status === 'REJECTED'
+                      ? 'error'
+                      : 'warning'
+                "
+                variant="subtle"
+                size="xs"
+              >
+                {{ req.status }}
+              </UBadge>
+            </li>
+          </ul>
+        </section>
+
+        <!-- Client Tasks -->
         <section>
           <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
             <UIcon name="i-heroicons-clipboard-document-list" class="h-4 w-4" />
@@ -564,9 +677,24 @@
               class="rounded border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800"
             >
               <p class="text-sm whitespace-pre-wrap">{{ note.content }}</p>
-              <p class="mt-1 text-xs text-gray-500">
-                {{ new Date(note.createdAt).toLocaleString() }}
-              </p>
+              <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <p class="text-xs text-gray-500">{{ new Date(note.createdAt).toLocaleString() }}</p>
+                <div class="flex flex-wrap items-center gap-3">
+                  <NuxtLink
+                    :to="`/clients/${clientId}/notes/${note.id}`"
+                    target="_blank"
+                    class="text-primary-600 hover:text-primary-700 dark:text-primary-400 text-xs font-medium"
+                  >
+                    Open in new tab
+                  </NuxtLink>
+                  <NuxtLink
+                    :to="`/clients/${clientId}/notes-editor?focus=${encodeURIComponent(note.id)}`"
+                    class="text-primary-600 hover:text-primary-700 dark:text-primary-400 text-xs font-medium"
+                  >
+                    Edit in editor
+                  </NuxtLink>
+                </div>
+              </div>
             </div>
           </div>
           <p v-else class="text-sm text-gray-500">No notes yet.</p>
@@ -587,22 +715,43 @@
           </template>
           <template v-else>
             <div
-              v-if="profile.plan?.content"
-              class="rounded border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800"
-            >
-              <p class="text-sm whitespace-pre-wrap">{{ profile.plan.content }}</p>
-              <p class="mt-1 text-xs text-gray-500">
-                Updated {{ new Date(profile.plan.updatedAt).toLocaleString() }}
-              </p>
-            </div>
-            <p v-else class="mb-2 text-sm text-gray-500">No plan yet.</p>
-            <UButton size="sm" variant="outline" @click="planEditing = true"
-              >{{ profile.plan ? 'Edit' : 'Create' }} Plan</UButton
-            >
-          </template>
+              v-if="planContent"
+              class="prose prose-sm dark:prose-invert line-clamp-3 max-w-none text-sm text-gray-700 dark:text-gray-300"
+              v-html="parseMarkdown(planContent)"
+            />
+            <p v-else class="text-sm text-gray-500 italic dark:text-gray-400">No plan yet.</p>
+          </div>
+          <NuxtLink
+            :to="`/clients/plan/${clientId}`"
+            class="text-primary-600 hover:text-primary-700 dark:text-primary-400 mt-2 inline-flex items-center gap-1.5 text-sm font-medium"
+          >
+            Open plan page
+            <UIcon name="i-heroicons-arrow-right" class="h-4 w-4" />
+          </NuxtLink>
         </section>
       </div>
     </template>
+
+    <Teleport to="body">
+      <ChangeWithJustificationModal
+        :open="justificationModalOpen"
+        title="Justify change"
+        description="This change requires a reason or supporting documentation, and your signature."
+        entity-type="absence"
+        submit-label="Confirm & save absences"
+        :loading="absencesSaving"
+        @close="closeJustificationModal"
+        @submit="onJustificationSubmit"
+      >
+        <template v-if="pendingAbsenceSave">
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            Changing absences from <strong>{{ profile?.missedSessions ?? 0 }}</strong> to
+            <strong>{{ absencesValue }}</strong
+            >.
+          </p>
+        </template>
+      </ChangeWithJustificationModal>
+    </Teleport>
   </UModal>
 
   <Teleport to="body">

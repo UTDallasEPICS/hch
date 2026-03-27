@@ -45,8 +45,8 @@ export default defineEventHandler(async (event) => {
   return {
     answered,
     total: TOTAL,
-    totalScore: form?.totalScore ?? null,
-    severity: form?.severity ?? null,
-    status: form?.status ?? null,
+    totalScore: canViewScores ? (form?.totalScore ?? null) : null,
+    severity: canViewScores ? (form?.severity ?? null) : null,
+    submitted: form.status === 'COMPLETE',
   }
 })

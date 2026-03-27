@@ -49,7 +49,7 @@ export default defineEventHandler(async (event) => {
     reasoning: audit.reasoning,
     hasDocumentation: !!audit.documentationPath,
     documentationName: audit.documentationName,
-    signaturePath: audit.signaturePath,
+    documentationPath: audit.documentationPath,
     signedAt: audit.signedAt.toISOString(),
     signedBy: audit.signedBy,
   }))
