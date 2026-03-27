@@ -126,7 +126,7 @@ onMounted(async () => {
             >{{ progressPercent }}% Complete</span
           >
           <span class="text-gray-500 dark:text-gray-400"
-            >{{ completedCount }} of {{ TOTAL_ITEMS }} answered</span
+            >{{ completedCount }} of {{ TOTAL_QUESTIONS }} answered</span
           >
         </div>
         <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">

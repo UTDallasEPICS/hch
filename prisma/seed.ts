@@ -89,15 +89,17 @@ async function main() {
           ...(names ? { name: joinName(names.fname, names.lname) } : {}),
         },
       })
-      console.log('Removed old ACE questions from DB (now in front-end)')
+      console.log(`Set ${email} as ADMIN${names ? ` (${names.fname} ${names.lname})` : ''}`)
     }
-  } else {
-    await prisma.form.create({
+  }
+  const clientUser = await prisma.user.findUnique({ where: { email: clientEmail } })
+  if (clientUser) {
+    const names = userNames[clientEmail]
+    await prisma.user.update({
+      where: { id: clientUser.id },
       data: {
-        title: 'ACE Questionnaire',
-        description:
-          'Adverse Childhood Experiences (ACE) Questionnaire. Answer Yes or No for each question.',
-        slug: 'ace-form',
+        role: 'CLIENT',
+        ...(names ? { name: joinName(names.fname, names.lname) } : {}),
       },
     })
     console.log(`Set ${clientEmail} as CLIENT${names ? ` (${names.fname} ${names.lname})` : ''}`)

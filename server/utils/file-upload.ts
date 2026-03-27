@@ -3,14 +3,9 @@ import { join } from 'path'
 import { randomUUID } from 'crypto'
 
 const UPLOADS_DIR = join(process.cwd(), 'uploads', 'audit-docs')
-const SIGNATURES_DIR = join(process.cwd(), 'server', 'uploads', 'signatures')
 
 export async function ensureUploadsDir(): Promise<void> {
   await fs.mkdir(UPLOADS_DIR, { recursive: true })
-}
-
-export async function ensureSignaturesDir(): Promise<void> {
-  await fs.mkdir(SIGNATURES_DIR, { recursive: true })
 }
 
 export interface SavedFile {
@@ -105,7 +100,6 @@ export function getMimeType(filename: string): string {
   const ext = filename.toLowerCase()
   if (ext.endsWith('.pdf')) return 'application/pdf'
   if (ext.endsWith('.doc')) return 'application/msword'
-  if (ext.endsWith('.docx'))
-    return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  if (ext.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   return 'application/octet-stream'
 }

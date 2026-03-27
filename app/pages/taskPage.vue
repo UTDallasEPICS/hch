@@ -1,7 +1,12 @@
 <script setup lang="ts">
-  definePageMeta({ middleware: 'non-admin' })
+  import { useFormStore } from '~/stores/formStore'
 
-  type ClientStatus = 'Prospective' | 'Waitlist' | 'Active' | 'Archived'
+  const { data: adminData } = await useFetch<{ isAdmin: boolean }>('/api/user/is-admin', {
+    getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
+  })
+  if (adminData.value?.isAdmin) {
+    await navigateTo('/', { replace: true })
+  }
 
   const { data: statusData } = await useFetch<{
     status: string | null
@@ -140,7 +145,7 @@
   const aceTotal = ref(0)
   const aceSubmitted = ref(false)
   const gadAnswered = ref(0)
-  const gadTotal = ref(8)
+  const gadTotal = ref(7)
   const gadScore = ref<number | null>(null)
   const gadSeverity = ref<string | null>(null)
   const gadSubmitted = ref(false)
@@ -148,7 +153,7 @@
   const phqTotal = ref(10)
   const phqSubmitted = ref(false)
   const pclAnswered = ref(0)
-  const pclTotal = ref(21)
+  const pclTotal = ref(20)
   const pclSubmitted = ref(false)
   const submittingForm = ref<string | null>(null)
 
@@ -161,16 +166,30 @@
   const aceTarget = computed(() =>
     aceSubmitted.value ? '/forms/ace-form-results' : '/forms/ace-form'
   )
-  const aceProgressLabel = computed(() =>
-    aceSubmitted.value ? 'Submitted' : `${aceAnswered.value}/${aceTotal.value}`
-  )
-  const showWaitlistOnlyForms = computed(() => clientStatus.value === 'Waitlist')
-  const canAccessPhysicianStatement = computed(
-    () => clientStatus.value === 'Prospective' || clientStatus.value === 'Waitlist'
-  )
-  const canAccessRoiForm = computed(
-    () => clientStatus.value === 'Prospective' || clientStatus.value === 'Waitlist'
-  )
+
+  const applicationPhoneValid = computed(() => {
+    const digits = (form.value?.q5 || '').replace(/\D/g, '')
+    return digits.length === 10
+  })
+  const showApplicationSubmit = computed(() => isApplicationComplete.value && !submitted.value)
+  const showAceSubmit = computed(() => isAceComplete.value && !aceSubmitted.value)
+  const showGadSubmit = computed(() => isGadComplete.value && !gadSubmitted.value)
+  const showPhqSubmit = computed(() => isPhqComplete.value && !phqSubmitted.value)
+  const showPclSubmit = computed(() => isPclComplete.value && !pclSubmitted.value)
+
+  const isPreWaitlist = computed(() => userStatus.value === 'INCOMPLETE')
+  const isWaitlist = computed(() => userStatus.value === 'WAITLIST')
+  const isActive = computed(() => userStatus.value === 'ACTIVE')
+
+  const statusLabel = computed(() => {
+    const labels: Record<string, string> = {
+      INCOMPLETE: 'Pre-waitlist',
+      WAITLIST: 'Waitlist',
+      ACTIVE: 'Active',
+      ARCHIVED: 'Archived',
+    }
+    return labels[userStatus.value] ?? userStatus.value
+  })
 
   async function loadProgress() {
     const [appResult, aceProgressResult, gadResult, phqResult, pclResult] =
@@ -198,55 +217,6 @@
       submitted.value = Boolean(appResult.value.submitted)
     }
 
-    if (canAccessPhysicianStatement.value) {
-      const [physicianResult, roiResult] = await Promise.allSettled([
-        $fetch<{ submitted: boolean }>('/api/physician-statement/progress'),
-        $fetch<{ submitted: boolean }>('/api/release-of-information/progress'),
-      ])
-      if (physicianResult?.status === 'fulfilled') {
-        physicianSubmitted.value = Boolean(physicianResult.value.submitted)
-      }
-      if (roiResult?.status === 'fulfilled') {
-        roiSubmitted.value = Boolean(roiResult.value.submitted)
-      }
-    } else {
-      physicianSubmitted.value = false
-      roiSubmitted.value = false
-    }
-
-    if (!showWaitlistOnlyForms.value) {
-      aceAnswered.value = 0
-      aceTotal.value = 0
-      aceSubmitted.value = false
-      gadAnswered.value = 0
-      gadTotal.value = 8
-      gadScore.value = null
-      gadSeverity.value = null
-      gadSubmitted.value = false
-      phqAnswered.value = 0
-      phqTotal.value = 10
-      phqSubmitted.value = false
-      pclAnswered.value = 0
-      pclTotal.value = 21
-      pclSubmitted.value = false
-      return
-    }
-
-    const [aceProgressResult, gadResult, phqResult, pclResult] = await Promise.allSettled([
-      $fetch<{ answered: number; total: number; submitted?: boolean }>(
-        '/api/forms/ace-form/progress'
-      ),
-      $fetch<{
-        answered: number
-        total: number
-        totalScore: number | null
-        severity: string | null
-        status?: string | null
-      }>('/api/gad/progress'),
-      $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/phq/progress'),
-      $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/pcl/progress'),
-    ])
-
     if (aceProgressResult.status === 'fulfilled') {
       aceAnswered.value = aceProgressResult.value.answered
       aceTotal.value = aceProgressResult.value.total
@@ -258,8 +228,7 @@
       gadTotal.value = gadResult.value.total
       gadScore.value = gadResult.value.totalScore
       gadSeverity.value = gadResult.value.severity
-      gadSubmitted.value =
-        gadResult.value.status === 'SUBMITTED' || gadResult.value.status === 'COMPLETE'
+      gadSubmitted.value = Boolean(gadResult.value.submitted)
     }
 
     if (phqResult.status === 'fulfilled') {
@@ -275,6 +244,162 @@
     }
   }
 
+  async function submitApplication() {
+    if (!showApplicationSubmit.value) return
+    if (!applicationPhoneValid.value) {
+      toast.add({
+        title: 'Invalid Phone Number',
+        description: 'Phone Number must be exactly 10 digits before submitting.',
+        color: 'error',
+      })
+      return
+    }
+    try {
+      submittingForm.value = 'application'
+      await $fetch('/api/application/submit', { method: 'POST' })
+      submitted.value = true
+      toast.add({
+        title: 'Application Submitted',
+        description: 'Your application form has been submitted successfully.',
+        color: 'success',
+      })
+    } catch (error: any) {
+      toast.add({
+        title: 'Submission failed',
+        description:
+          error?.data?.statusMessage ||
+          error?.statusMessage ||
+          'Unable to submit. Please try again.',
+        color: 'error',
+      })
+      await loadProgress()
+    } finally {
+      submittingForm.value = null
+    }
+  }
+
+  async function submitAce() {
+    if (!showAceSubmit.value) return
+    try {
+      submittingForm.value = 'ace'
+      await $fetch('/api/forms/ace-form/submit', { method: 'POST' })
+      aceSubmitted.value = true
+      toast.add({
+        title: 'ACE Form Submitted',
+        description: 'Your ACE form has been submitted successfully.',
+        color: 'success',
+      })
+    } catch (error: any) {
+      toast.add({
+        title: 'Submission failed',
+        description:
+          error?.data?.statusMessage ||
+          error?.statusMessage ||
+          'Unable to submit. Please try again.',
+        color: 'error',
+      })
+      await loadProgress()
+    } finally {
+      submittingForm.value = null
+    }
+  }
+
+  async function submitGad() {
+    if (!showGadSubmit.value) return
+    try {
+      submittingForm.value = 'gad'
+      await $fetch('/api/gad/submit', { method: 'POST' })
+      gadSubmitted.value = true
+      toast.add({
+        title: 'GAD-7 Form Submitted',
+        description: 'Your GAD-7 form has been submitted successfully.',
+        color: 'success',
+      })
+    } catch (error: any) {
+      toast.add({
+        title: 'Submission failed',
+        description:
+          error?.data?.statusMessage ||
+          error?.statusMessage ||
+          'Unable to submit. Please try again.',
+        color: 'error',
+      })
+      await loadProgress()
+    } finally {
+      submittingForm.value = null
+    }
+  }
+
+  async function submitPhq() {
+    if (!showPhqSubmit.value) return
+    try {
+      submittingForm.value = 'phq'
+      await $fetch('/api/phq/submit', { method: 'POST' })
+      phqSubmitted.value = true
+      toast.add({
+        title: 'PHQ-9 Form Submitted',
+        description: 'Your PHQ-9 form has been submitted successfully.',
+        color: 'success',
+      })
+    } catch (error: any) {
+      toast.add({
+        title: 'Submission failed',
+        description:
+          error?.data?.statusMessage ||
+          error?.statusMessage ||
+          'Unable to submit. Please try again.',
+        color: 'error',
+      })
+      await loadProgress()
+    } finally {
+      submittingForm.value = null
+    }
+  }
+
+  async function submitPcl() {
+    if (!showPclSubmit.value) return
+    try {
+      submittingForm.value = 'pcl'
+      await $fetch('/api/pcl/submit', { method: 'POST' })
+      pclSubmitted.value = true
+      toast.add({
+        title: 'PCL-5 Form Submitted',
+        description: 'Your PCL-5 form has been submitted successfully.',
+        color: 'success',
+      })
+    } catch (error: any) {
+      toast.add({
+        title: 'Submission failed',
+        description:
+          error?.data?.statusMessage ||
+          error?.statusMessage ||
+          'Unable to submit. Please try again.',
+        color: 'error',
+      })
+      await loadProgress()
+    } finally {
+      submittingForm.value = null
+    }
+  }
+
+  function handlePhysicianStatement() {
+    toast.add({
+      title: 'Physician Statement Form',
+      description:
+        'Please contact us to receive the Physician Statement Form, or download it from your welcome email.',
+      color: 'primary',
+    })
+  }
+
+  function handleReleaseOfInfo() {
+    toast.add({
+      title: 'Release of Information Authorization Form',
+      description:
+        'Please contact us to receive the Release of Information Authorization Form, or download it from your welcome email.',
+      color: 'primary',
+    })
+  }
+
   onMounted(async () => {
     try {
       await loadProgress()
@@ -286,18 +411,15 @@
       aceTotal.value = 0
       aceSubmitted.value = false
       gadAnswered.value = 0
-      gadTotal.value = 8
+      gadTotal.value = 7
       gadScore.value = null
       gadSeverity.value = null
-      gadSubmitted.value = false
       phqAnswered.value = 0
       phqTotal.value = 10
       phqSubmitted.value = false
       pclAnswered.value = 0
-      pclTotal.value = 21
+      pclTotal.value = 20
       pclSubmitted.value = false
-      physicianSubmitted.value = false
-      roiSubmitted.value = false
     }
   })
 </script>

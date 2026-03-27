@@ -1,8 +1,10 @@
 import { createError, defineEventHandler, getHeaders } from 'h3'
 import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
+import { isAdmin } from '../../utils/is-admin'
+import { getClientPermissions } from '../../utils/client-permissions'
 
-const TOTAL = 8
+const TOTAL = 7
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
@@ -18,6 +20,14 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401 })
   }
 
+  const currentUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, email: true },
+  })
+  const canViewScores =
+    isAdmin(currentUser?.role ?? null, currentUser?.email ?? null) ||
+    (await getClientPermissions(userId)).canViewScores
+
   const form = await prisma.gadForm.findFirst({
     where: { userId },
     orderBy: { id: 'desc' },
@@ -32,14 +42,13 @@ export default defineEventHandler(async (event) => {
     return {
       answered: 0,
       total: TOTAL,
-      totalScore: form?.totalScore ?? null,
-      severity: form?.severity ?? null,
+      totalScore: canViewScores ? (form?.totalScore ?? null) : null,
+      severity: canViewScores ? (form?.severity ?? null) : null,
       submitted: false,
     }
   }
 
-  const answers = [q.g01, q.g02, q.g03, q.g04, q.g05, q.g06, q.g07, q.g08]
-
+  const answers = [q.g01, q.g02, q.g03, q.g04, q.g05, q.g06, q.g07]
   const answered = answers.filter((v) => v !== null && v !== undefined).length
 
   return {

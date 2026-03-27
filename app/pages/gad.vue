@@ -1,8 +1,13 @@
 <script setup lang="ts">
-  definePageMeta({ middleware: 'waitlist-forms' })
-
   const toast = useToast()
   const isSaving = ref(false)
+
+  const { data: permissions } = await useFetch<{
+    canViewScores: boolean
+    canViewNotes: boolean
+    canViewPlan: boolean
+  }>('/api/user/permissions')
+  const canViewScores = computed(() => permissions.value?.canViewScores ?? false)
 
   const form = reactive({
     g1: null as number | null,
@@ -61,17 +66,6 @@
     return 'Severe'
   })
 
-  const resultScore = computed(() => submittedScore.value ?? totalScore.value)
-  const resultSeverity = computed(() => submittedSeverity.value ?? severity.value)
-
-  function getSeverityColor(level: string | null) {
-    if (level === 'Minimal') return 'success'
-    if (level === 'Mild') return 'warning'
-    if (level === 'Moderate') return 'warning'
-    if (level === 'Severe') return 'error'
-    return 'neutral'
-  }
-
   function applySavedAnswers(a: any) {
     if (!a) return
     form.g1 = a.g01
@@ -84,13 +78,7 @@
     form.g8 = a.g08
   }
 
-  function buildPayload() {
-    return {
-      answers: form,
-      totalScore: totalScore.value,
-      severity: severity.value,
-    }
-  }
+  const loadError = ref<string | null>(null)
 
   onMounted(async () => {
     try {
@@ -190,35 +178,99 @@
         </NuxtLink>
       </div>
 
-        <!-- Submit -->
+      <form v-else class="space-y-8" @submit.prevent="saveAndExit">
+        <!-- Questions - each in its own card -->
         <div
-          v-if="!isSubmitted && !isComplete"
-          class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800"
+          v-for="(questionKey, index) in questionKeys"
+          :key="questionKey"
+          class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
         >
-          Please answer all questions before submitting.
+          <p class="font-medium text-gray-900 dark:text-white mb-3">
+            {{ index + 1 }}.
+            {{
+              [
+                'Feeling nervous, anxious, or on edge',
+                'Not being able to stop or control worrying',
+                'Worrying too much about different things',
+                'Trouble relaxing',
+                'Being so restless that it is hard to sit still',
+                'Becoming easily annoyed or irritable',
+                'Feeling afraid, as if something awful might happen',
+              ][index]
+            }}
+          </p>
+          <div class="flex justify-between mt-4">
+            <label
+              v-for="opt in options"
+              :key="opt.value"
+              class="flex flex-col items-center gap-1"
+            >
+              <span class="text-sm text-gray-700 dark:text-gray-300">{{ opt.label }}</span>
+              <input
+                type="radio"
+                :value="opt.value"
+                v-model="form[questionKey as keyof typeof form]"
+                class="accent-primary-500 mt-1"
+              />
+            </label>
+          </div>
         </div>
-        <div class="mt-8 flex justify-end gap-3">
+
+        <!-- Difficulty Question -->
+        <div
+          class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+        >
+          <p class="font-medium text-gray-900 dark:text-white mb-3">
+            If you checked any problems, how difficult have they made it for you?
+          </p>
+          <div class="flex justify-between mt-4">
+            <label
+              v-for="opt in difficultyOptions"
+              :key="opt.value"
+              class="flex flex-col items-center gap-1"
+            >
+              <span class="text-sm text-gray-700 dark:text-gray-300">{{ opt.label }}</span>
+              <input
+                type="radio"
+                :value="opt.value"
+                v-model="form.g8"
+                class="accent-primary-500 mt-1"
+              />
+            </label>
+          </div>
+        </div>
+
+        <!-- Total Score or Permission Message -->
+        <div v-if="canViewScores" class="text-lg font-semibold text-gray-900 dark:text-white">
+          Total Score: {{ totalScore }}
+          <span class="ml-2 text-sm font-normal text-gray-600 dark:text-gray-400"
+            >({{ severity }})</span
+          >
+        </div>
+        <UAlert
+          v-else
+          icon="i-heroicons-exclamation-triangle-20-solid"
+          color="error"
+          variant="subtle"
+          title="GAD-7: You do not have permission to view scores"
+          description="Your administrator has not enabled this feature for your account. Please contact your clinician for any further inquiries."
+        />
+
+        <div class="flex justify-end gap-3">
           <UButton
-            v-if="isSubmitted"
-            label="Back to Tasks"
+            type="button"
+            label="Clear Form"
             variant="outline"
+            color="neutral"
             size="lg"
-            @click="saveAndExit"
+            :disabled="isSaving"
+            @click="clearForm"
           />
           <UButton
-            v-else
+            type="submit"
             label="Save and Exit"
             color="error"
             variant="soft"
-            size="lg"
-            :loading="isSaving"
-            @click="saveAndExit"
-          />
-          <UButton
-            v-if="!isSubmitted && isComplete"
-            type="submit"
-            label="Submit"
-            color="primary"
             size="lg"
             :loading="isSaving"
           />

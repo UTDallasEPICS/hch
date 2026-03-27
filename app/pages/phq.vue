@@ -1,9 +1,27 @@
 <script setup lang="ts">
-  definePageMeta({ middleware: 'waitlist-forms' })
-
   const toast = useToast()
   const isSaving = ref(false)
-  const isSubmitted = ref(false)
+
+  const { data: permissions } = await useFetch<{
+    canViewScores: boolean
+    canViewNotes: boolean
+    canViewPlan: boolean
+  }>('/api/user/permissions')
+  const canViewScores = computed(() => permissions.value?.canViewScores ?? false)
+
+  const options = [
+    { label: 'Not at all', value: 0 },
+    { label: 'Several days', value: 1 },
+    { label: 'More than half the days', value: 2 },
+    { label: 'Nearly every day', value: 3 },
+  ]
+
+  const difficultyOptions = [
+    { label: 'Not difficult at all', value: 0 },
+    { label: 'Somewhat difficult', value: 1 },
+    { label: 'Very difficult', value: 2 },
+    { label: 'Extremely difficult', value: 3 },
+  ]
 
   const questions = [
     'Little interest or pleasure in doing things',
@@ -30,23 +48,10 @@
   const totalScore = computed(() =>
     responses.value.reduce((sum, val) => sum + (val >= 0 ? val : 0), 0)
   )
-  const isComplete = computed(() => completedCount.value === TOTAL_ITEMS)
 
-  const severity = computed(() => {
-    const s = totalScore.value
-    if (s <= 4) return 'Minimal'
-    if (s <= 9) return 'Mild'
-    if (s <= 14) return 'Moderate'
-    if (s <= 19) return 'Moderately Severe'
-    return 'Severe'
-  })
-
-  function getSeverityColor(level: string) {
-    if (level === 'Minimal') return 'success'
-    if (level === 'Mild') return 'warning'
-    if (level === 'Moderate') return 'warning'
-    if (level === 'Moderately Severe') return 'error'
-    return 'error'
+  function clearForm() {
+    responses.value = Array(questions.length).fill(-1)
+    difficulty.value = null
   }
 
   async function saveForm() {
@@ -90,51 +95,29 @@
   } finally {
     isSaving.value = false
   }
+}
 
-  async function submitForm() {
-    if (isSubmitted.value) {
-      await navigateTo('/taskPage')
-      return
-    }
+const loadError = ref<string | null>(null)
 
-    if (!isComplete.value) {
-      toast.add({
-        title: 'Incomplete',
-        description: 'Please answer all questions before submitting.',
-        color: 'error',
-      })
-      return
-    }
+onMounted(async () => {
+  try {
+    const data = await $fetch('/api/phq/start', {
+      method: 'POST',
+    })
 
-    try {
-      isSaving.value = true
-
-      await $fetch('/api/phq/save', {
-        method: 'POST',
-        body: buildPayload(),
-      })
-
-      await $fetch('/api/phq/submit', { method: 'POST' })
-      isSubmitted.value = true
-      toast.add({
-        title: 'Assessment completed',
-        color: 'success',
-      })
-      await navigateTo('/taskPage')
-    } catch (error: any) {
-      const isSubmitError =
-        error?.data?.statusMessage === 'Please complete all required questions before submitting'
-
-      toast.add({
-        title: isSubmitError ? 'Incomplete' : 'Submission failed',
-        description:
-          error?.data?.statusMessage ||
-          error?.statusMessage ||
-          'Could not save or submit your responses.',
-        color: 'error',
-      })
-    } finally {
-      isSaving.value = false
+    if (data?.answers) {
+      responses.value = [
+        data.answers.q1 ?? -1,
+        data.answers.q2 ?? -1,
+        data.answers.q3 ?? -1,
+        data.answers.q4 ?? -1,
+        data.answers.q5 ?? -1,
+        data.answers.q6 ?? -1,
+        data.answers.q7 ?? -1,
+        data.answers.q8 ?? -1,
+        data.answers.q9 ?? -1,
+      ]
+      difficulty.value = (data.answers.q10 ?? null) as number | null
     }
   } catch (err: any) {
     loadError.value =
@@ -193,87 +176,81 @@
           :key="index"
           class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
         >
-          <p class="mb-3 font-medium text-gray-900 dark:text-white">
+          <p class="font-medium text-gray-900 dark:text-white mb-3">
             {{ index + 1 }}. {{ question }}
           </p>
-
-          <!-- Answer options -->
-          <div class="mt-4 space-y-3">
-            <label class="flex items-center gap-3">
+          <div class="flex justify-between mt-4">
+            <label
+              v-for="opt in options"
+              :key="opt.value"
+              class="flex flex-col items-center gap-1"
+            >
+              <span class="text-sm text-gray-700 dark:text-gray-300">{{ opt.label }}</span>
               <input
                 type="radio"
                 :name="'q' + index"
-                :value="0"
+                :value="opt.value"
                 v-model="responses[index]"
-                class="accent-primary-500"
+                class="accent-primary-500 mt-1"
               />
-              <span class="text-sm text-gray-700 dark:text-gray-300"> Not at all </span>
-            </label>
-
-            <label class="flex items-center gap-3">
-              <input
-                type="radio"
-                :name="'q' + index"
-                :value="1"
-                v-model="responses[index]"
-                class="accent-primary-500"
-              />
-              <span class="text-sm text-gray-700 dark:text-gray-300"> Several days </span>
-            </label>
-
-            <label class="flex items-center gap-3">
-              <input
-                type="radio"
-                :name="'q' + index"
-                :value="2"
-                v-model="responses[index]"
-                class="accent-primary-500"
-              />
-              <span class="text-sm text-gray-700 dark:text-gray-300"> More than half </span>
-            </label>
-
-            <label class="flex items-center gap-3">
-              <input
-                type="radio"
-                :name="'q' + index"
-                :value="3"
-                v-model="responses[index]"
-                class="accent-primary-500"
-              />
-              <span class="text-sm text-gray-700 dark:text-gray-300"> Nearly every day </span>
             </label>
           </div>
         </div>
 
-        <!-- Difficulty Question -->
         <div
-          class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+          class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
         >
-          <p class="mb-3 font-medium text-gray-900 dark:text-white">
-            If you checked off any problems, how difficult have these problems made it for you to do
-            your work, take care of things at home, or get along with other people?
+          <p class="font-medium text-gray-900 dark:text-white mb-3">
+            If you checked off any problems, how difficult have these problems made it for you
+            to do your work, take care of things at home, or get along with other people?
           </p>
-          <div class="mt-4 space-y-3">
-            <label class="flex items-center gap-3">
-              <input type="radio" :value="0" v-model="difficulty" class="accent-primary-500" />
-              <span class="text-sm text-gray-700 dark:text-gray-300"> Not difficult at all </span>
-            </label>
-
-            <label class="flex items-center gap-3">
-              <input type="radio" :value="1" v-model="difficulty" class="accent-primary-500" />
-              <span class="text-sm text-gray-700 dark:text-gray-300"> Somewhat difficult </span>
-            </label>
-
-            <label class="flex items-center gap-3">
-              <input type="radio" :value="2" v-model="difficulty" class="accent-primary-500" />
-              <span class="text-sm text-gray-700 dark:text-gray-300"> Very difficult </span>
-            </label>
-
-            <label class="flex items-center gap-3">
-              <input type="radio" :value="3" v-model="difficulty" class="accent-primary-500" />
-              <span class="text-sm text-gray-700 dark:text-gray-300"> Extremely difficult </span>
+          <div class="flex justify-between mt-4">
+            <label
+              v-for="opt in difficultyOptions"
+              :key="opt.value"
+              class="flex flex-col items-center gap-1"
+            >
+              <span class="text-sm text-gray-700 dark:text-gray-300">{{ opt.label }}</span>
+              <input
+                type="radio"
+                :value="opt.value"
+                v-model="difficulty"
+                class="accent-primary-500 mt-1"
+              />
             </label>
           </div>
+        </div>
+
+        <div v-if="canViewScores" class="text-lg font-semibold text-gray-900 dark:text-white">
+          Total Score: {{ totalScore }}
+        </div>
+        <UAlert
+          v-else
+          icon="i-heroicons-exclamation-triangle-20-solid"
+          color="error"
+          variant="subtle"
+          title="PHQ-9: You do not have permission to view scores"
+          description="Your administrator has not enabled this feature for your account. Please contact your clinician for any further inquiries."
+        />
+
+        <div class="flex justify-end gap-3">
+          <UButton
+            type="button"
+            label="Clear Form"
+            variant="outline"
+            color="neutral"
+            size="lg"
+            :disabled="isSaving"
+            @click="clearForm"
+          />
+          <UButton
+            type="submit"
+            label="Save and Exit"
+            color="error"
+            variant="soft"
+            size="lg"
+            :loading="isSaving"
+          />
         </div>
       </form>
     </main>

@@ -13,10 +13,10 @@ enum Role {
 }
 
 enum ClientStatus {
-  Prospective
-  Waitlist
-  Active
-  Archived
+  INCOMPLETE
+  WAITLIST
+  ACTIVE
+  ARCHIVED
 }
 
 enum SessionNotesRequestKind {
@@ -31,12 +31,12 @@ enum SessionNotesRequestStatus {
 }
 
 model Client {
-  id             String            @id @default(cuid())
-  userId         String            @unique
-  status         ClientStatus      @default(Prospective)
-  therapyWeek    Int? // 0-26, max weeks of therapy
-  missedSessions Int               @default(0) // count of missed therapy sessions
-  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  userId         String       @unique
+  status         ClientStatus @default(INCOMPLETE)
+  therapyWeek    Int?         // 0-26, max weeks of therapy
+  missedSessions Int          @default(0) // count of missed therapy sessions
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   permissions    ClientPermission?
   sessionNotes   SessionNote[]
   plan           ClientPlan?
@@ -48,12 +48,12 @@ model Client {
 
 // Controls what clients can see on their dashboard
 model ClientPermission {
-  id            String  @id @default(cuid())
-  clientId      String  @unique
-  canViewScores Boolean @default(false)
-  canViewNotes  Boolean @default(false)
-  canViewPlan   Boolean @default(false)
-  client        Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id              String   @id @default(cuid())
+  clientId        String   @unique
+  canViewScores   Boolean  @default(false)
+  canViewNotes    Boolean  @default(false)
+  canViewPlan     Boolean  @default(false)
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@map("client_permission")
 }
@@ -132,19 +132,18 @@ model ClientPlan {
 
 // Audit trail for changes requiring reasoning + documentation + admin signature
 model ChangeAudit {
-  id                String   @id @default(cuid())
-  entityType        String // 'ABSENCE' | 'TREATMENT_PLAN' | etc.
-  entityId          String // client userId or clientId
-  oldValue          String? // JSON
-  newValue          String? // JSON
-  reasoning         String?
-  documentationPath String? // Path to uploaded PDF/Word file (optional)
-  documentationName String? // Original filename for display
-  signaturePath     String? // Path to saved PNG signature file
-  signatureData     String // base64 PNG of signature
-  signedById        String
-  signedAt          DateTime @default(now())
-  signedBy          User     @relation(fields: [signedById], references: [id], onDelete: Cascade)
+  id                  String   @id @default(cuid())
+  entityType          String   // 'ABSENCE' | 'TREATMENT_PLAN' | etc.
+  entityId            String   // client userId or clientId
+  oldValue            String?  // JSON
+  newValue            String?  // JSON
+  reasoning           String?
+  documentationPath   String?  // Path to uploaded PDF/Word file (optional)
+  documentationName   String?  // Original filename for display
+  signatureData       String   // base64 PNG of signature
+  signedById          String
+  signedAt            DateTime @default(now())
+  signedBy            User     @relation(fields: [signedById], references: [id], onDelete: Cascade)
 
   @@index([entityType, entityId])
   @@map("change_audit")
@@ -181,23 +180,6 @@ model User {
 
   @@unique([email])
   @@map("user")
-  
-}
-
-model Appointment {
-  id          String   @id @default(cuid())
-  clientId    String
-  adminId     String
-  title       String
-  description String?
-  startTime   DateTime
-  endTime     DateTime
-  status      String   @default("SCHEDULED")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  client User @relation("ClientAppointments", fields: [clientId], references: [id])
-  admin  User @relation("AdminAppointments", fields: [adminId], references: [id])
 }
 
 // Form metadata (e.g. ACE Questionnaire)
@@ -397,7 +379,7 @@ model GadForm {
   severity    String?
   submittedAt DateTime?
 
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   questions GadQuestion?
 
   @@index([userId])

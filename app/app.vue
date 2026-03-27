@@ -33,6 +33,7 @@
   const isTasksPage = computed(() => route.path === '/taskPage')
   const isDashboardPage = computed(() => route.path === '/')
   const isClientsPage = computed(() => route.path === '/clients' || route.path.startsWith('/clients/'))
+  const isCalendarPage = computed(() => route.path === '/calendar')
   /** Temporary: notes playground until session notes are wired in the app flow */
   const isNotesTestPage = computed(
     () => route.path === '/notes-test' || route.path.startsWith('/notes-test/')
@@ -93,42 +94,56 @@
                 >
               </NuxtLink>
 
-          <div class="flex items-center gap-2">
-            <UButton
-              label="Dashboard"
-              color="primary"
-              :variant="isDashboardPage ? 'solid' : 'soft'"
-              @click="goTo('/')"
-            />
-            <UButton
-              v-if="!isAdmin"
-              label="Tasks"
-              color="primary"
-              :variant="isTasksPage ? 'solid' : 'soft'"
-              @click="goTo('/taskPage')"
-            />
-            <UButton
-              v-if="isAdmin"
-              label="Clients"
-              color="primary"
-              :variant="isClientsPage ? 'solid' : 'soft'"
-              @click="goTo('/clients')"
-            />
-            <UButton
-              v-if="isAdmin"
-              label="Notes"
-              color="primary"
-              :variant="isNotesTestPage ? 'solid' : 'soft'"
-              @click="goTo('/notes-test')"
-            />
-          <UButton
-            :icon="isDark ? 'i-heroicons-moon-20-solid' : 'i-heroicons-sun-20-solid'"
-            color="neutral"
-            variant="ghost"
-            @click="isDark = !isDark"
-            aria-label="Toggle Theme"
-          />
-        </div>
+              <UButton
+                :icon="isDark ? 'i-heroicons-moon-20-solid' : 'i-heroicons-sun-20-solid'"
+                color="neutral"
+                variant="ghost"
+                @click="isDark = !isDark"
+                aria-label="Toggle Theme"
+              />
+            </div>
+
+            <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:justify-end sm:overflow-visible sm:pb-0">
+              <UButton
+                label="Dashboard"
+                color="primary"
+                class="shrink-0"
+                :variant="isDashboardPage ? 'solid' : 'soft'"
+                @click="goTo('/')"
+              />
+              <UButton
+                v-if="!isAdmin"
+                label="Tasks"
+                color="primary"
+                class="shrink-0"
+                :variant="isTasksPage ? 'solid' : 'soft'"
+                @click="goTo('/taskPage')"
+              />
+              <UButton
+                v-if="isAdmin"
+                label="Clients"
+                color="primary"
+                class="shrink-0"
+                :variant="isClientsPage ? 'solid' : 'soft'"
+                @click="goTo('/clients')"
+              />
+              <UButton
+                label="Calendar"
+                color="primary"
+                class="shrink-0"
+                :variant="isCalendarPage ? 'solid' : 'soft'"
+                @click="goTo('/calendar')"
+              />
+              <UButton
+                v-if="isAdmin"
+                label="Notes"
+                color="primary"
+                class="shrink-0"
+                :variant="isNotesTestPage ? 'solid' : 'soft'"
+                @click="goTo('/notes-test')"
+              />
+            </div>
+          </div>
         </UContainer>
       </header>
 

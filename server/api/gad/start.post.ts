@@ -1,6 +1,8 @@
 import { createError, defineEventHandler, getHeaders } from 'h3'
 import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
+import { isAdmin } from '../../utils/is-admin'
+import { getClientPermissions } from '../../utils/client-permissions'
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()

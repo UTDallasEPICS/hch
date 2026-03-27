@@ -4,11 +4,10 @@ import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
 import {
   isAllFormsComplete,
-  isWaitlistFormsComplete,
   getIncompleteForms,
   FORM_LABELS,
 } from '../../../utils/client-forms'
-import { joinName, parseName } from '../../../utils/name'
+import { parseName } from '../../../utils/name'
 import { getAceFormQuestions } from '../../../utils/ace-questions'
 import type { ClientStatus } from '../../../../../prisma/generated/client'
 import { ensureDefaultDeclarationTemplates } from '../../../utils/declaration-templates'
@@ -59,18 +58,6 @@ export default defineEventHandler(async (event) => {
             include: { declarationTemplate: true },
           },
           plan: true,
-        },
-      },
-      appForms: {
-        orderBy: { id: 'desc' },
-        take: 1,
-        include: {
-          questions: {
-            select: {
-              q02: true,
-              q03: true,
-            },
-          },
         },
       },
     },
@@ -136,7 +123,9 @@ export default defineEventHandler(async (event) => {
     ? (JSON.parse(aceResponse.responses) as Record<string, string>)
     : {}
   const aceAnswered = aceQuestions.filter(
-    (q) => aceResponses[q.alias] !== undefined && String(aceResponses[q.alias]).trim().length > 0
+    (q) =>
+      aceResponses[q.alias] !== undefined &&
+      String(aceResponses[q.alias]).trim().length > 0
   ).length
   const aceForm = await prisma.form.findUnique({ where: { slug: 'ace-form' } })
   const aceAssignment = aceForm
@@ -184,12 +173,8 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const currentStatus = (clientProfile?.status ?? 'Prospective') as ClientStatus
-  const allFormsComplete =
-    currentStatus === 'Waitlist'
-      ? await isWaitlistFormsComplete(prisma, clientUserId)
-      : await isAllFormsComplete(prisma, clientUserId)
-  const incompleteForms = await getIncompleteForms(prisma, clientUserId, currentStatus)
+  const allFormsComplete = await isAllFormsComplete(prisma, clientUserId)
+  const incompleteForms = await getIncompleteForms(prisma, clientUserId)
 
   // ACE score: count of "Yes" answers; severity per interpretation breakdown
   const aceScore = aceSubmitted
@@ -366,7 +351,9 @@ export default defineEventHandler(async (event) => {
     : []
 
   const tasksForClient =
-    isOwnProfile && !canViewScores ? tasks.map(({ score: _s, severity: _v, ...t }) => t) : tasks
+    isOwnProfile && !canViewScores
+      ? tasks.map(({ score: _s, severity: _v, ...t }) => t)
+      : tasks
 
   // Session notes: always scoped by canonical Client.id (SessionNote + Note tables).
   let sessionNotesPayload: { id: string; content: string; createdAt: string }[] = []
@@ -414,9 +401,9 @@ export default defineEventHandler(async (event) => {
     id: user.id,
     fname,
     lname,
-    name: resolvedName,
+    name: user.name,
     email: user.email,
-    status: currentStatus,
+    status: (clientProfile?.status ?? 'INCOMPLETE') as ClientStatus,
     therapyWeek: clientProfile?.therapyWeek ?? null,
     missedSessions: clientProfile?.missedSessions ?? 0,
     allFormsComplete,

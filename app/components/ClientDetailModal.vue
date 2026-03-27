@@ -1,34 +1,7 @@
 <script setup lang="ts">
-  type ClientStatus = 'Prospective' | 'Waitlist' | 'Active' | 'Archived'
-  type Permissions = { canViewScores: boolean; canViewNotes: boolean; canViewPlan: boolean }
-  type ClientTask = {
-    key: string
-    name: string
-    to: string
-    answered: number
-    total: number
-    submitted: boolean
-    score?: number | null
-    severity?: string | null
-  }
-  type ClientMetric = { form: string; score?: number | null; severity?: string | null }
-  type ClientSessionNote = { id: string; content: string; createdAt: string }
-  type ClientPlan = { id: string; content: string; updatedAt: string } | null
-  type ClientProfile = {
-    id: string
-    fname: string
-    lname: string
-    name: string
-    email: string
-    status: ClientStatus
-    therapyWeek: number | null
-    missedSessions: number
-    tasks: ClientTask[]
-    metrics: ClientMetric[]
-    permissions: Permissions
-    sessionNotes: ClientSessionNote[]
-    plan: ClientPlan
-  }
+  import { capitalizeName } from '~/utils/name'
+
+  type ClientStatus = 'INCOMPLETE' | 'WAITLIST' | 'ACTIVE' | 'ARCHIVED'
 
   /** Matches `/api/clients/[id]/profile` response shape used in this modal */
   interface ClientProfile {
@@ -120,106 +93,15 @@
 
   function statusLabel(status: ClientStatus): string {
     const labels: Record<ClientStatus, string> = {
-      Prospective: 'Prospective',
-      Waitlist: 'Waitlist',
-      Active: 'Active',
-      Archived: 'Archived',
+      INCOMPLETE: 'Incomplete',
+      WAITLIST: 'Waitlist',
+      ACTIVE: 'Active',
+      ARCHIVED: 'Archived',
     }
     return labels[status]
   }
 
   const toast = useToast()
-
-  const planContent = ref('')
-  const planEditing = ref(false)
-  const planSaving = ref(false)
-  watch(
-    () => profile.value?.plan,
-    (plan) => {
-      planContent.value = plan?.content ?? ''
-    },
-    { immediate: true }
-  )
-
-  async function savePlan() {
-    if (!props.clientId || planSaving.value) return
-    try {
-      planSaving.value = true
-      await $fetch(`/api/clients/${props.clientId}/plan`, {
-        method: 'PUT',
-        body: { content: planContent.value },
-      })
-      planEditing.value = false
-      toast.add({ title: 'Plan saved', color: 'success' })
-      await refresh()
-      emit('refreshed')
-    } catch (e: unknown) {
-      const msg =
-        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to save plan'
-      toast.add({ title: 'Error', description: msg, color: 'error' })
-    } finally {
-      planSaving.value = false
-    }
-  }
-
-  const permEditing = ref(false)
-  const permSaving = ref(false)
-  const permForm = ref<Permissions>({
-    canViewScores: false,
-    canViewNotes: false,
-    canViewPlan: false,
-  })
-  watch(
-    () => profile.value?.permissions,
-    (p) => {
-      if (p) permForm.value = { ...p }
-    },
-    { immediate: true }
-  )
-
-  async function savePermissions() {
-    if (!props.clientId || permSaving.value) return
-    try {
-      permSaving.value = true
-      await $fetch(`/api/clients/${props.clientId}/permissions`, {
-        method: 'PATCH',
-        body: permForm.value,
-      })
-      permEditing.value = false
-      toast.add({ title: 'Permissions saved', color: 'success' })
-      await refresh()
-      emit('refreshed')
-    } catch (e: unknown) {
-      const msg =
-        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to save'
-      toast.add({ title: 'Error', description: msg, color: 'error' })
-    } finally {
-      permSaving.value = false
-    }
-  }
-
-  const newNoteContent = ref('')
-  const addingNote = ref(false)
-  async function addNote() {
-    if (!props.clientId || !newNoteContent.value.trim() || addingNote.value) return
-    try {
-      addingNote.value = true
-      await $fetch(`/api/clients/${props.clientId}/notes`, {
-        method: 'POST',
-        body: { content: newNoteContent.value.trim() },
-      })
-      newNoteContent.value = ''
-      toast.add({ title: 'Note added', color: 'success' })
-      await refresh()
-      emit('refreshed')
-    } catch (e: unknown) {
-      const msg =
-        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to add note'
-      toast.add({ title: 'Error', description: msg, color: 'error' })
-    } finally {
-      addingNote.value = false
-    }
-  }
 
   const absencesEditing = ref(false)
   const expandedFormKey = ref<string | null>(null)
@@ -260,8 +142,6 @@
 
   const absencesValue = ref(0)
   const absencesSaving = ref(false)
-  const justificationModalOpen = ref(false)
-  const pendingAbsenceSave = ref(false)
   watch(
     () => profile.value?.missedSessions,
     (v) => {
@@ -269,6 +149,53 @@
     },
     { immediate: true }
   )
+
+  // Client plan (preview for modal; full edit on /clients/[id]/plan page)
+  const planContent = ref('')
+  const { parse: parseMarkdown } = useMarkdown()
+  watch(
+    () => profile.value?.plan?.content,
+    (v) => {
+      planContent.value = v ?? ''
+    },
+    { immediate: true }
+  )
+
+  // Permissions
+  const perms = ref({ canViewScores: false, canViewNotes: false, canViewPlan: false })
+  watch(
+    () => profile.value?.permissions,
+    (v) => {
+      if (v) perms.value = { ...v }
+      else perms.value = { canViewScores: false, canViewNotes: false, canViewPlan: false }
+    },
+    { immediate: true }
+  )
+  const permsSaving = ref(false)
+
+  async function savePermissions() {
+    if (!props.clientId || permsSaving.value) return
+    try {
+      permsSaving.value = true
+      const res = await $fetch<{
+        canViewScores: boolean
+        canViewNotes: boolean
+        canViewPlan: boolean
+      }>(`/api/clients/${props.clientId}/permissions`, { method: 'PATCH', body: perms.value })
+      if (profile.value) profile.value.permissions = res
+      toast.add({ title: 'Permissions updated', color: 'success' })
+      emit('refreshed')
+    } catch (e: unknown) {
+      const msg =
+        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to update'
+      toast.add({ title: 'Error', description: msg, color: 'error' })
+    } finally {
+      permsSaving.value = false
+    }
+  }
+
+  const justificationModalOpen = ref(false)
+  const pendingAbsenceSave = ref(false)
 
   async function saveAbsencesWithJustification(payload: {
     reasoning?: string
@@ -338,11 +265,6 @@
       pendingAbsenceSave.value = false
     }
   }
-
-  function onJustificationClose() {
-    justificationModalOpen.value = false
-    pendingAbsenceSave.value = false
-  }
 </script>
 
 <template>
@@ -375,13 +297,14 @@
         <div
           class="flex flex-wrap items-center gap-4 rounded-lg border border-gray-200 p-4 dark:border-gray-700"
         >
+          <span v-if="displayName()" class="text-lg font-semibold">{{ displayName() }}</span>
           <UBadge
             :color="
-              profile.status === 'Active'
+              profile.status === 'ACTIVE'
                 ? 'success'
-                : profile.status === 'Archived'
+                : profile.status === 'ARCHIVED'
                   ? 'neutral'
-                  : profile.status === 'Waitlist'
+                  : profile.status === 'WAITLIST'
                     ? 'primary'
                     : 'warning'
             "
@@ -522,10 +445,8 @@
                 <span class="font-medium">{{ task.name }}</span>
                 <span class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                   {{ task.submitted ? 'Submitted' : `${task.answered}/${task.total}` }}
+                  <span v-if="task.submitted && task.score != null"> • {{ task.score }}</span>
                   <span v-if="task.submitted && task.severity"> • {{ task.severity }}</span>
-                  <span v-else-if="task.submitted && task.score != null">
-                    • Score: {{ task.score }}</span
-                  >
                   <UIcon
                     :name="
                       expandedFormKey === task.key
@@ -577,99 +498,12 @@
           </div>
         </section>
 
-        <!-- Metrics -->
-        <section v-if="profile.metrics?.length">
-          <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
-            <UIcon name="i-heroicons-chart-bar" class="h-4 w-4" />
-            Form Metrics
-          </h3>
-          <div class="flex flex-wrap gap-3">
-            <div
-              v-for="m in profile.metrics"
-              :key="m.form"
-              class="rounded border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-            >
-              <span class="text-xs font-medium text-gray-500">{{ m.form }}</span>
-              <div class="flex items-baseline gap-2">
-                <span v-if="m.score != null" class="text-lg font-bold">{{ m.score }}</span>
-                <span v-if="m.severity" class="text-sm text-gray-600">{{ m.severity }}</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Permissions -->
-        <section>
-          <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
-            <UIcon name="i-heroicons-shield-check" class="h-4 w-4" />
-            Permissions
-          </h3>
-          <template v-if="permEditing">
-            <div class="space-y-2">
-              <label class="flex items-center gap-2"
-                ><UCheckbox v-model="permForm.canViewScores" /><span class="text-sm"
-                  >Scores</span
-                ></label
-              >
-              <label class="flex items-center gap-2"
-                ><UCheckbox v-model="permForm.canViewNotes" /><span class="text-sm"
-                  >Notes</span
-                ></label
-              >
-              <label class="flex items-center gap-2"
-                ><UCheckbox v-model="permForm.canViewPlan" /><span class="text-sm"
-                  >Plan</span
-                ></label
-              >
-            </div>
-            <div class="mt-3 flex gap-2">
-              <UButton color="primary" :loading="permSaving" @click="savePermissions">Save</UButton>
-              <UButton variant="ghost" @click="permEditing = false">Cancel</UButton>
-            </div>
-          </template>
-          <template v-else>
-            <div class="flex flex-wrap gap-2">
-              <UBadge
-                :color="profile.permissions?.canViewScores ? 'success' : 'neutral'"
-                variant="soft"
-                >Scores: {{ profile.permissions?.canViewScores ? 'Yes' : 'No' }}</UBadge
-              >
-              <UBadge
-                :color="profile.permissions?.canViewNotes ? 'success' : 'neutral'"
-                variant="soft"
-                >Notes: {{ profile.permissions?.canViewNotes ? 'Yes' : 'No' }}</UBadge
-              >
-              <UBadge
-                :color="profile.permissions?.canViewPlan ? 'success' : 'neutral'"
-                variant="soft"
-                >Plan: {{ profile.permissions?.canViewPlan ? 'Yes' : 'No' }}</UBadge
-              >
-              <UButton size="sm" variant="outline" @click="permEditing = true">Edit</UButton>
-            </div>
-          </template>
-        </section>
-
         <!-- Session notes -->
         <section>
           <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
             <UIcon name="i-heroicons-document-text" class="h-4 w-4" />
             Session Notes
           </h3>
-          <div class="mb-3 flex gap-2">
-            <UTextarea
-              v-model="newNoteContent"
-              placeholder="Add note..."
-              :rows="2"
-              class="flex-1"
-            />
-            <UButton
-              label="Add"
-              color="primary"
-              :loading="addingNote"
-              :disabled="!newNoteContent.trim()"
-              @click="addNote"
-            />
-          </div>
           <div v-if="profile.sessionNotes?.length" class="space-y-2">
             <div
               v-for="note in profile.sessionNotes"
@@ -700,20 +534,18 @@
           <p v-else class="text-sm text-gray-500">No notes yet.</p>
         </section>
 
-        <!-- Plan -->
+        <!-- Client plan (at bottom) -->
         <section>
           <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
-            <UIcon name="i-heroicons-clipboard-document-check" class="h-4 w-4" />
+            <UIcon name="i-heroicons-document-plus" class="h-4 w-4" />
             Client Plan
           </h3>
-          <template v-if="planEditing">
-            <UTextarea v-model="planContent" placeholder="Enter plan..." :rows="4" class="mb-3" />
-            <div class="flex gap-2">
-              <UButton color="primary" :loading="planSaving" @click="savePlan">Save</UButton>
-              <UButton variant="ghost" @click="planEditing = false">Cancel</UButton>
-            </div>
-          </template>
-          <template v-else>
+          <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">
+            Create or edit the client's treatment plan. Clients can view this if permitted above.
+          </p>
+          <div
+            class="rounded-lg border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/30"
+          >
             <div
               v-if="planContent"
               class="prose prose-sm dark:prose-invert line-clamp-3 max-w-none text-sm text-gray-700 dark:text-gray-300"
@@ -753,25 +585,4 @@
       </ChangeWithJustificationModal>
     </Teleport>
   </UModal>
-
-  <Teleport to="body">
-    <ChangeWithJustificationModal
-      :open="justificationModalOpen"
-      title="Justify change"
-      description="This change requires a reason or supporting documentation, and your signature."
-      entity-type="absence"
-      submit-label="Confirm & save absences"
-      :loading="absencesSaving"
-      @close="onJustificationClose"
-      @submit="onJustificationSubmit"
-    >
-      <template v-if="pendingAbsenceSave">
-        <p class="text-sm text-gray-600 dark:text-gray-400">
-          Changing absences from <strong>{{ profile?.missedSessions ?? 0 }}</strong> to
-          <strong>{{ absencesValue }}</strong
-          >.
-        </p>
-      </template>
-    </ChangeWithJustificationModal>
-  </Teleport>
 </template>
