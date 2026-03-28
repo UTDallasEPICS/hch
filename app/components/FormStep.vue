@@ -750,26 +750,20 @@
         <label class="text-sm font-semibold text-gray-200">26. Occupation</label
         ><UInput v-model="form.q27" :class="inputClass" placeholder="Occupation" />
       </div>
-      <div>
-        <label class="text-sm font-semibold text-gray-200"
-          >27. Is Legal Mother primary contact?</label
-        >
-        <URadioGroup v-model="form.q28" :class="groupClass" :items="YES_NO_OPTIONS" />
-      </div>
       <h3 class="mt-6 mb-2 border-b border-gray-600 pb-2 text-base font-semibold text-gray-100">
         Legal Father
       </h3>
       <div>
-        <label class="text-sm font-semibold text-gray-200">28. Legal Father's First Name</label
+        <label class="text-sm font-semibold text-gray-200">27. Legal Father's First Name</label
         ><UInput v-model="form.q29" :class="inputClass" placeholder="First name" />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">29. Legal Father's Last Name</label
+        <label class="text-sm font-semibold text-gray-200">28. Legal Father's Last Name</label
         ><UInput v-model="form.q30" :class="inputClass" placeholder="Last name" />
       </div>
       <div class="space-y-4">
         <div>
-          <label class="text-sm font-semibold text-gray-200">30. Legal Father's Address</label>
+          <label class="text-sm font-semibold text-gray-200">29. Legal Father's Address</label>
           <UInput v-model="form.q31" :class="inputClass" placeholder="Street Address" />
         </div>
         <div
@@ -801,7 +795,7 @@
         </div>
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">34. Legal Father's Email</label
+        <label class="text-sm font-semibold text-gray-200">33. Legal Father's Email</label
         ><UInput
           v-model="form.q35"
           type="email"
@@ -810,15 +804,15 @@
         />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">35. Occupation</label
+        <label class="text-sm font-semibold text-gray-200">34. Occupation</label
         ><UInput v-model="form.q36" :class="inputClass" placeholder="Occupation" />
       </div>
     </template>
 
-    <!-- Step 4: Treatment (Q36–45) -->
+    <!-- Step 4: Treatment (Q35–44) -->
     <template v-else-if="step === 4">
       <div>
-        <label class="text-sm font-semibold text-gray-200">36. Who is the primary caregiver?</label>
+        <label class="text-sm font-semibold text-gray-200">35. Who is the primary caregiver?</label>
         <URadioGroup v-model="form.q37" :class="groupClass" :items="CAREGIVER_OPTIONS" />
         <UInput
           v-if="form.q37 === 'Other'"
@@ -830,55 +824,55 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >37. If child has/had siblings, did any witness a scary or traumatic event (e.g. seizures,
+          >36. If child has/had siblings, did any witness a scary or traumatic event (e.g. seizures,
           unresponsiveness, death or other medical emergencies)?</label
         >
         <URadioGroup v-model="form.q38" :class="groupClass" :items="SIBLING_OPTIONS" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >38. Were siblings separated for a prolonged period from a parent and their sibling with
+          >37. Were siblings separated for a prolonged period from a parent and their sibling with
           cancer?</label
         >
         <URadioGroup v-model="form.q39" :class="groupClass" :items="SIBLING_OPTIONS" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >39. Who was responsible for medical decisions?</label
+          >38. Who was responsible for medical decisions?</label
         >
         <UInput v-model="form.q40" :class="inputClass" placeholder="Name or Relationship" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >40. Who was primarily at the hospital during treatment?</label
+          >39. Who was primarily at the hospital during treatment?</label
         >
         <UInput v-model="form.q41" :class="inputClass" placeholder="Name or Relationship" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >41. How long was the child in treatment?</label
+          >40. How long was the child in treatment?</label
         >
         <UInput v-model="form.q42" :class="inputClass" placeholder="E.g. 6 Months, 1 Year" />
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-200">42. Were there any ICU visits?</label>
+        <label class="text-sm font-semibold text-gray-200">41. Were there any ICU visits?</label>
         <URadioGroup v-model="form.q43" :class="groupClass" :items="YES_NO_OPTIONS" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >43. Were there any extended hospital admissions? If so, how long?</label
+          >42. Were there any extended hospital admissions? If so, how long?</label
         >
         <UInput v-model="form.q44" :class="inputClass" placeholder="E.g. 2 Weeks, 1 Month" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >44. Did the child have a relapse or secondary cancer?</label
+          >43. Did the child have a relapse or secondary cancer?</label
         >
         <URadioGroup v-model="form.q45" :class="groupClass" :items="YES_NO_OPTIONS" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >45. Did the child with cancer require hospice care and/or pass away?</label
+          >44. Did the child with cancer require hospice care and/or pass away?</label
         >
         <URadioGroup v-model="form.q46" :class="groupClass" :items="YES_NO_OTHER_OPTIONS" />
         <UInput
@@ -891,24 +885,24 @@
       </div>
     </template>
 
-    <!-- Step 5: Therapy (Q46–50) -->
+    <!-- Step 5: Therapy (Q45–49) -->
     <template v-else-if="step === 5">
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >46. Are you applying for the Individual Therapy Scholarship?</label
+          >45. Are you applying for the Individual Therapy Scholarship?</label
         >
         <URadioGroup v-model="form.q47" :class="groupClass" :items="YES_NO_OPTIONS" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >47. Would you like to join a Support Group waitlist? If so, please select all that
+          >46. Would you like to join a Support Group waitlist? If so, please select all that
           apply:</label
         >
         <UCheckboxGroup v-model="form.q48" :class="groupClass" :items="SUPPORT_GROUP_OPTIONS" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >48. If seeking scholarship for individual therapy, who are you seeking therapy
+          >47. If seeking scholarship for individual therapy, who are you seeking therapy
           scholarship for?</label
         >
         <div
@@ -967,14 +961,14 @@
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >49. If seeking scholarship for individual therapy, do you have a therapist or need a
+          >48. If seeking scholarship for individual therapy, do you have a therapist or need a
           referral?</label
         >
         <URadioGroup v-model="form.q50" :class="groupClass" :items="REFERRAL_OPTIONS" />
       </div>
       <div>
         <label class="text-sm font-semibold text-gray-200"
-          >50. Do you currently have medical insurance that provides mental health coverage?</label
+          >49. Do you currently have medical insurance that provides mental health coverage?</label
         >
         <URadioGroup v-model="form.q51" :class="groupClass" :items="INSURANCE_OPTIONS" />
       </div>

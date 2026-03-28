@@ -1,6 +1,8 @@
 <script setup lang="ts">
-  const toast = useToast()
-  const isSaving = ref(false)
+import { isDev, getPhqSeedData } from '~/utils/devSeedData'
+
+const toast = useToast()
+const isSaving = ref(false)
 
   const { data: permissions } = await useFetch<{
     canViewScores: boolean
@@ -118,10 +120,24 @@ onMounted(async () => {
         data.answers.q9 ?? -1,
       ]
       difficulty.value = (data.answers.q10 ?? null) as number | null
+    } else if (isDev()) {
+      const seedData = getPhqSeedData()
+      if (seedData) {
+        responses.value = [...seedData.responses]
+        difficulty.value = seedData.difficulty
+      }
     }
   } catch (err: any) {
     loadError.value =
       err?.data?.statusMessage || err?.message || 'Unable to load form.'
+    if (isDev()) {
+      const seedData = getPhqSeedData()
+      if (seedData) {
+        responses.value = [...seedData.responses]
+        difficulty.value = seedData.difficulty
+        loadError.value = null
+      }
+    }
   }
 })
 
