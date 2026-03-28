@@ -22,6 +22,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Content is required' })
   }
 
+  /** 
   let clientRow = await prisma.client.findFirst({
     where: { OR: [{ id: body.clientId }, { userId: body.clientId }] },
   })
@@ -41,11 +42,14 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Client not found' })
   }
 
+   */
+
   try {
     const note = await prisma.note.create({
       data: {
         userId,
-        clientId: clientRow.id,
+        clientId: body.clientId,
+        //clientRow.id,
         content: body.content.trim(),
       },
     })

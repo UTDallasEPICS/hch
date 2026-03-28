@@ -516,6 +516,8 @@ function formatTime(date: Date) {
   const diff = Math.floor((now.getTime() - date.getTime()) / 60000)
   return diff < 1 ? 'just now' : `${diff} min ago`
 }
+
+const isAbsent = ref(false)
 </script>
 
 <template>
@@ -766,12 +768,26 @@ function formatTime(date: Date) {
               <div>
                 <p class="text-sm font-medium text-gray-400">{{ currentNote.date }}</p>
                 <span class="text-primary-500 text-xs font-semibold uppercase">Current</span>
-                  <!-- {{ isEditingPrevious ? `Editing note from ${editingDate}` : currentNote.date }} -->
-                <!-- <p v-if="isEditingPrevious" class="text-xs text-amber-600"> -->
-                  <!-- Changes will be saved as a new version • Reason required -->
-                <!-- </p> -->
               </div>
-            <!-- <span v-if="!isEditingPrevious" class="text-primary-500 text-xs font-semibold uppercase">Current</span> -->
+              
+              <div class="flex items-center gap-2 text-sm font medium">
+              <UButtonGroup>
+                <UButton
+                  :color="!isAbsent ? 'success' : 'neutral'"
+                  :variant="!isAbsent ? 'solid' : 'outline'"
+                  label="Present"
+                  size="sm"
+                  @click="isAbsent = false"
+                />
+                <UButton
+                  :color="isAbsent ? 'error' : 'neutral'"
+                  :variant="isAbsent ? 'solid' : 'outline'"
+                  label="Absent"
+                  size="sm"
+                  @click="isAbsent = true"
+                />
+              </UButtonGroup>
+            </div>
           </div>
 
           <NotesToolbar
