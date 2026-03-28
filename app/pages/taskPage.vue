@@ -55,16 +55,17 @@
   })
 
   const sessionNotesRequests = computed(
-    () => (profile.value?.sessionNotesRequests ?? []) as {
-      id: string
-      requestKind: string
-      status: string
-      createdAt: string
-      decidedAt: string | null
-      signatureData: string
-      rejectionReason: string | null
-      approvedSummaryText: string | null
-    }[]
+    () =>
+      (profile.value?.sessionNotesRequests ?? []) as {
+        id: string
+        requestKind: string
+        status: string
+        createdAt: string
+        decidedAt: string | null
+        signatureData: string
+        rejectionReason: string | null
+        approvedSummaryText: string | null
+      }[]
   )
 
   const hasClient = computed(() => Boolean(statusData.value?.hasClient && statusData.value?.userId))
@@ -87,7 +88,8 @@
       sessionNotesRequestModalOpen.value = false
       toast.add({
         title: 'Request submitted',
-        description: 'An administrator will review your request. You will receive an email when there is a decision.',
+        description:
+          'An administrator will review your request. You will receive an email when there is a decision.',
         color: 'success',
       })
       await refreshProfile()
@@ -382,22 +384,12 @@
     }
   }
 
-  function handlePhysicianStatement() {
-    toast.add({
-      title: 'Physician Statement Form',
-      description:
-        'Please contact us to receive the Physician Statement Form, or download it from your welcome email.',
-      color: 'primary',
-    })
+  async function handlePhysicianStatement() {
+    await navigateTo('/forms/physician-statement')
   }
 
-  function handleReleaseOfInfo() {
-    toast.add({
-      title: 'Release of Information Authorization Form',
-      description:
-        'Please contact us to receive the Release of Information Authorization Form, or download it from your welcome email.',
-      color: 'primary',
-    })
+  async function handleReleaseOfInfo() {
+    await navigateTo('/forms/release-of-information-authorization')
   }
 
   onMounted(async () => {
@@ -702,7 +694,9 @@
               size="sm"
               icon="i-heroicons-paper-airplane"
               :disabled="sessionNotesAccess.hasPendingRequest"
-              :label="sessionNotesAccess.hasPendingRequest ? 'Request pending' : 'Request session notes'"
+              :label="
+                sessionNotesAccess.hasPendingRequest ? 'Request pending' : 'Request session notes'
+              "
               @click="sessionNotesRequestModalOpen = true"
             />
             <UButton
@@ -725,7 +719,10 @@
           You have a pending request — an administrator will email you when it is reviewed.
         </UBadge>
 
-        <div v-if="sessionNotesRequests.length" class="border-t border-gray-200 pt-4 dark:border-gray-700">
+        <div
+          v-if="sessionNotesRequests.length"
+          class="border-t border-gray-200 pt-4 dark:border-gray-700"
+        >
           <h3 class="mb-2 text-sm font-medium text-gray-900 dark:text-white">Request history</h3>
           <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
             <li
@@ -739,7 +736,11 @@
               <span>—</span>
               <UBadge
                 :color="
-                  r.status === 'APPROVED' ? 'success' : r.status === 'REJECTED' ? 'error' : 'warning'
+                  r.status === 'APPROVED'
+                    ? 'success'
+                    : r.status === 'REJECTED'
+                      ? 'error'
+                      : 'warning'
                 "
                 variant="subtle"
                 size="xs"
@@ -755,7 +756,11 @@
       </div>
 
       <div
-        v-if="sessionNotesAccess.hasAccess && sessionNotesAccess.mode === 'summary' && !sessionNotesAccess.summaryText"
+        v-if="
+          sessionNotesAccess.hasAccess &&
+          sessionNotesAccess.mode === 'summary' &&
+          !sessionNotesAccess.summaryText
+        "
         id="session-notes-summary"
         class="mt-6 scroll-mt-24"
       >
@@ -766,7 +771,11 @@
       </div>
 
       <div
-        v-else-if="sessionNotesAccess.hasAccess && sessionNotesAccess.mode === 'summary' && sessionNotesAccess.summaryText"
+        v-else-if="
+          sessionNotesAccess.hasAccess &&
+          sessionNotesAccess.mode === 'summary' &&
+          sessionNotesAccess.summaryText
+        "
         id="session-notes-summary"
         class="mt-6 scroll-mt-24"
       >
@@ -786,7 +795,11 @@
       </div>
 
       <div
-        v-else-if="sessionNotesAccess.hasAccess && sessionNotesAccess.mode === 'full' && profile?.sessionNotes?.length"
+        v-else-if="
+          sessionNotesAccess.hasAccess &&
+          sessionNotesAccess.mode === 'full' &&
+          profile?.sessionNotes?.length
+        "
         id="session-notes"
         class="mt-6 scroll-mt-24"
       >
@@ -813,7 +826,11 @@
       </div>
 
       <div
-        v-else-if="sessionNotesAccess.hasAccess && sessionNotesAccess.mode === 'full' && !profile?.sessionNotes?.length"
+        v-else-if="
+          sessionNotesAccess.hasAccess &&
+          sessionNotesAccess.mode === 'full' &&
+          !profile?.sessionNotes?.length
+        "
         id="session-notes"
         class="mt-6 scroll-mt-24"
       >
@@ -843,7 +860,7 @@
           class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
         >
           <div
-            class="text-sm text-gray-900 dark:text-gray-100 prose prose-sm dark:prose-invert max-w-none"
+            class="prose prose-sm dark:prose-invert max-w-none text-sm text-gray-900 dark:text-gray-100"
             v-html="parseMarkdown(profile.plan.content)"
           />
         </div>

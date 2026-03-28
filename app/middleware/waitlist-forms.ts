@@ -5,8 +5,8 @@ function isWaitlistOnlyRoute(path: string) {
     path === '/gad' ||
     path === '/phq' ||
     path === '/pcl' ||
-    path === '/physician-statement' ||
-    path === '/release-of-information-authorization' ||
+    path === '/forms/physician-statement' ||
+    path === '/forms/release-of-information-authorization' ||
     path === '/forms/ace-form' ||
     path === '/forms/ace-form-results'
   )
@@ -18,8 +18,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
   try {
     const data = await $fetch<{ status: ClientStatus }>('/api/user/client-status')
     const canAccessDocumentTasks =
-      (to.path === '/physician-statement' ||
-        to.path === '/release-of-information-authorization') &&
+      (to.path === '/forms/physician-statement' ||
+        to.path === '/forms/release-of-information-authorization') &&
       (data.status === 'Prospective' || data.status === 'Waitlist')
     if (!canAccessDocumentTasks && data.status !== 'Waitlist') {
       return navigateTo('/taskPage')

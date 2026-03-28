@@ -9,9 +9,16 @@
   const isMobile = ref(process.client && window.innerWidth < 768)
   const calendarRef = ref()
   const session = authClient.useSession()
+  const currentUser = computed(
+    () =>
+      (session.value.data?.user as
+        | ({ id: string; role?: string } & Record<string, unknown>)
+        | null) ?? null
+  )
   const toast = useToast()
   const clients = ref<any[]>([])
   const events = ref<any[]>([])
+  const isAdmin = computed(() => currentUser.value?.role === 'ADMIN')
   const clientColors = [
     '#3b82f6', // blue
     '#10b981', // green
@@ -25,10 +32,24 @@
   let touchStartX = 0
   let touchEndX = 0
   async function loadEvents() {
-    const data = await $fetch('/api/appointments')
-    events.value = data
+    try {
+      const data = await $fetch('/api/appointments', {
+        credentials: 'include',
+      })
+
+      events.value = data
+    } catch (err) {
+      console.error('EVENT LOAD FAILED:', err)
+      events.value = []
+    }
   }
+
   async function loadClients() {
+    if (!isAdmin.value) {
+      clients.value = []
+      return
+    }
+
     try {
       const data = await $fetch('/api/clients', {
         credentials: 'include',
@@ -39,6 +60,11 @@
     } catch (err) {
       console.error('CLIENT LOAD FAILED:', err)
     }
+  }
+
+  async function syncCalendarData() {
+    await loadEvents()
+    await loadClients()
   }
 
   function getClientColor(clientName: string) {
@@ -111,11 +137,8 @@
     }
   }
 
-  onMounted(async () => {
+  onMounted(() => {
     isMobile.value = window.innerWidth < 768
-
-    await loadEvents()
-    await loadClients()
 
     if (isMobile.value) {
       const calendarEl = calendarRef.value?.$el
@@ -127,9 +150,24 @@
     }
   })
 
+  watch(
+    () => currentUser.value?.id,
+    async (userId) => {
+      if (!userId) {
+        events.value = []
+        clients.value = []
+        return
+      }
+
+      await syncCalendarData()
+    },
+    { immediate: true }
+  )
+
   const isViewModalOpen = ref(false)
   const selectedEvent = ref<any>(null)
   const isEditMode = ref(false)
+  const isDeleteConfirming = ref(false)
   const mobileView = ref('week')
 
   watch(mobileView, (view) => {
@@ -216,16 +254,28 @@
 
   function onEventClick(info: any) {
     console.log('calendar event clicked (listener)', info.event)
+    console.log('event extendedProps:', info.event.extendedProps)
+    console.log('event._def.extendedProps:', info.event._def?.extendedProps)
 
-    isEditMode.value = false // ADD THIS LINE
+    isEditMode.value = false
+
+    // Get clientName from either extendedProps or _def.extendedProps
+    const clientName =
+      info.event.extendedProps?.clientName || info.event._def?.extendedProps?.clientName
 
     selectedEvent.value = {
       ...info.event.extendedProps,
-      id: info.event.id, // ADD THIS (needed for update)
+      clientName: clientName, // Make sure clientName is included
+      id: info.event.id,
       title: info.event.title,
       start: info.event.start,
       end: info.event.end,
+      description:
+        info.event.extendedProps?.description || info.event._def?.extendedProps?.description,
+      status: info.event.extendedProps?.status || info.event._def?.extendedProps?.status,
     }
+
+    console.log('selectedEvent after click:', selectedEvent.value)
 
     isViewModalOpen.value = true
   }
@@ -277,6 +327,35 @@
     }
   }
 
+  async function deleteEvent() {
+    try {
+      await $fetch('/api/appointments/delete', {
+        method: 'POST',
+        credentials: 'include',
+        body: {
+          id: selectedEvent.value.id,
+        },
+      })
+
+      toast.add({
+        title: 'Session deleted',
+        color: 'success',
+      })
+
+      isDeleteConfirming.value = false
+      isViewModalOpen.value = false
+
+      await loadEvents()
+    } catch (error) {
+      console.error('Delete error:', error)
+
+      toast.add({
+        title: 'Failed to delete session',
+        color: 'error',
+      })
+    }
+  }
+
   const isCreateModalOpen = ref(false)
 
   const form = reactive({
@@ -289,13 +368,27 @@
   })
 
   const clientOptions = computed(() =>
-    clients.value.map((c) => ({
-      label: c.name || c.email,
-      value: c.id,
-    }))
+    clients.value
+      .filter((c) => c.status !== 'Archived')
+      .map((c) => ({
+        label: c.name || c.email,
+        value: c.id,
+      }))
   )
 
+  const selectedClientName = computed(() => {
+    const name = selectedEvent.value?.clientName
+    console.log('selectedClientName:', name)
+    return name || 'Unknown Client'
+  })
+
   function openCreateModal() {
+    form.clientId = ''
+    form.title = ''
+    form.description = ''
+    form.date = ''
+    form.startTime = ''
+    form.endTime = ''
     isCreateModalOpen.value = true
   }
 
@@ -373,7 +466,7 @@
         </div>
 
         <UButton
-          v-if="session.data?.user?.role === 'ADMIN'"
+          v-if="isAdmin"
           icon="i-heroicons-plus"
           class="fixed right-6 bottom-8 z-50 rounded-full shadow-lg lg:hidden"
           size="xl"
@@ -384,7 +477,13 @@
     <div class="flex gap-6">
       <!-- sidebar -->
       <div class="hidden w-64 space-y-4 lg:block">
-        <UButton icon="i-heroicons-plus" label="Create Event" block @click="openCreateModal" />
+        <UButton
+          v-if="isAdmin"
+          icon="i-heroicons-plus"
+          label="Create Event"
+          block
+          @click="openCreateModal"
+        />
       </div>
 
       <!-- main calendar -->
@@ -452,7 +551,7 @@
     <template #content>
       <div class="flex flex-col gap-4 p-4">
         <div v-if="!isEditMode">
-          <p><strong>Client:</strong> {{ selectedEvent?.clientName }}</p>
+          <p><strong>Client:</strong> {{ selectedClientName }}</p>
           <p><strong>Date:</strong> {{ selectedEvent?.start?.toLocaleDateString() }}</p>
           <p>
             <strong>Time:</strong>
@@ -496,13 +595,32 @@
           </div>
         </div>
 
+        <!-- Delete confirmation -->
+        <div
+          v-if="isDeleteConfirming && !isEditMode"
+          class="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-900/20"
+        >
+          <p class="mb-3 font-medium text-red-900 dark:text-red-200">
+            Are you sure you want to delete this session?
+          </p>
+          <div class="flex justify-end gap-2">
+            <UButton variant="outline" @click="isDeleteConfirming = false"> Cancel </UButton>
+            <UButton color="error" @click="deleteEvent"> Delete </UButton>
+          </div>
+        </div>
+
         <!-- Buttons (same pattern as Create modal) -->
-        <div class="flex justify-end gap-3 pt-2">
+        <div v-if="!isDeleteConfirming" class="flex justify-end gap-3 pt-2">
           <UButton
-            v-if="!isEditMode && session.data?.user?.role === 'ADMIN'"
+            v-if="!isEditMode && isAdmin"
+            color="error"
             variant="outline"
-            @click="enterEditMode"
+            @click="isDeleteConfirming = true"
           >
+            Delete
+          </UButton>
+
+          <UButton v-if="!isEditMode && isAdmin" variant="outline" @click="enterEditMode">
             Edit
           </UButton>
 

@@ -2,7 +2,7 @@ import { createError, defineEventHandler, getHeaders, getRouterParam, readBody }
 import { auth } from '../../../utils/auth'
 import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
-import { saveBase64File, saveSignaturePng } from '../../../utils/file-upload'
+import { saveBase64File } from '../../../utils/file-upload'
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
@@ -59,9 +59,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Invalid signature data format' })
   }
 
-  // Persist a PNG copy of each signature for server-side archival.
-  const signaturePath = await saveSignaturePng(body.signatureData)
-
   let documentationPath: string | null = null
   let documentationName: string | null = null
   if (hasDoc && body.documentationBase64) {
@@ -95,7 +92,6 @@ export default defineEventHandler(async (event) => {
       reasoning: body.reasoning?.trim() || null,
       documentationPath,
       documentationName,
-      signaturePath,
       signatureData: body.signatureData,
       signedById: session.user.id,
     }
@@ -116,7 +112,6 @@ export default defineEventHandler(async (event) => {
       reasoning: body.reasoning?.trim() || null,
       documentationPath,
       documentationName,
-      signaturePath,
       signatureData: body.signatureData,
       signedById: session.user.id,
     }

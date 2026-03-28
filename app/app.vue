@@ -12,6 +12,7 @@
       default: () => ({ isAdmin: false }),
     }
   )
+  const isAuthenticated = computed(() => Boolean(session.value?.user))
 
   watch(
     () => session.value?.user?.id,
@@ -102,51 +103,63 @@
                 :icon="isDark ? 'i-heroicons-moon-20-solid' : 'i-heroicons-sun-20-solid'"
                 color="neutral"
                 variant="ghost"
+                class="sm:hidden"
                 @click="isDark = !isDark"
                 aria-label="Toggle Theme"
               />
             </div>
 
-            <div
-              class="flex items-center gap-2 overflow-x-auto pb-1 sm:justify-end sm:overflow-visible sm:pb-0"
-            >
+            <div class="flex items-center gap-2 sm:justify-end">
+              <div
+                v-if="isAuthenticated"
+                class="flex items-center gap-2 overflow-x-auto pb-1 sm:overflow-visible sm:pb-0"
+              >
+                <UButton
+                  label="Dashboard"
+                  color="primary"
+                  class="shrink-0"
+                  :variant="isDashboardPage ? 'solid' : 'soft'"
+                  @click="goTo('/')"
+                />
+                <UButton
+                  v-if="!isAdmin"
+                  label="Tasks"
+                  color="primary"
+                  class="shrink-0"
+                  :variant="isTasksPage ? 'solid' : 'soft'"
+                  @click="goTo('/taskPage')"
+                />
+                <UButton
+                  v-if="isAdmin"
+                  label="Clients"
+                  color="primary"
+                  class="shrink-0"
+                  :variant="isClientsPage ? 'solid' : 'soft'"
+                  @click="goTo('/clients')"
+                />
+                <UButton
+                  label="Calendar"
+                  color="primary"
+                  class="shrink-0"
+                  :variant="isCalendarPage ? 'solid' : 'soft'"
+                  @click="goTo('/calendar')"
+                />
+                <UButton
+                  v-if="isAdmin"
+                  label="Notes"
+                  color="primary"
+                  class="shrink-0"
+                  :variant="isNotesTestPage ? 'solid' : 'soft'"
+                  @click="goTo('/notes-test')"
+                />
+              </div>
               <UButton
-                label="Dashboard"
-                color="primary"
-                class="shrink-0"
-                :variant="isDashboardPage ? 'solid' : 'soft'"
-                @click="goTo('/')"
-              />
-              <UButton
-                v-if="!isAdmin"
-                label="Tasks"
-                color="primary"
-                class="shrink-0"
-                :variant="isTasksPage ? 'solid' : 'soft'"
-                @click="goTo('/taskPage')"
-              />
-              <UButton
-                v-if="isAdmin"
-                label="Clients"
-                color="primary"
-                class="shrink-0"
-                :variant="isClientsPage ? 'solid' : 'soft'"
-                @click="goTo('/clients')"
-              />
-              <UButton
-                label="Calendar"
-                color="primary"
-                class="shrink-0"
-                :variant="isCalendarPage ? 'solid' : 'soft'"
-                @click="goTo('/calendar')"
-              />
-              <UButton
-                v-if="isAdmin"
-                label="Notes"
-                color="primary"
-                class="shrink-0"
-                :variant="isNotesTestPage ? 'solid' : 'soft'"
-                @click="goTo('/notes-test')"
+                :icon="isDark ? 'i-heroicons-moon-20-solid' : 'i-heroicons-sun-20-solid'"
+                color="neutral"
+                variant="ghost"
+                class="hidden shrink-0 sm:inline-flex"
+                @click="isDark = !isDark"
+                aria-label="Toggle Theme"
               />
             </div>
           </div>
