@@ -1,5 +1,7 @@
 <script setup lang="ts">
   import NotesToolbar from '~/components/NotesToolbar.vue'
+  import ChangeWithJustificationModal from '~/components/ChangeWithJustificationModal.vue'
+  import type { ChangeJustificationPayload } from '~/components/ChangeWithJustificationModal.vue'
   import { useDebounceFn } from '@vueuse/core'
   import { marked } from 'marked'
   import { useWindowSize } from '@vueuse/core'
@@ -166,9 +168,7 @@
   const pendingMeta = ref<Map<number, { reason: string; signature: string }>>(new Map())
   const pendingSessionEdits = ref<Map<string, string>>(new Map())
   const pendingSessionMeta = ref<Map<string, { reason: string; signature: string }>>(new Map())
-  const showEditModal = ref(false)
-  const editReason = ref('')
-  const signature = ref('')
+  const showJustificationModal = ref(false)
   const selectedForm = ref<string | null>(null)
   const sidebarTab = ref<'notes' | 'forms'>('notes')
 
@@ -239,37 +239,38 @@
     }
     editingDate.value = sd.date
     isEditingPreviousPanel.value = false
-    const meta =
-      sd.source === 'editor' ? pendingMeta.value.get(sd.id) : pendingSessionMeta.value.get(sd.id)
-    editReason.value = meta?.reason ?? ''
-    signature.value = meta?.signature ?? ''
-    showEditModal.value = true
+    showJustificationModal.value = true
   }
 
-  function confirmEdit() {
+  function closeJustificationModal() {
+    showJustificationModal.value = false
+  }
+
+  function onJustificationSubmit(payload: ChangeJustificationPayload) {
     const sd = selectedNoteData.value
     if (!sd) return
 
-    if (!editReason.value.trim() || !signature.value.trim()) {
-      alert('Please provide reason and signature')
+    const reason =
+      (payload.reasoning && payload.reasoning.trim()) ||
+      (payload.documentation
+        ? 'Justification provided via uploaded documentation (PDF/Word).'
+        : '')
+
+    if (!reason || !payload.signatureData?.trim()) {
       return
     }
 
+    const signature = payload.signatureData
+
     if (sd.source === 'session') {
-      pendingSessionMeta.value.set(sd.id, {
-        reason: editReason.value,
-        signature: signature.value,
-      })
+      pendingSessionMeta.value.set(sd.id, { reason, signature })
       if (!pendingSessionEdits.value.has(sd.id)) {
         pendingSessionEdits.value.set(sd.id, sd.content)
       }
       editingSessionNoteId.value = sd.id
       editingNoteId.value = null
     } else {
-      pendingMeta.value.set(sd.id, {
-        reason: editReason.value,
-        signature: signature.value,
-      })
+      pendingMeta.value.set(sd.id, { reason, signature })
       if (!pendingEdits.value.has(sd.id)) {
         pendingEdits.value.set(sd.id, sd.content)
       }
@@ -278,7 +279,7 @@
     }
 
     isEditingPreviousPanel.value = true
-    showEditModal.value = false
+    showJustificationModal.value = false
   }
 
   const isSavingPrevious = ref(false)
@@ -356,8 +357,6 @@
           selectedNoteEdits.value = []
         }
 
-        editReason.value = ''
-        signature.value = ''
         previousLastSaved.value = new Date()
         previousSaveStatus.value = 'saved'
       } catch (err) {
@@ -410,8 +409,6 @@
       pendingMeta.value.delete(editingNoteId.value)
       isEditingPreviousPanel.value = false
       editingNoteId.value = null
-      editReason.value = ''
-      signature.value = ''
       previousLastSaved.value = new Date()
       previousSaveStatus.value = 'saved'
     } catch (err) {
@@ -473,8 +470,6 @@ async function confirmSaveNote() {
   editingNoteId.value = null
   editingSessionNoteId.value = null
   editingDate.value = ''
-  editReason.value = ''
-  signature.value = ''
 }
 
 //Auto-save and status tracking
@@ -863,50 +858,15 @@ function formatTime(date: Date) {
   </div>
 </div>
 
-    <!-- Edit Modal -->
-    <div
-      v-if="showEditModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl md:max-w-md dark:bg-gray-900">
-        <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Edit Note</h2>
-
-        <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Reason for editing
-        </label>
-        <textarea
-          v-model="editReason"
-          rows="3"
-          placeholder="Describe why you are editing this note..."
-          class="focus:ring-primary-500 mb-4 w-full resize-none rounded-lg border border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 focus:ring-2 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-        ></textarea>
-
-        <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Signature
-        </label>
-        <input
-          v-model="signature"
-          type="text"
-          placeholder="Sign here..."
-          class="focus:ring-primary-500 w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-gray-900 focus:ring-2 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          style="font-family: 'Brush Script MT', cursive; font-size: 1.25rem"
-        />
-
-        <div class="mt-6 flex justify-end gap-3">
-          <button
-            @click="showEditModal = false"
-            class="rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-          >
-            Cancel
-          </button>
-          <button
-            @click="confirmEdit"
-            class="bg-primary-500 hover:bg-primary-600 rounded-lg px-4 py-2 text-sm text-white"
-          >
-            Confirm Edit
-          </button>
-          </div>
-        </div>
-      </div>
+    <ChangeWithJustificationModal
+      :open="showJustificationModal"
+      title="Edit note"
+      description="You must justify this change before the note editor is unlocked."
+      entity-type="this note edit"
+      submit-label="Continue to editor"
+      @close="closeJustificationModal"
+      @submit="onJustificationSubmit"
+    />
   </div>
 </div>
 </template>
