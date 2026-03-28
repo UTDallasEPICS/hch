@@ -104,6 +104,8 @@ onMounted(async () => {
     const data = await $fetch<{ answers?: Record<string, any>; submitted?: boolean }>('/api/pcl/load')
     isReadOnly.value = Boolean(data?.submitted)
     if (data?.answers) {
+      const w = data.answers.worstEvent
+      worstEvent.value = typeof w === 'string' ? w : ''
       for (let i = 1; i <= 20; i++) {
         const key = `q${String(i).padStart(2, '0')}`
         const val = data.answers[key]

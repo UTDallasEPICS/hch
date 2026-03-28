@@ -111,57 +111,11 @@ export async function getPreWaitlistIncompleteForms(
   return complete ? [] : ['application']
 }
 
-/** Active patient: ACE, GAD-7, PHQ-9, PCL-5 required (used for staff reference) */
-export async function isAllFormsComplete(
+/** Application, ACE, GAD-7, PHQ-9, and PCL-5 all submitted (single source of truth with getIncompleteForms). */
+export async function areAllFormsComplete(
   prisma: PrismaClient,
   userId: string
 ): Promise<boolean> {
-  const [aceResponse, gadForm, phqForm, pclForm] = await Promise.all([
-    prisma.aceResponse.findFirst({
-      where: { userId },
-      orderBy: { completedAt: 'desc' },
-    }),
-    prisma.gadForm.findFirst({
-      where: { userId },
-      orderBy: { id: 'desc' },
-      include: { questions: true },
-    }),
-    prisma.phqForm.findFirst({
-      where: { userId },
-    }),
-    prisma.pclForm.findFirst({
-      where: { userId },
-      orderBy: { id: 'desc' },
-    }),
-  ])
-
-  if (phqForm?.status !== 'COMPLETE') return false
-  if (pclForm?.status !== 'COMPLETE') return false
-
-  if (!aceResponse?.responses) return false
-  try {
-    const parsed = JSON.parse(aceResponse.responses) as Record<string, unknown>
-    const answered = Object.values(parsed).filter(
-      (v) => v != null && String(v).trim().length > 0
-    ).length
-    if (answered < ACE_QUESTION_COUNT) return false
-  } catch {
-    return false
-  }
-
-  const gadQuestions = gadForm?.questions
-  if (!gadQuestions) return false
-  const gadAnswers = [
-    gadQuestions.g01,
-    gadQuestions.g02,
-    gadQuestions.g03,
-    gadQuestions.g04,
-    gadQuestions.g05,
-    gadQuestions.g06,
-    gadQuestions.g07,
-  ]
-  const gadAnswered = gadAnswers.filter((v) => v != null && v !== undefined).length
-  if (gadAnswered < GAD_QUESTION_COUNT) return false
-
-  return true
+  const incomplete = await getIncompleteForms(prisma, userId)
+  return incomplete.length === 0
 }

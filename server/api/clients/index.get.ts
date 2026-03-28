@@ -3,7 +3,7 @@ import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
 import { isAdmin } from '../../utils/is-admin'
 import {
-  isAllFormsComplete,
+  areAllFormsComplete,
   isPreWaitlistComplete,
   getIncompleteForms,
   getPreWaitlistIncompleteForms,
@@ -77,7 +77,7 @@ export default defineEventHandler(async (event) => {
       const allFormsComplete =
         storedStatus === 'INCOMPLETE'
           ? await isPreWaitlistComplete(prisma, user.id)
-          : await isAllFormsComplete(prisma, user.id)
+          : await areAllFormsComplete(prisma, user.id)
       const incompleteForms =
         storedStatus === 'INCOMPLETE'
           ? await getPreWaitlistIncompleteForms(prisma, user.id)

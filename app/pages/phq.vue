@@ -8,8 +8,12 @@ const isSaving = ref(false)
     canViewScores: boolean
     canViewNotes: boolean
     canViewPlan: boolean
+    allFormsComplete: boolean
   }>('/api/user/permissions')
   const canViewScores = computed(() => permissions.value?.canViewScores ?? false)
+  const showScoresPermissionAlert = computed(
+    () => !canViewScores.value && (permissions.value?.allFormsComplete ?? false)
+  )
 
   const options = [
     { label: 'Not at all', value: 0 },
@@ -241,7 +245,7 @@ onMounted(async () => {
           Total Score: {{ totalScore }}
         </div>
         <UAlert
-          v-else
+          v-else-if="showScoresPermissionAlert"
           icon="i-heroicons-exclamation-triangle-20-solid"
           color="error"
           variant="subtle"

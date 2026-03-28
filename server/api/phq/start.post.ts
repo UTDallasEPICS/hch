@@ -3,6 +3,7 @@ import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
 import { isAdmin } from '../../utils/is-admin'
 import { getClientPermissions } from '../../utils/client-permissions'
+import { areAllFormsComplete } from '../../utils/client-forms'
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
@@ -53,7 +54,11 @@ export default defineEventHandler(async (event) => {
     created = true
   }
 
-  if (existingForm.status === 'COMPLETE' && !canViewScores) {
+  if (
+    existingForm.status === 'COMPLETE' &&
+    !canViewScores &&
+    (await areAllFormsComplete(prisma, userId))
+  ) {
     throw createError({
       statusCode: 403,
       statusMessage:

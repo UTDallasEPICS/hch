@@ -6,7 +6,8 @@
 
   const form = computed(() => result.value?.form)
   const responses = computed(() => result.value?.responses || {})
-  const score = computed(() => result.value?.score ?? 0)
+  const withholdScores = computed(() => Boolean(result.value?.withholdScores))
+  const score = computed(() => result.value?.score ?? null)
   const totalQuestions = computed(() => result.value?.totalQuestions ?? 0)
   const completedAt = computed(() => result.value?.completedAt)
 
@@ -42,7 +43,7 @@
   }
 
   const interpretation = computed(() => {
-    if (slug.value === 'ace-form') {
+    if (slug.value === 'ace-form' && score.value != null && !withholdScores.value) {
       return getScoreInterpretation(score.value)
     }
     return null
@@ -96,6 +97,7 @@
 
         <!-- Score Card -->
         <div
+          v-if="!withholdScores"
           class="mb-8 rounded-xl border border-gray-200 bg-white p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900"
         >
           <div class="text-center">
@@ -120,6 +122,15 @@
             </div>
           </div>
         </div>
+        <UAlert
+          v-else
+          class="mb-8"
+          icon="i-heroicons-information-circle-20-solid"
+          color="neutral"
+          variant="subtle"
+          title="Score not shown yet"
+          description="Complete all assigned forms to see your score summary here. Your responses below are saved."
+        />
 
         <!-- Responses Summary -->
         <div class="mb-8">

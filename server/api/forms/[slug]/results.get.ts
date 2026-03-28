@@ -4,6 +4,7 @@ import { auth } from '../../../utils/auth'
 import { isAdmin } from '../../../utils/is-admin'
 import { getClientPermissions } from '../../../utils/client-permissions'
 import { getAceFormQuestions } from '../../../utils/ace-questions'
+import { areAllFormsComplete } from '../../../utils/client-forms'
 
 export default defineEventHandler(async (event) => {
   const slug = getRouterParam(event, 'slug')
@@ -27,12 +28,14 @@ export default defineEventHandler(async (event) => {
     isAdmin(currentUser?.role ?? null, currentUser?.email ?? null) ||
     (await getClientPermissions(userId)).canViewScores
 
-  if (!canViewScores) {
+  const allFormsComplete = await areAllFormsComplete(prisma, userId)
+  if (!canViewScores && allFormsComplete) {
     throw createError({
       statusCode: 403,
       statusMessage: 'You do not have permission to view scores. Your administrator has not enabled this feature for your account. Please contact your clinician for any further inquiries.',
     })
   }
+  const withholdScores = !canViewScores && !allFormsComplete
 
   const form = await prisma.form.findUnique({
     where: { slug },
@@ -65,9 +68,12 @@ export default defineEventHandler(async (event) => {
   }
 
   // Calculate score (for ACE: count of "Yes" answers)
-  let score = 0
+  let score: number | null = 0
   if (slug === 'ace-form') {
     score = Object.values(responses).filter((v) => v === 'Yes' || v === 'true').length
+  }
+  if (withholdScores) {
+    score = null
   }
 
   // ACE form: questions from front-end constant
@@ -94,5 +100,6 @@ export default defineEventHandler(async (event) => {
     score,
     completedAt,
     totalQuestions: questions.length,
+    withholdScores,
   }
 })

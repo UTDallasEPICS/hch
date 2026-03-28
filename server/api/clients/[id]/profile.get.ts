@@ -3,11 +3,7 @@ import { auth } from '../../../utils/auth'
 import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
 import { isClinicalClient } from '../../../utils/is-clinical-client'
-import {
-  isAllFormsComplete,
-  getIncompleteForms,
-  FORM_LABELS,
-} from '../../../utils/client-forms'
+import { getIncompleteForms, FORM_LABELS } from '../../../utils/client-forms'
 import { parseName } from '../../../utils/name'
 import { getAceFormQuestions } from '../../../utils/ace-questions'
 import type { ClientStatus } from '../../../../../prisma/generated/client'
@@ -178,8 +174,8 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const allFormsComplete = await isAllFormsComplete(prisma, clientUserId)
   const incompleteForms = await getIncompleteForms(prisma, clientUserId)
+  const allFormsComplete = incompleteForms.length === 0
 
   // ACE score: count of "Yes" answers; severity per interpretation breakdown
   const aceScore = aceSubmitted
