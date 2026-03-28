@@ -862,7 +862,7 @@ function formatTime(date: Date) {
       :open="showJustificationModal"
       title="Edit note"
       description="You must justify this change before the note editor is unlocked."
-      entity-type="this note edit"
+      entity-type="note"
       submit-label="Continue to editor"
       @close="closeJustificationModal"
       @submit="onJustificationSubmit"
