@@ -5,12 +5,15 @@ import { emailOTP } from 'better-auth/plugins/email-otp'
 import nodemailer from 'nodemailer'
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: process.env.EMAIL_HOST,
+  port: 587,
+  secure: false, // use STARTTLS (upgrade connection to TLS after connecting)
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
-})
+});
+
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
