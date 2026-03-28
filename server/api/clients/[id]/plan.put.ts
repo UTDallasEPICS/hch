@@ -2,6 +2,7 @@ import { createError, defineEventHandler, getHeaders, getRouterParam, readBody }
 import { auth } from '../../../utils/auth'
 import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
+import { isClinicalClient } from '../../../utils/is-clinical-client'
 import { saveBase64File } from '../../../utils/file-upload'
 
 export default defineEventHandler(async (event) => {
@@ -63,6 +64,10 @@ export default defineEventHandler(async (event) => {
   })
 
   if (!user) {
+    throw createError({ statusCode: 404, statusMessage: 'Client not found' })
+  }
+
+  if (!isClinicalClient(user.role, user.email)) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
   }
 

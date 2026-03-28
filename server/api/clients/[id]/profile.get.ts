@@ -2,6 +2,7 @@ import { createError, defineEventHandler, getHeaders, getRouterParam } from 'h3'
 import { auth } from '../../../utils/auth'
 import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
+import { isClinicalClient } from '../../../utils/is-clinical-client'
 import {
   isAllFormsComplete,
   getIncompleteForms,
@@ -64,6 +65,10 @@ export default defineEventHandler(async (event) => {
   })
 
   if (!user) {
+    throw createError({ statusCode: 404, statusMessage: 'Client not found' })
+  }
+
+  if (!isClinicalClient(user.role, user.email)) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
   }
 

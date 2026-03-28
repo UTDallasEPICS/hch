@@ -2,6 +2,7 @@ import { createError, defineEventHandler, getHeaders, getRouterParam, readBody }
 import { z } from 'zod'
 import { auth } from '../../../utils/auth'
 import { prisma } from '../../../utils/prisma'
+import { isClinicalClient } from '../../../utils/is-clinical-client'
 import { sendAppEmail, getAdminNotificationEmails } from '../../../utils/mail'
 import { formatStoredUserNameForDisplay } from '../../../utils/name'
 import { getLatestDeclarationTemplateId } from '../../../utils/declaration-templates'
@@ -35,6 +36,14 @@ export default defineEventHandler(async (event) => {
 
   if (!body.data.signatureData.startsWith('data:image/')) {
     throw createError({ statusCode: 400, statusMessage: 'Invalid signature format' })
+  }
+
+  const requester = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true, email: true },
+  })
+  if (!requester || !isClinicalClient(requester.role, requester.email)) {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 
   const client = await prisma.client.findUnique({

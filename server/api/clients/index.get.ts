@@ -9,6 +9,7 @@ import {
   getPreWaitlistIncompleteForms,
 } from '../../utils/client-forms'
 import { parseName } from '../../utils/name'
+import { isClinicalClient } from '../../utils/is-clinical-client'
 import type { ClientStatus } from '../../../../prisma/generated/client'
 
 export default defineEventHandler(async (event) => {
@@ -65,8 +66,10 @@ export default defineEventHandler(async (event) => {
     orderBy: { createdAt: 'desc' },
   })
 
+  const clinicalUsers = users.filter((u) => isClinicalClient(u.role, u.email))
+
   const clients = await Promise.all(
-    users.map(async (user) => {
+    clinicalUsers.map(async (user) => {
       const clientProfile = user.client
       const storedStatus = clientProfile?.status ?? 'INCOMPLETE'
       const therapyWeek = clientProfile?.therapyWeek ?? null
