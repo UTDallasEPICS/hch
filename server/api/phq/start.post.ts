@@ -3,7 +3,6 @@ import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
 import { isAdmin } from '../../utils/is-admin'
 import { getClientPermissions } from '../../utils/client-permissions'
-import { areAllFormsComplete } from '../../utils/client-forms'
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
@@ -54,18 +53,6 @@ export default defineEventHandler(async (event) => {
     created = true
   }
 
-  if (
-    existingForm.status === 'COMPLETE' &&
-    !canViewScores &&
-    (await areAllFormsComplete(prisma, userId))
-  ) {
-    throw createError({
-      statusCode: 403,
-      statusMessage:
-        'You do not have permission to view scores. Your administrator has not enabled this feature for your account. Please contact your clinician for any further inquiries.',
-    })
-  }
-
   let existingQuestions = await prisma.phqQuestion.findUnique({
     where: {
       formId: existingForm.id,
@@ -79,12 +66,16 @@ export default defineEventHandler(async (event) => {
         userId,
       },
     })
-  } 
+  }
+
+  const submitted = existingForm.status === 'COMPLETE'
+  const canViewFormDetails = !submitted || canViewScores
 
   return {
     formId: existingForm.id,
     created,
-    submitted: existingForm.status === 'COMPLETE',
-    answers: existingQuestions,
+    submitted,
+    canViewFormDetails,
+    answers: canViewFormDetails ? existingQuestions : null,
   }
 })

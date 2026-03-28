@@ -28,6 +28,24 @@
   const { parse: parseMarkdown } = useMarkdown()
   const toast = useToast()
 
+  const scorePermissionFollowUp = {
+    title: 'Viewing scores is not enabled',
+    description:
+      'Your administrator has not enabled viewing scores in the app for your account. Please contact your clinician for any further inquiries.',
+    color: 'warning' as const,
+  }
+
+  function toastAfterClinicalFormSubmit(formLabel: string, successDescription: string) {
+    toast.add({
+      title: `${formLabel} submitted`,
+      description: successDescription,
+      color: 'success',
+    })
+    if (!permissions.value.canViewScores) {
+      toast.add(scorePermissionFollowUp)
+    }
+  }
+
   const permissions = computed(
     () =>
       profile.value?.permissions ?? {
@@ -284,11 +302,7 @@
       submittingForm.value = 'ace'
       await $fetch('/api/forms/ace-form/submit', { method: 'POST' })
       aceSubmitted.value = true
-      toast.add({
-        title: 'ACE Form Submitted',
-        description: 'Your ACE form has been submitted successfully.',
-        color: 'success',
-      })
+      toastAfterClinicalFormSubmit('ACE Form', 'Your ACE form has been submitted successfully.')
     } catch (error: any) {
       toast.add({
         title: 'Submission failed',
@@ -310,11 +324,7 @@
       submittingForm.value = 'gad'
       await $fetch('/api/gad/submit', { method: 'POST' })
       gadSubmitted.value = true
-      toast.add({
-        title: 'GAD-7 Form Submitted',
-        description: 'Your GAD-7 form has been submitted successfully.',
-        color: 'success',
-      })
+      toastAfterClinicalFormSubmit('GAD-7 Form', 'Your GAD-7 form has been submitted successfully.')
     } catch (error: any) {
       toast.add({
         title: 'Submission failed',
@@ -336,11 +346,7 @@
       submittingForm.value = 'phq'
       await $fetch('/api/phq/submit', { method: 'POST' })
       phqSubmitted.value = true
-      toast.add({
-        title: 'PHQ-9 Form Submitted',
-        description: 'Your PHQ-9 form has been submitted successfully.',
-        color: 'success',
-      })
+      toastAfterClinicalFormSubmit('PHQ-9 Form', 'Your PHQ-9 form has been submitted successfully.')
     } catch (error: any) {
       toast.add({
         title: 'Submission failed',
@@ -362,11 +368,7 @@
       submittingForm.value = 'pcl'
       await $fetch('/api/pcl/submit', { method: 'POST' })
       pclSubmitted.value = true
-      toast.add({
-        title: 'PCL-5 Form Submitted',
-        description: 'Your PCL-5 form has been submitted successfully.',
-        color: 'success',
-      })
+      toastAfterClinicalFormSubmit('PCL-5 Form', 'Your PCL-5 form has been submitted successfully.')
     } catch (error: any) {
       toast.add({
         title: 'Submission failed',

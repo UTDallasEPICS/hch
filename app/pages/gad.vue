@@ -3,16 +3,18 @@ import { isDev, getGadSeedData } from '~/utils/devSeedData'
 
 const toast = useToast()
 const isSaving = ref(false)
+const isReadOnly = ref(false)
+const canViewFormDetails = ref(true)
 
   const { data: permissions } = await useFetch<{
     canViewScores: boolean
     canViewNotes: boolean
     canViewPlan: boolean
-    allFormsComplete: boolean
   }>('/api/user/permissions')
   const canViewScores = computed(() => permissions.value?.canViewScores ?? false)
-  const showScoresPermissionAlert = computed(
-    () => !canViewScores.value && (permissions.value?.allFormsComplete ?? false)
+
+  const showRedactedSubmitted = computed(
+    () => isReadOnly.value && !canViewFormDetails.value
   )
 
   const form = reactive({
@@ -88,7 +90,13 @@ const isSaving = ref(false)
 
   onMounted(async () => {
     try {
-      const res = await $fetch('/api/gad/start', { method: 'POST' })
+      const res = await $fetch<{
+        answers?: Record<string, unknown> | null
+        submitted?: boolean
+        canViewFormDetails?: boolean
+      }>('/api/gad/start', { method: 'POST' })
+      isReadOnly.value = Boolean(res?.submitted)
+      canViewFormDetails.value = res?.canViewFormDetails !== false
       applySavedAnswers(res?.answers)
       if (!res?.answers && isDev()) {
         const seedData = getGadSeedData()
@@ -135,6 +143,11 @@ const isSaving = ref(false)
   }
 
   async function saveAndExit() {
+    if (isReadOnly.value) {
+      await navigateTo('/taskPage')
+      return
+    }
+
     try {
       isSaving.value = true
 
@@ -170,7 +183,7 @@ const isSaving = ref(false)
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
     <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-      <div v-if="canViewScores" class="mb-6">
+      <div v-if="canViewScores && !isReadOnly" class="mb-6">
         <div class="flex items-center justify-between text-sm">
           <span class="font-medium text-gray-700 dark:text-gray-300"
             >{{ progressPercent }}% Complete</span
@@ -191,9 +204,15 @@ const isSaving = ref(false)
         <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
           GAD-7 Anxiety Assessment
         </h1>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <p v-if="!isReadOnly" class="mt-2 text-sm text-gray-600 dark:text-gray-400">
           Over the last <span class="font-medium">two weeks</span>, how often have you been bothered
           by the following problems?
+        </p>
+        <p
+          v-else-if="isReadOnly && canViewFormDetails"
+          class="mt-2 text-sm font-medium text-primary-600 dark:text-primary-400"
+        >
+          Submitted Form (View Only).
         </p>
       </div>
 
@@ -211,12 +230,23 @@ const isSaving = ref(false)
         </NuxtLink>
       </div>
 
+      <div v-else-if="showRedactedSubmitted" class="space-y-6">
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          This form has been submitted. Your answers are not shown in the app because viewing scores
+          and form details is not enabled for your account.
+        </p>
+        <NuxtLink to="/taskPage">
+          <UButton color="error" variant="soft" size="lg">Back to Tasks</UButton>
+        </NuxtLink>
+      </div>
+
       <form v-else class="space-y-8" @submit.prevent="saveAndExit">
         <!-- Questions - each in its own card -->
         <div
           v-for="(questionKey, index) in questionKeys"
           :key="questionKey"
           class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+          :inert="isReadOnly"
         >
           <p class="font-medium text-gray-900 dark:text-white mb-3">
             {{ index + 1 }}.
@@ -252,6 +282,7 @@ const isSaving = ref(false)
         <!-- Difficulty Question -->
         <div
           class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+          :inert="isReadOnly"
         >
           <p class="font-medium text-gray-900 dark:text-white mb-3">
             If you checked any problems, how difficult have they made it for you?
@@ -273,24 +304,16 @@ const isSaving = ref(false)
           </div>
         </div>
 
-        <!-- Total Score or Permission Message -->
         <div v-if="canViewScores" class="text-lg font-semibold text-gray-900 dark:text-white">
           Total Score: {{ totalScore }}
           <span class="ml-2 text-sm font-normal text-gray-600 dark:text-gray-400"
             >({{ severity }})</span
           >
         </div>
-        <UAlert
-          v-else-if="showScoresPermissionAlert"
-          icon="i-heroicons-exclamation-triangle-20-solid"
-          color="error"
-          variant="subtle"
-          title="GAD-7: You do not have permission to view scores"
-          description="Your administrator has not enabled this feature for your account. Please contact your clinician for any further inquiries."
-        />
 
         <div class="flex justify-end gap-3">
           <UButton
+            v-if="!isReadOnly"
             type="button"
             label="Clear Form"
             variant="outline"
@@ -301,7 +324,7 @@ const isSaving = ref(false)
           />
           <UButton
             type="submit"
-            label="Save and Exit"
+            :label="isReadOnly ? 'Back to Tasks' : 'Save and Exit'"
             color="error"
             variant="soft"
             size="lg"

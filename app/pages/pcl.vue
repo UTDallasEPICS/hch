@@ -4,6 +4,7 @@ import { isDev, getPclSeedData } from '~/utils/devSeedData'
 const toast = useToast()
 const isSaving = ref(false)
 const isReadOnly = ref(false)
+const canViewFormDetails = ref(true)
 const worstEvent = ref('')
 const loadError = ref<string | null>(null)
 
@@ -13,6 +14,10 @@ const loadError = ref<string | null>(null)
     canViewPlan: boolean
   }>('/api/user/permissions')
   const canViewScores = computed(() => permissions.value?.canViewScores ?? false)
+
+  const showRedactedSubmitted = computed(
+    () => isReadOnly.value && !canViewFormDetails.value
+  )
 
 const options = [
   { label: 'Not at all', value: 0 },
@@ -101,8 +106,13 @@ async function saveAndExit() {
 
 onMounted(async () => {
   try {
-    const data = await $fetch<{ answers?: Record<string, any>; submitted?: boolean }>('/api/pcl/load')
+    const data = await $fetch<{
+      answers?: Record<string, any> | null
+      submitted?: boolean
+      canViewFormDetails?: boolean
+    }>('/api/pcl/load')
     isReadOnly.value = Boolean(data?.submitted)
+    canViewFormDetails.value = data?.canViewFormDetails !== false
     if (data?.answers) {
       const w = data.answers.worstEvent
       worstEvent.value = typeof w === 'string' ? w : ''
@@ -165,7 +175,10 @@ onMounted(async () => {
           and then select one of the numbers to the right to indicate how much you have been bothered
           by that problem in the past month.
         </p>
-        <p v-else class="mt-2 text-sm font-medium text-primary-600 dark:text-primary-400">
+        <p
+          v-else-if="isReadOnly && canViewFormDetails"
+          class="mt-2 text-sm font-medium text-primary-600 dark:text-primary-400"
+        >
           Submitted Form (View Only).
         </p>
       </div>
@@ -181,6 +194,16 @@ onMounted(async () => {
       <div v-if="loadError" class="mt-4">
         <NuxtLink to="/taskPage">
           <UButton variant="outline" size="lg">Back to Tasks</UButton>
+        </NuxtLink>
+      </div>
+
+      <div v-else-if="showRedactedSubmitted" class="space-y-6">
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          This form has been submitted. Your answers are not shown in the app because viewing scores
+          and form details is not enabled for your account.
+        </p>
+        <NuxtLink to="/taskPage">
+          <UButton color="error" variant="soft" size="lg">Back to Tasks</UButton>
         </NuxtLink>
       </div>
 

@@ -3,16 +3,18 @@ import { isDev, getPhqSeedData } from '~/utils/devSeedData'
 
 const toast = useToast()
 const isSaving = ref(false)
+const isReadOnly = ref(false)
+const canViewFormDetails = ref(true)
 
   const { data: permissions } = await useFetch<{
     canViewScores: boolean
     canViewNotes: boolean
     canViewPlan: boolean
-    allFormsComplete: boolean
   }>('/api/user/permissions')
   const canViewScores = computed(() => permissions.value?.canViewScores ?? false)
-  const showScoresPermissionAlert = computed(
-    () => !canViewScores.value && (permissions.value?.allFormsComplete ?? false)
+
+  const showRedactedSubmitted = computed(
+    () => isReadOnly.value && !canViewFormDetails.value
   )
 
   const options = [
@@ -61,6 +63,11 @@ const isSaving = ref(false)
   }
 
   async function saveForm() {
+  if (isReadOnly.value) {
+    await navigateTo('/taskPage')
+    return
+  }
+
   try {
     isSaving.value = true
 
@@ -107,9 +114,16 @@ const loadError = ref<string | null>(null)
 
 onMounted(async () => {
   try {
-    const data = await $fetch('/api/phq/start', {
+    const data = await $fetch<{
+      answers?: Record<string, unknown> | null
+      submitted?: boolean
+      canViewFormDetails?: boolean
+    }>('/api/phq/start', {
       method: 'POST',
     })
+
+    isReadOnly.value = Boolean(data?.submitted)
+    canViewFormDetails.value = data?.canViewFormDetails !== false
 
     if (data?.answers) {
       responses.value = [
@@ -150,7 +164,7 @@ onMounted(async () => {
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
     <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-      <div v-if="canViewScores" class="mb-6">
+      <div v-if="canViewScores && !isReadOnly" class="mb-6">
         <div class="flex items-center justify-between text-sm">
           <span class="font-medium text-gray-700 dark:text-gray-300"
             >{{ progressPercent }}% Complete</span
@@ -171,8 +185,14 @@ onMounted(async () => {
         <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
           PHQ-9 - Patient Health Questionnaire-9
         </h1>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <p v-if="!isReadOnly" class="mt-2 text-sm text-gray-600 dark:text-gray-400">
           Over the last 2 weeks, how often have you been bothered by any of the following problems?
+        </p>
+        <p
+          v-else-if="isReadOnly && canViewFormDetails"
+          class="mt-2 text-sm font-medium text-primary-600 dark:text-primary-400"
+        >
+          Submitted Form (View Only).
         </p>
       </div>
 
@@ -190,11 +210,22 @@ onMounted(async () => {
         </NuxtLink>
       </div>
 
+      <div v-else-if="showRedactedSubmitted" class="space-y-6">
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          This form has been submitted. Your answers are not shown in the app because viewing scores
+          and form details is not enabled for your account.
+        </p>
+        <NuxtLink to="/taskPage">
+          <UButton color="error" variant="soft" size="lg">Back to Tasks</UButton>
+        </NuxtLink>
+      </div>
+
       <form v-else class="space-y-8" @submit.prevent="saveForm">
         <div
           v-for="(question, index) in questions"
           :key="index"
           class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+          :inert="isReadOnly"
         >
           <p class="font-medium text-gray-900 dark:text-white mb-3">
             {{ index + 1 }}. {{ question }}
@@ -219,6 +250,7 @@ onMounted(async () => {
 
         <div
           class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+          :inert="isReadOnly"
         >
           <p class="font-medium text-gray-900 dark:text-white mb-3">
             If you checked off any problems, how difficult have these problems made it for you
@@ -244,17 +276,10 @@ onMounted(async () => {
         <div v-if="canViewScores" class="text-lg font-semibold text-gray-900 dark:text-white">
           Total Score: {{ totalScore }}
         </div>
-        <UAlert
-          v-else-if="showScoresPermissionAlert"
-          icon="i-heroicons-exclamation-triangle-20-solid"
-          color="error"
-          variant="subtle"
-          title="PHQ-9: You do not have permission to view scores"
-          description="Your administrator has not enabled this feature for your account. Please contact your clinician for any further inquiries."
-        />
 
         <div class="flex justify-end gap-3">
           <UButton
+            v-if="!isReadOnly"
             type="button"
             label="Clear Form"
             variant="outline"
@@ -265,7 +290,7 @@ onMounted(async () => {
           />
           <UButton
             type="submit"
-            label="Save and Exit"
+            :label="isReadOnly ? 'Back to Tasks' : 'Save and Exit'"
             color="error"
             variant="soft"
             size="lg"

@@ -7,6 +7,7 @@
   const form = computed(() => result.value?.form)
   const responses = computed(() => result.value?.responses || {})
   const withholdScores = computed(() => Boolean(result.value?.withholdScores))
+  const canViewFormDetails = computed(() => result.value?.canViewFormDetails !== false)
   const score = computed(() => result.value?.score ?? null)
   const totalQuestions = computed(() => result.value?.totalQuestions ?? 0)
   const completedAt = computed(() => result.value?.completedAt)
@@ -122,18 +123,9 @@
             </div>
           </div>
         </div>
-        <UAlert
-          v-else
-          class="mb-8"
-          icon="i-heroicons-information-circle-20-solid"
-          color="neutral"
-          variant="subtle"
-          title="Score not shown yet"
-          description="Complete all assigned forms to see your score summary here. Your responses below are saved."
-        />
 
         <!-- Responses Summary -->
-        <div class="mb-8">
+        <div v-if="canViewFormDetails" class="mb-8">
           <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Your Responses</h2>
           <!-- Instruction statement for ACE form -->
           <div
