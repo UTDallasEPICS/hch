@@ -4,6 +4,46 @@
   import { marked } from 'marked'
   import { useWindowSize } from '@vueuse/core'
 
+  const formKeyMap: Record<string, string> = {
+    'Application Form': 'application',
+    'ACE': 'ace',
+    'GAD-7': 'gad',
+    'PHQ-9': 'phq',
+    'PCL-5': 'pcl',
+  }
+
+  const formDetails = ref<{
+    formName: string
+    score?: number | null
+    severity?: string | null
+    questions: { label: string; answer: string }[]
+  } | null>(null)
+  const formDetailsLoading = ref(false)
+
+  async function selectForm(label: string) {
+  if (selectedForm.value === label) {
+    selectedForm.value = null
+    formDetails.value = null
+    return
+  }
+  selectedForm.value = label
+  formDetails.value = null
+  formDetailsLoading.value = true
+  try {
+    const key = formKeyMap[label]
+    formDetails.value = await $fetch<{
+    formName: string
+    score?: number | null
+    severity?: string | null
+    questions: { label: string; answer: string }[]
+  }>(`/api/clients/${props.client.id}/forms/${key}`)
+  } catch (err) {
+    console.error('Failed to load form details:', err)
+  } finally {
+    formDetailsLoading.value = false
+  }
+}
+
   type SessionNoteRow = { id: string; content: string; createdAt: string }
 
   type SelectedNote =
@@ -682,7 +722,7 @@ const isAbsent = ref(false)
         <div
           v-for="form in forms"
           :key="form.label"
-          @click="selectedForm = selectedForm === form.label ? null : form.label"
+          @click="selectForm(form.label)"
           class="cursor-pointer rounded-xl border p-3 text-center text-sm font-medium transition-colors"
           :class="selectedForm === form.label ? 'border-primary-400 bg-primary-50 dark:bg-primary-900/20 text-primary-600' : form.status === 'complete' ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400' : 'border-gray-200 bg-gray-50 text-gray-400 dark:border-gray-700 dark:bg-gray-800'"
         >
@@ -818,15 +858,42 @@ const isAbsent = ref(false)
       </div>
     </div>
 
-      <!-- Form Details -->
-      <div v-if="selectedForm" class="w-64 flex-shrink-0 border-l border-gray-200 px-6 py-4 dark:border-gray-800">
-        <div class="mb-3 flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ selectedForm }}</h2>
-          <button @click="selectedForm = null" class="text-lg font-bold text-gray-400 hover:text-gray-600">×</button>
+    <!-- Form Details -->
+    <div v-if="selectedForm" class="w-64 flex-shrink-0 border-l border-gray-200 px-6 py-4 dark:border-gray-800 overflow-y-auto">
+      <div class="mb-3 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ selectedForm }}</h2>
+        <button @click="selectedForm = null; formDetails = null" class="text-lg font-bold text-gray-400 hover:text-gray-600">×</button>
+      </div>
+
+      <!-- Loading -->
+      <div v-if="formDetailsLoading" class="flex justify-center py-6">
+        <UIcon name="i-heroicons-arrow-path" class="h-5 w-5 animate-spin text-gray-400" />
+      </div>
+
+      <!-- Loaded -->
+      <div v-else-if="formDetails" class="space-y-3">
+        <!-- Score/severity -->
+        <div v-if="formDetails.score != null || formDetails.severity" class="flex gap-3 text-sm font-medium">
+          <span v-if="formDetails.score != null">Score: {{ formDetails.score }}</span>
+          <span v-if="formDetails.severity" class="text-gray-500">{{ formDetails.severity }}</span>
         </div>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Form details will appear here.</p>
+
+        <!-- Questions -->
+        <div v-if="formDetails.questions?.length" class="space-y-2">
+          <div
+            v-for="(q, i) in formDetails.questions"
+            :key="i"
+            class="rounded border border-gray-200 bg-gray-50 p-2 text-xs dark:border-gray-700 dark:bg-gray-800"
+          >
+            <p class="font-medium text-gray-500 dark:text-gray-400">{{ q.label }}</p>
+            <p class="mt-1 text-gray-900 dark:text-gray-100">{{ q.answer || '—' }}</p>
+          </div>
+        </div>
+        <p v-else class="text-sm text-gray-500">No answers yet.</p>
       </div>
-      </div>
+
+      <!-- Error/empty -->
+      <p v-else class="text-sm text-gray-500">Could not load form data.</p>
     </div>
 
 
@@ -923,6 +990,8 @@ const isAbsent = ref(false)
           </div>
         </div>
       </div>
+      </div>
+    </div>
   </div>
 </div>
 </template>
