@@ -23,7 +23,7 @@ export const auth = betterAuth({
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {
         await transporter.sendMail({
-          from: process.env.EMAIL_USER,
+          from: process.env.EMAIL_FROM,
           to: email,
           subject: 'OTP for nuxt-template',
           html: `Your OTP is: ${otp}`,
