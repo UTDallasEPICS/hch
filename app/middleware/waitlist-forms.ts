@@ -2,9 +2,9 @@ type ClientStatus = 'Prospective' | 'Waitlist' | 'Active' | 'Archived'
 
 function isWaitlistOnlyRoute(path: string) {
   return (
-    path === '/gad' ||
-    path === '/phq' ||
-    path === '/pcl' ||
+    path === '/forms/gad' ||
+    path === '/forms/phq' ||
+    path === '/forms/pcl' ||
     path === '/forms/physician-statement' ||
     path === '/forms/release-of-information-authorization' ||
     path === '/forms/ace-form' ||

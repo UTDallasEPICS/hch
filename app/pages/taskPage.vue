@@ -559,7 +559,7 @@
           },
           {
             name: 'GAD-7 Form',
-            to: '/gad',
+            to: '/forms/gad',
             progress: gadSubmitted
               ? `Submitted${permissions.canViewScores && gadScore !== null ? ` • ${gadSeverity}` : ''}`
               : `${gadAnswered}/${gadTotal}`,
@@ -569,7 +569,7 @@
           },
           {
             name: 'PHQ-9 Form',
-            to: '/phq',
+            to: '/forms/phq',
             progress: phqSubmitted ? 'Submitted' : `${phqAnswered}/${phqTotal}`,
             showSubmit: showPhqSubmit,
             onSubmit: submitPhq,
@@ -577,7 +577,7 @@
           },
           {
             name: 'PCL-5 Form',
-            to: '/pcl',
+            to: '/forms/pcl',
             progress: pclSubmitted ? 'Submitted' : `${pclAnswered}/${pclTotal}`,
             showSubmit: showPclSubmit,
             onSubmit: submitPcl,
