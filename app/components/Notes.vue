@@ -4,6 +4,46 @@
   import { marked } from 'marked'
   import { useWindowSize } from '@vueuse/core'
 
+  const formKeyMap: Record<string, string> = {
+    'Application Form': 'application',
+    'ACE': 'ace',
+    'GAD-7': 'gad',
+    'PHQ-9': 'phq',
+    'PCL-5': 'pcl',
+  }
+
+  const formDetails = ref<{
+    formName: string
+    score?: number | null
+    severity?: string | null
+    questions: { label: string; answer: string }[]
+  } | null>(null)
+  const formDetailsLoading = ref(false)
+
+  async function selectForm(label: string) {
+  if (selectedForm.value === label) {
+    selectedForm.value = null
+    formDetails.value = null
+    return
+  }
+  selectedForm.value = label
+  formDetails.value = null
+  formDetailsLoading.value = true
+  try {
+    const key = formKeyMap[label]
+    formDetails.value = await $fetch<{
+    formName: string
+    score?: number | null
+    severity?: string | null
+    questions: { label: string; answer: string }[]
+  }>(`/api/clients/${props.client.id}/forms/${key}`)
+  } catch (err) {
+    console.error('Failed to load form details:', err)
+  } finally {
+    formDetailsLoading.value = false
+  }
+}
+
   type SessionNoteRow = { id: string; content: string; createdAt: string }
 
   type SelectedNote =
@@ -776,6 +816,25 @@
             </div>
           </div>
         </div>
+<<<<<<< HEAD
+=======
+      </template>
+
+      <!-- Forms Tab -->
+      <div v-if="sidebarTab === 'forms'" class="flex flex-col gap-2 p-3 overflow-y-auto flex-1">
+        <div
+          v-for="form in forms"
+          :key="form.label"
+          @click="selectForm(form.label)"
+          class="cursor-pointer rounded-xl border p-3 text-center text-sm font-medium transition-colors"
+          :class="selectedForm === form.label ? 'border-primary-400 bg-primary-50 dark:bg-primary-900/20 text-primary-600' : form.status === 'complete' ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400' : 'border-gray-200 bg-gray-50 text-gray-400 dark:border-gray-700 dark:bg-gray-800'"
+        >
+          {{ form.label }}
+          <div class="mt-1 text-xs font-normal">{{ form.status }}</div>
+        </div>
+      </div>
+    </div>
+>>>>>>> ee667680193eb04496611f18cae907c93b4d08cd
 
         <!-- Right: Note Content Area -->
         <div
@@ -921,10 +980,161 @@
             </div>
           </div>
 
+<<<<<<< HEAD
           <!-- Form Details -->
           <div
             v-if="selectedForm"
             class="w-64 flex-shrink-0 border-l border-gray-200 px-6 py-4 dark:border-gray-800"
+=======
+          <NotesToolbar
+            v-model="noteContent"
+            class="flex-1 border rounded-xl overflow-hidden bg-white dark:bg-gray-900"
+          />
+
+          <!-- Save button – show only when there's content or in edit mode -->
+          <div class="mt-4 flex justify-end gap-2">
+            <!-- Auto-save status label -->
+            <div class="text-xs flex items-center gap-2 text-gray-500">
+              <span v-if="saveStatus === 'saving'" class="text-amber-600">● Saving...</span>
+              <span v-else-if="saveStatus === 'saved' && lastSaved" class="text-green-600">
+                Saved {{ formatTime(lastSaved) }}
+              </span>
+              <span v-else-if="saveStatus === 'error'" class="text-red-600">Failed to save</span>
+            </div>
+
+          <UButton
+            v-if="noteContent.trim() || isEditingPreviousPanel"
+            color="primary"
+            label="Save Note"
+            size="md"
+            @click="showSaveModal = true"
+            class="w-auto"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Form Details -->
+    <div v-if="selectedForm" class="w-64 flex-shrink-0 border-l border-gray-200 px-6 py-4 dark:border-gray-800 overflow-y-auto">
+      <div class="mb-3 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ selectedForm }}</h2>
+        <button @click="selectedForm = null; formDetails = null" class="text-lg font-bold text-gray-400 hover:text-gray-600">×</button>
+      </div>
+
+      <!-- Loading -->
+      <div v-if="formDetailsLoading" class="flex justify-center py-6">
+        <UIcon name="i-heroicons-arrow-path" class="h-5 w-5 animate-spin text-gray-400" />
+      </div>
+
+      <!-- Loaded -->
+      <div v-else-if="formDetails" class="space-y-3">
+        <!-- Score/severity -->
+        <div v-if="formDetails.score != null || formDetails.severity" class="flex gap-3 text-sm font-medium">
+          <span v-if="formDetails.score != null">Score: {{ formDetails.score }}</span>
+          <span v-if="formDetails.severity" class="text-gray-500">{{ formDetails.severity }}</span>
+        </div>
+
+        <!-- Questions -->
+        <div v-if="formDetails.questions?.length" class="space-y-2">
+          <div
+            v-for="(q, i) in formDetails.questions"
+            :key="i"
+            class="rounded border border-gray-200 bg-gray-50 p-2 text-xs dark:border-gray-700 dark:bg-gray-800"
+          >
+            <p class="font-medium text-gray-500 dark:text-gray-400">{{ q.label }}</p>
+            <p class="mt-1 text-gray-900 dark:text-gray-100">{{ q.answer || '—' }}</p>
+          </div>
+        </div>
+        <p v-else class="text-sm text-gray-500">No answers yet.</p>
+      </div>
+
+      <!-- Error/empty -->
+      <p v-else class="text-sm text-gray-500">Could not load form data.</p>
+    </div>
+
+
+    <!-- Save Note Modal -->
+<div
+  v-if="showSaveModal"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+  <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+    <h2 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Save Note</h2>
+    <p class="mb-6 text-sm text-gray-500 dark:text-gray-400">Are you sure you want to save this note?</p>
+    <div class="flex justify-end gap-3">
+      <button
+        @click="showSaveModal = false"
+        class="rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+      >
+        Cancel
+      </button>
+      <button
+        @click="confirmSaveNote()"
+        class="bg-primary-500 hover:bg-primary-600 rounded-lg px-4 py-2 text-sm text-white"
+      >
+        Save
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Submit Changes Modal -->
+<div
+  v-if="showSubmitModal"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+  <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+    <h2 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Submit Changes</h2>
+    <p class="mb-6 text-sm text-gray-500 dark:text-gray-400">Are you sure you want to submit your changes?</p>
+    <div class="flex justify-end gap-3">
+      <button
+        @click="showSubmitModal = false"
+        class="rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+      >
+        Cancel
+      </button>
+      <button
+        @click="showSubmitModal = false; submitPreviousEdit()"
+        class="bg-primary-500 hover:bg-primary-600 rounded-lg px-4 py-2 text-sm text-white"
+        
+      >
+        Submit
+      </button>
+    </div>
+  </div>
+</div>
+
+    <!-- Edit Modal -->
+    <div
+      v-if="showEditModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl md:max-w-md dark:bg-gray-900">
+        <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Edit Note</h2>
+
+        <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+          Reason for editing
+        </label>
+        <textarea
+          v-model="editReason"
+          rows="3"
+          placeholder="Describe why you are editing this note..."
+          class="focus:ring-primary-500 mb-4 w-full resize-none rounded-lg border border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 focus:ring-2 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+        ></textarea>
+
+        <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+          Signature
+        </label>
+        <input
+          v-model="signature"
+          type="text"
+          placeholder="Sign here..."
+          class="focus:ring-primary-500 w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-gray-900 focus:ring-2 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+          style="font-family: 'Brush Script MT', cursive; font-size: 1.25rem"
+        />
+
+        <div class="mt-6 flex justify-end gap-3">
+          <button
+            @click="showEditModal = false"
+            class="rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+>>>>>>> ee667680193eb04496611f18cae907c93b4d08cd
           >
             <div class="mb-3 flex items-center justify-between">
               <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
@@ -941,6 +1151,7 @@
           </div>
         </div>
       </div>
+<<<<<<< HEAD
 
       <!-- Save Note Modal -->
       <div
@@ -1045,6 +1256,8 @@
             </button>
           </div>
         </div>
+=======
+>>>>>>> ee667680193eb04496611f18cae907c93b4d08cd
       </div>
     </div>
   </div>

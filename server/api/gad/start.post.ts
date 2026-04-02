@@ -33,13 +33,6 @@ export default defineEventHandler(async (event) => {
   })
 
   if (existingForm) {
-    if (existingForm.status === 'COMPLETE' && !canViewScores) {
-      throw createError({
-        statusCode: 403,
-        statusMessage:
-          'You do not have permission to view scores. Your administrator has not enabled this feature for your account. Please contact your clinician for any further inquiries.',
-      })
-    }
     let questions = await prisma.gadQuestion.findFirst({
       where: { formId: existingForm.id },
     })
@@ -53,9 +46,14 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    const submitted = existingForm.status === 'COMPLETE'
+    const canViewFormDetails = !submitted || canViewScores
+
     return {
       formId: existingForm.id,
-      answers: questions,
+      submitted,
+      canViewFormDetails,
+      answers: canViewFormDetails ? questions : null,
     }
   }
 
@@ -73,6 +71,8 @@ export default defineEventHandler(async (event) => {
 
   return {
     formId: createdForm.id,
+    submitted: false,
+    canViewFormDetails: true,
     answers: createdQuestions,
   }
 })

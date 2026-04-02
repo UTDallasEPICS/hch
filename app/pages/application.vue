@@ -2,6 +2,7 @@
   import { useFormStore } from '~/stores/formStore'
   import type { AppAnswerPayload } from '~/stores/formStore'
   import type { ApplicationFormState } from '~/stores/formStore'
+  import { isDev, applicationSeedData } from '~/utils/devSeedData'
 
   const toast = useToast()
   const isSaving = ref(false)
@@ -54,7 +55,6 @@
       'q25',
       'q26',
       'q27',
-      'q28',
       'q29',
       'q30',
       'q31',
@@ -215,6 +215,10 @@
 
   function clearForm() {
     applySavedAnswers()
+    // In dev mode, re-apply seed data after clearing if there's no server data
+    if (isDev() && !hasServerData.value) {
+      applySeedData()
+    }
   }
 
   async function goPrev() {
@@ -240,16 +244,73 @@
     await persistProgress(false)
   })
 
+  // Track if we have real saved data from the server
+  const hasServerData = ref(false)
+  
+  function applySeedData() {
+    if (!isDev()) return
+    Object.assign(form.value, applicationSeedData)
+    form.value.q18 = [...applicationSeedData.q18]
+    form.value.q48 = [...applicationSeedData.q48]
+  }
+  
   onMounted(async () => {
     try {
-      const response = await $fetch<{ answers?: AppAnswerPayload | null; submitted?: boolean }>(
+      const response = await $fetch<{ 
+        answers?: AppAnswerPayload | null
+        submitted?: boolean
+        user?: { email?: string; name?: string | null }
+      }>(
         '/api/application/start',
         {
           method: 'POST',
         }
       )
-      applySavedAnswers(response?.answers)
+      
+      // Check if there are meaningful saved answers - require at least 3 core fields to have values
+      // This prevents treating empty/default records as "real" data
+      const coreFields = ['q01', 'q02', 'q03', 'q04', 'q05'] // email, first name, last name, phone, etc.
+      const filledCoreFields = coreFields.filter(key => {
+        const val = response?.answers?.[key]
+        return val !== null && val !== undefined && val !== '' && String(val).trim() !== ''
+      })
+      const hasRealAnswers = filledCoreFields.length >= 3
+      
+      console.log('[Application] isDev:', isDev(), 'hasRealAnswers:', hasRealAnswers, 'filledCoreFields:', filledCoreFields.length, 'hostname:', window.location.hostname)
+      
+      hasServerData.value = !!hasRealAnswers
       isReadOnly.value = Boolean(response?.submitted)
+      
+      if (hasRealAnswers) {
+        applySavedAnswers(response?.answers)
+      } else if (isDev()) {
+        // No server data - apply seed data in dev mode
+        console.log('[Application] Applying seed data...')
+        applySeedData()
+        console.log('[Application] After seed, q1:', form.value.q1)
+      }
+      
+      // Auto-populate user info from session (email and name)
+      // Email is ALWAYS populated from the logged-in user's session to avoid confusion
+      if (response?.user) {
+        // Always use the logged-in user's email (overrides seed data if present)
+        if (response.user.email) {
+          form.value.q1 = response.user.email
+        }
+        // Auto-fill name if empty - name may be stored as "First||Last" or "First Last"
+        if (response.user.name) {
+          const nameParts = response.user.name.includes('||') 
+            ? response.user.name.split('||')
+            : response.user.name.split(' ')
+          
+          if (!form.value.q2 && nameParts[0]) {
+            form.value.q2 = nameParts[0].trim()
+          }
+          if (!form.value.q3 && nameParts.length > 1) {
+            form.value.q3 = nameParts.slice(1).join(' ').trim()
+          }
+        }
+      }
     } catch (error: any) {
       toast.add({
         title: 'Unable to Load Application',

@@ -2,6 +2,7 @@ import { createError, defineEventHandler, getHeaders, getRouterParam, readBody }
 import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
 import { isPreWaitlistComplete } from '../../utils/client-forms'
+import { isClinicalClient } from '../../utils/is-clinical-client'
 import type { ClientStatus } from '../../../../prisma/generated/client'
 
 const VALID_STATUSES: ClientStatus[] = ['INCOMPLETE', 'WAITLIST', 'ACTIVE', 'ARCHIVED']
@@ -52,6 +53,13 @@ export default defineEventHandler(async (event) => {
   })
 
   if (!user) {
+    throw createError({
+      statusCode: 404,
+      statusMessage: 'Client not found',
+    })
+  }
+
+  if (!isClinicalClient(user.role, user.email)) {
     throw createError({
       statusCode: 404,
       statusMessage: 'Client not found',

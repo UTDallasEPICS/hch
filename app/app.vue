@@ -9,7 +9,9 @@
 
   const isTasksPage = computed(() => route.path === '/taskPage')
   const isDashboardPage = computed(() => route.path === '/')
-  const isClientsPage = computed(() => route.path === '/clients' || route.path.startsWith('/clients/'))
+  const isClientsPage = computed(
+    () => route.path === '/clients' || route.path.startsWith('/clients/')
+  )
   /** Temporary: notes playground until session notes are wired in the app flow */
   const isNotesTestPage = computed(
     () => route.path === '/notes-test' || route.path.startsWith('/notes-test/')
@@ -46,7 +48,7 @@
               alt="Hope Cope Heal logo"
               width="160"
               height="32"
-              style="height: 32px; width: auto;"
+              style="height: 32px; width: auto"
               class="h-8 w-auto dark:hidden"
             />
             <img
@@ -54,7 +56,7 @@
               alt="Hope Cope Heal logo"
               width="160"
               height="32"
-              style="height: 32px; width: auto;"
+              style="height: 32px; width: auto"
               class="hidden h-8 w-auto dark:block"
             />
             <span class="text-sm leading-none whitespace-nowrap sm:hidden">Hope.Cope.Heal.</span>
@@ -91,14 +93,14 @@
               :variant="isNotesTestPage ? 'solid' : 'soft'"
               @click="goTo('/notes-test')"
             />
-          <UButton
-            :icon="isDark ? 'i-heroicons-moon-20-solid' : 'i-heroicons-sun-20-solid'"
-            color="neutral"
-            variant="ghost"
-            @click="isDark = !isDark"
-            aria-label="Toggle Theme"
-          />
-        </div>
+            <UButton
+              :icon="isDark ? 'i-heroicons-moon-20-solid' : 'i-heroicons-sun-20-solid'"
+              color="neutral"
+              variant="ghost"
+              @click="isDark = !isDark"
+              aria-label="Toggle Theme"
+            />
+          </div>
         </UContainer>
       </header>
 

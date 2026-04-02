@@ -72,5 +72,9 @@ export default defineEventHandler(async (event) => {
     created,
     submitted: existingForm.status === 'COMPLETE',
     answers: existingQuestions,
+    user: {
+      email: session.user.email,
+      name: session.user.name,
+    },
   }
 })

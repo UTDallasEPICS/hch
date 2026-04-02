@@ -2,6 +2,7 @@ import { createError, defineEventHandler, getHeaders, getRouterParam, readBody }
 import { auth } from '../../../../utils/auth'
 import { prisma } from '../../../../utils/prisma'
 import { isAdmin } from '../../../../utils/is-admin'
+import { isClinicalClient } from '../../../../utils/is-clinical-client'
 
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
@@ -26,6 +27,14 @@ export default defineEventHandler(async (event) => {
   const noteId = getRouterParam(event, 'noteId')
   if (!clientUserId || !noteId) {
     throw createError({ statusCode: 400, statusMessage: 'Missing client or note id' })
+  }
+
+  const targetUser = await prisma.user.findUnique({
+    where: { id: clientUserId },
+    select: { role: true, email: true },
+  })
+  if (!targetUser || !isClinicalClient(targetUser.role, targetUser.email)) {
+    throw createError({ statusCode: 404, statusMessage: 'Session note not found' })
   }
 
   const body = await readBody<{

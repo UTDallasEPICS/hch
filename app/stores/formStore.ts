@@ -92,7 +92,7 @@ export interface ApplicationFormState {
   q51: string
 }
 
-function createInitialState(): ApplicationFormState {
+function createEmptyState(): ApplicationFormState {
   return {
     q1: '',
     q2: '',
@@ -162,6 +162,7 @@ function createInitialState(): ApplicationFormState {
   }
 }
 
+
 export type AppAnswerPayload = Record<string, string | null | undefined>
 
 /**
@@ -169,7 +170,7 @@ export type AppAnswerPayload = Record<string, string | null | undefined>
  * Q2 is exposed as first_name (PDF data key); internally stored as q2.
  */
 export function useFormStore() {
-  const form = useState<ApplicationFormState>('application-form-state', createInitialState)
+  const form = useState<ApplicationFormState>('application-form-state', createEmptyState)
 
   /** Semantic key for Q2: "First Name" → first_name (PDF) */
   const first_name = computed({
@@ -244,7 +245,7 @@ export function useFormStore() {
    * Expects keys q01–q50.
    */
   function applySavedAnswers(answers?: AppAnswerPayload | null) {
-    Object.assign(form.value, createInitialState())
+    Object.assign(form.value, createEmptyState())
     if (!answers) return
     const mutable = form.value as unknown as Record<string, string | string[]>
     for (let payloadIndex = 1; payloadIndex <= TOTAL_PAYLOAD_QUESTIONS; payloadIndex += 1) {
