@@ -200,7 +200,7 @@
           '/api/application/progress'
         ),
         $fetch<{ answered: number; total: number; submitted?: boolean }>(
-          '/api/forms/ace-form/progress'
+          '/api/clients/me/forms/ace'
         ),
         $fetch<{
           answered: number

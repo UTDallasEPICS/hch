@@ -49,13 +49,6 @@ export default defineEventHandler(async (event) => {
 
   const resolvedClientRowId = clientRow.id
 
-  const editorNotes = await prisma.note.findMany({
-    where: {
-      OR: [{ clientId: clientUserId }, { clientId: resolvedClientRowId }],
-    },
-    orderBy: { createdAt: 'desc' },
-  })
-
   const sessionRows = await prisma.sessionNote.findMany({
     where: { clientId: resolvedClientRowId },
     orderBy: { createdAt: 'desc' },
@@ -79,17 +72,12 @@ export default defineEventHandler(async (event) => {
       date: new Date().toLocaleDateString('en-US'),
       content: '',
     },
-    previousNotes: editorNotes.map((n) => ({
-      id: n.id,
-      date: new Date(n.createdAt).toLocaleDateString('en-US'),
-      preview: n.content.slice(0, 60) + (n.content.length > 60 ? '...' : ''),
-      content: n.content,
-      createdAt: n.createdAt.toISOString(),
-    })),
+    previousNotes: [], // Deprecated: Kept to satisfy frontend types for now
     sessionNotes: sessionRows.map((s) => ({
       id: s.id,
       content: s.content,
       createdAt: s.createdAt.toISOString(),
+      preview: s.content.slice(0, 60) + (s.content.length > 60 ? '...' : ''),
     })),
     forms,
   }

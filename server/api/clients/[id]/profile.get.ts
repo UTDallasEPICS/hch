@@ -4,7 +4,6 @@ import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
 import { isAllFormsComplete, getIncompleteForms, FORM_LABELS } from '../../../utils/client-forms'
 import { parseName } from '../../../utils/name'
-import { getAceFormQuestions } from '../../../utils/ace-questions'
 import type { ClientStatus } from '../../../../prisma/generated/client'
 import { ensureDefaultDeclarationTemplates } from '../../../utils/declaration-templates'
 
@@ -75,15 +74,16 @@ export default defineEventHandler(async (event) => {
   const { fname, lname } = parseName(user.name)
 
   // Fetch form progress (what client sees on tasks page)
-  const [appForm, aceResponse, gadForm, phqForm, pclForm] = await Promise.all([
+  const [appForm, aceForm, gadForm, phqForm, pclForm] = await Promise.all([
     prisma.appForm.findFirst({
       where: { userId: clientUserId },
       orderBy: { id: 'desc' },
       include: { questions: true },
     }),
-    prisma.aceResponse.findFirst({
+    prisma.aceForm.findFirst({
       where: { userId: clientUserId },
-      orderBy: { completedAt: 'desc' },
+      orderBy: { id: 'desc' },
+      include: { questions: true },
     }),
     prisma.gadForm.findFirst({
       where: { userId: clientUserId },
@@ -114,20 +114,24 @@ export default defineEventHandler(async (event) => {
   }
 
   // ACE progress
-  const aceQuestions = getAceFormQuestions()
-  const aceResponses = aceResponse
-    ? (JSON.parse(aceResponse.responses) as Record<string, string>)
-    : {}
-  const aceAnswered = aceQuestions.filter(
-    (q) => aceResponses[q.alias] !== undefined && String(aceResponses[q.alias]).trim().length > 0
-  ).length
-  const aceForm = await prisma.form.findUnique({ where: { slug: 'ace-form' } })
-  const aceAssignment = aceForm
-    ? await prisma.formAssignment.findUnique({
-        where: { userId_formId: { userId: clientUserId, formId: aceForm.id } },
-      })
-    : null
-  const aceSubmitted = aceAssignment?.completedAt != null
+  const aceQuestionsDb = aceForm?.questions
+  let aceAnswered = 0
+  if (aceQuestionsDb) {
+    const answers = [
+      aceQuestionsDb.a01,
+      aceQuestionsDb.a02,
+      aceQuestionsDb.a03,
+      aceQuestionsDb.a04,
+      aceQuestionsDb.a05,
+      aceQuestionsDb.a06,
+      aceQuestionsDb.a07,
+      aceQuestionsDb.a08,
+      aceQuestionsDb.a09,
+      aceQuestionsDb.a10,
+    ]
+    aceAnswered = answers.filter((v) => v != null && v !== undefined).length
+  }
+  const aceSubmitted = aceForm?.status === 'COMPLETE'
 
   // GAD progress & score
   const gadQuestions = gadForm?.questions
@@ -171,17 +175,8 @@ export default defineEventHandler(async (event) => {
   const incompleteForms = await getIncompleteForms(prisma, clientUserId)
 
   // ACE score: count of "Yes" answers; severity per interpretation breakdown
-  const aceScore = aceSubmitted
-    ? Object.values(aceResponses).filter((v) => v === 'Yes' || v === 'true').length
-    : null
-  const aceSeverity =
-    aceScore != null
-      ? aceScore === 0
-        ? 'No reported ACEs'
-        : aceScore <= 3
-          ? 'Intermediate risk'
-          : 'High risk'
-      : null
+  const aceScore = aceForm?.totalScore ?? null
+  const aceSeverity = aceForm?.severity ?? null
 
   // PHQ totalScore: compute from questions if not stored (backward compat)
   let phqScore = phqForm?.totalScore ?? null
@@ -234,7 +229,7 @@ export default defineEventHandler(async (event) => {
       name: 'ACE',
       to: aceSubmitted ? '/forms/ace-form-results' : '/forms/ace-form',
       answered: aceAnswered,
-      total: aceQuestions.length,
+      total: 10,
       submitted: aceSubmitted,
       score: aceScore,
       severity: aceSeverity,
@@ -346,7 +341,7 @@ export default defineEventHandler(async (event) => {
   const tasksForClient =
     isOwnProfile && !canViewScores ? tasks.map(({ score: _s, severity: _v, ...t }) => t) : tasks
 
-  // Session notes: always scoped by canonical Client.id (SessionNote + Note tables).
+  // Session notes: always scoped by canonical Client.id
   let sessionNotesPayload: { id: string; content: string; createdAt: string }[] = []
   if (showRawSessionNotes && resolvedClientRowId) {
     let sessionRows: { id: string; content: string; createdAt: Date }[] = []
@@ -363,29 +358,7 @@ export default defineEventHandler(async (event) => {
       content: s.content,
       createdAt: s.createdAt.toISOString(),
     }))
-    if (hasAdminAccess) {
-      let editorNotes: { id: number; content: string; createdAt: Date }[] = []
-      try {
-        editorNotes = await prisma.note.findMany({
-          where: {
-            OR: [{ clientId: clientUserId }, { clientId: resolvedClientRowId }],
-          },
-          orderBy: { createdAt: 'desc' },
-        })
-      } catch {
-        editorNotes = []
-      }
-      const fromEditor = editorNotes.map((n) => ({
-        id: String(n.id),
-        content: n.content,
-        createdAt: n.createdAt.toISOString(),
-      }))
-      sessionNotesPayload = [...fromSession, ...fromEditor].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )
-    } else {
-      sessionNotesPayload = fromSession
-    }
+    sessionNotesPayload = fromSession
   }
 
   return {

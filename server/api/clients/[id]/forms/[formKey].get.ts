@@ -2,14 +2,13 @@ import { createError, defineEventHandler, getHeaders, getRouterParam } from 'h3'
 import { auth } from '../../../../utils/auth'
 import { prisma } from '../../../../utils/prisma'
 import { isAdmin } from '../../../../utils/is-admin'
-import { getAceFormQuestions } from '../../../../utils/ace-questions'
 
 const GAD_LABELS = [
   'Feeling nervous, anxious or on edge',
   'Not being able to stop or control worrying',
   'Worrying too much about different things',
   'Trouble relaxing',
-  'Being so restless that it\'s hard to sit still',
+  "Being so restless that it's hard to sit still",
   'Becoming easily annoyed or irritable',
   'Feeling afraid as if something awful might happen',
   'If you checked any problems, how difficult have they made it for you?',
@@ -74,7 +73,10 @@ export default defineEventHandler(async (event) => {
 
   const validKeys = ['application', 'ace', 'gad', 'phq', 'pcl']
   if (!validKeys.includes(formKey)) {
-    throw createError({ statusCode: 400, statusMessage: `Invalid form key. Must be one of: ${validKeys.join(', ')}` })
+    throw createError({
+      statusCode: 400,
+      statusMessage: `Invalid form key. Must be one of: ${validKeys.join(', ')}`,
+    })
   }
 
   const user = await prisma.user.findFirst({
@@ -134,27 +136,52 @@ export default defineEventHandler(async (event) => {
   }
 
   if (formKey === 'ace') {
-    const aceResponse = await prisma.aceResponse.findFirst({
+    const aceForm = await prisma.aceForm.findFirst({
       where: { userId: clientUserId },
-      orderBy: { completedAt: 'desc' },
+      orderBy: { id: 'desc' },
+      include: { questions: true },
     })
-    const aceQuestions = getAceFormQuestions()
-    const responses = aceResponse ? (JSON.parse(aceResponse.responses) as Record<string, string>) : {}
-    const questions = aceQuestions.map((q) => ({
-      label: q.text,
-      answer: responses[q.alias] ?? '',
+
+    const ACE_QUESTIONS_TEXT = [
+      'Did a parent or other adult in the household often swear at you, insult you, put you down, or humiliate you?',
+      'Did a parent or other adult in the household often push, grab, slap, or throw something at you?',
+      'Did an adult or person at least 5 years older ever touch or fondle you or have you touch their body in a sexual way?',
+      'Did you often feel that no one in your family loved you or thought you were important or special?',
+      "Did you often feel that you didn't have enough to eat, had to wear dirty clothes, and had no one to protect you?",
+      'Were your parents ever separated or divorced?',
+      'Was your mother or stepmother often pushed, grabbed, slapped, or had something thrown at her?',
+      'Did you live with anyone who was a problem drinker or alcoholic or who used street drugs?',
+      'Was a household member depressed or mentally ill, or did a household member attempt suicide?',
+      'Did a household member go to prison?',
+    ]
+
+    const q = aceForm?.questions
+    if (!q) {
+      return {
+        formKey: 'ace',
+        formName: 'ACE',
+        questions: [],
+        submitted: false,
+        score: null,
+        severity: null,
+      }
+    }
+
+    const answers = [q.a01, q.a02, q.a03, q.a04, q.a05, q.a06, q.a07, q.a08, q.a09, q.a10]
+
+    const questions = ACE_QUESTIONS_TEXT.map((text, i) => ({
+      label: text,
+      answer: answers[i] ?? '',
     }))
-    const score = Object.values(responses).filter((v) => v === 'Yes' || v === 'true').length
-    const severity =
-      score === 0 ? 'No reported ACEs' : score <= 3 ? 'Intermediate risk' : 'High risk'
+
     return {
       formKey: 'ace',
       formName: 'ACE',
       questions,
-      submitted: !!aceResponse?.responses,
-      completedAt: aceResponse?.completedAt,
-      score,
-      severity,
+      submitted: aceForm?.status === 'COMPLETE',
+      completedAt: aceForm?.submittedAt,
+      score: aceForm?.totalScore,
+      severity: aceForm?.severity,
     }
   }
 
@@ -166,7 +193,14 @@ export default defineEventHandler(async (event) => {
     })
     const q = gadForm?.questions
     if (!q) {
-      return { formKey: 'gad', formName: 'GAD-7', questions: [], submitted: false, score: null, severity: null }
+      return {
+        formKey: 'gad',
+        formName: 'GAD-7',
+        questions: [],
+        submitted: false,
+        score: null,
+        severity: null,
+      }
     }
     const answers = [q.g01, q.g02, q.g03, q.g04, q.g05, q.g06, q.g07, q.g08]
     const questions = GAD_LABELS.slice(0, answers.length).map((label, i) => ({
@@ -193,9 +227,7 @@ export default defineEventHandler(async (event) => {
     if (!q) {
       return { formKey: 'phq', formName: 'PHQ-9', questions: [], submitted: false, score: null }
     }
-    const answers = [
-      q.q1, q.q2, q.q3, q.q4, q.q5, q.q6, q.q7, q.q8, q.q9, q.q10,
-    ]
+    const answers = [q.q1, q.q2, q.q3, q.q4, q.q5, q.q6, q.q7, q.q8, q.q9, q.q10]
     const questions = PHQ_LABELS.slice(0, answers.length).map((label, i) => ({
       label,
       answer: answers[i] != null ? (PHQ_OPTIONS[answers[i] as number] ?? String(answers[i])) : '',
@@ -217,7 +249,14 @@ export default defineEventHandler(async (event) => {
     })
     const q = pclForm?.questions
     if (!q) {
-      return { formKey: 'pcl', formName: 'PCL-5', questions: [], submitted: false, score: null, severity: null }
+      return {
+        formKey: 'pcl',
+        formName: 'PCL-5',
+        questions: [],
+        submitted: false,
+        score: null,
+        severity: null,
+      }
     }
     const questions: { label: string; answer: string }[] = []
     let totalScore = pclForm?.totalScore ?? null
