@@ -12,46 +12,24 @@ export default defineEventHandler(async (event) => {
   }
 
   const userId = session.user.id
-  const body = await readBody<{ clientId: string; content: string }>(event)
+  const body = await readBody(event)
 
   if (!body.clientId) {
     throw createError({ statusCode: 400, statusMessage: 'clientId is required' })
   }
 
-  if (!body.content?.trim()) {
-    throw createError({ statusCode: 400, statusMessage: 'Content is required' })
-  }
-
-  /** 
-  let clientRow = await prisma.client.findFirst({
-    where: { OR: [{ id: body.clientId }, { userId: body.clientId }] },
-  })
-
-  if (!clientRow) {
-    const u = await prisma.user.findFirst({
-      where: { id: body.clientId, role: 'CLIENT' },
-      include: { client: true },
-    })
-    if (u?.client) clientRow = u.client
-    else if (u) {
-      clientRow = await prisma.client.create({ data: { userId: u.id } })
-    }
-  }
-
-  if (!clientRow) {
-    throw createError({ statusCode: 400, statusMessage: 'Client not found' })
-  }
-
-   */
+  const content = body.content?.trim() || ''
+  const attended = body.attended ?? true
+  const noShowReason = attended === false ? (body.noShowReason?.trim() || null) : null
 
   try {
     const note = await prisma.note.create({
       data: {
         userId,
         clientId: body.clientId,
-        //clientRow.id,
-        content: body.content.trim(),
-      },
+        content: body.content?.trim() || '',
+        attended: body.attended ?? true,
+      }
     })
     return { success: true, note }
   } catch {
