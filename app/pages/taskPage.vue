@@ -103,16 +103,6 @@
   const isWaitlist = computed(() => userStatus.value === 'WAITLIST')
   const isActive = computed(() => userStatus.value === 'ACTIVE')
 
-  const statusLabel = computed(() => {
-    const labels: Record<string, string> = {
-      INCOMPLETE: 'Pre-waitlist',
-      WAITLIST: 'Waitlist',
-      ACTIVE: 'Active',
-      ARCHIVED: 'Archived',
-    }
-    return labels[userStatus.value] ?? userStatus.value
-  })
-
   async function loadProgress() {
     const [appResult, aceProgressResult, gadResult, phqResult, pclResult] =
       await Promise.allSettled([
