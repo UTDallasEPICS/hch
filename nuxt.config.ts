@@ -27,6 +27,11 @@ export default defineNuxtConfig({
   },
 
   vite: {
+    // Default SSR module IPC timeout is 60s; on Windows or with heavy dev load (e.g. Prisma Studio
+    // via `pnpm run dev`) vite-node can hit it and show "Request timeout ... for type: module".
+    viteNode: {
+      requestTimeout: 120_000,
+    },
     resolve: {
       dedupe: [
         'prosemirror-model',

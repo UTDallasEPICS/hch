@@ -70,6 +70,50 @@ function welcomeDisplayName(user: { name: string | null; email: string }): strin
   return 'there'
 }
 
+function normalizeNameForCompare(s: string): string {
+  return s.toLowerCase().replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * True when a field value is clearly a date (e.g. HTML date input `YYYY-MM-DD`), not a name.
+ * Stops DOB mistakenly stored in first/last name from appearing in the dashboard welcome line.
+ */
+function looksLikeDateOnly(value: string): boolean {
+  const t = value.trim()
+  if (!t) return false
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return true
+  if (/^\d{4}-\d{2}-\d{2}T/.test(t)) return true
+  if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(t)) return true
+  if (/^\d{1,2}\.\d{1,2}\.\d{2,4}$/.test(t)) return true
+  return false
+}
+
+/** Patient name from application `q8` + `q9` (stored as q08, q09 on `AppQuestion`). */
+function patientDisplayFromQuestions(
+  q08: string | null | undefined,
+  q09: string | null | undefined,
+): string {
+  const parts = [q08, q09]
+    .map((x) => x?.trim() ?? '')
+    .filter((x) => x.length > 0 && !looksLikeDateOnly(x))
+  const raw = parts.join(' ')
+  if (!raw) return ''
+  return formatStoredUserNameForDisplay(raw)
+}
+
+function resolveWelcomeHeadline(clientName: string, patientName: string): {
+  displayName: string
+  clientDisplayName?: string
+} {
+  if (!patientName) {
+    return { displayName: clientName }
+  }
+  if (normalizeNameForCompare(patientName) === normalizeNameForCompare(clientName)) {
+    return { displayName: clientName }
+  }
+  return { displayName: patientName, clientDisplayName: clientName }
+}
+
 export default defineEventHandler(async (event) => {
   const requestHeaders = new Headers()
   for (const [key, value] of Object.entries(getHeaders(event))) {
@@ -93,7 +137,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 
-  const displayName = welcomeDisplayName(user)
+  const clientName = welcomeDisplayName(user)
+
+  const appQuestion = await prisma.appQuestion.findFirst({
+    where: { userId: session.user.id },
+    orderBy: { id: 'asc' },
+    select: { q08: true, q09: true },
+  })
+  const patientName = patientDisplayFromQuestions(appQuestion?.q08, appQuestion?.q09)
+  const { displayName, clientDisplayName } = resolveWelcomeHeadline(clientName, patientName)
 
   const client = await prisma.client.findUnique({
     where: { userId: session.user.id },
@@ -103,6 +155,7 @@ export default defineEventHandler(async (event) => {
   if (!client) {
     return {
       displayName,
+      clientDisplayName,
       statusLabel: 'Not enrolled',
       clinicalStatus: null,
       therapyWeekDisplay: '—',
@@ -152,6 +205,7 @@ export default defineEventHandler(async (event) => {
 
   return {
     displayName,
+    clientDisplayName,
     statusLabel,
     clinicalStatus: client.status,
     therapyWeekDisplay,

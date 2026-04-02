@@ -4,6 +4,8 @@
   const props = defineProps<{
     pending: boolean
     displayName?: string
+    /** When the application lists a different patient (child) than the client, shown under the welcome line. */
+    clientDisplayName?: string
     statusLabel?: string
     /** Raw client status; drives badge color to match the tasks page. */
     clinicalStatus?: string | null
@@ -43,8 +45,14 @@
         </template>
         <template v-else-if="displayName != null && statusLabel != null">
           <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
-            Welcome, {{ displayName }}!!!
+            Welcome, {{ displayName }} !!!
           </h1>
+          <p
+            v-if="clientDisplayName"
+            class="mt-1 text-sm text-gray-600 dark:text-gray-400"
+          >
+            {{ clientDisplayName }}
+          </p>
           <UBadge class="mt-2" :color="statusBadgeColor" variant="soft" size="md">
             Your status: {{ statusLabel }}
           </UBadge>
@@ -102,7 +110,7 @@
             <UIcon name="i-heroicons-calendar-days-20-solid" class="h-5 w-5" />
             Therapy week
           </div>
-          <p class="mt-2 text-3xl font-semibold tabular-nums text-gray-900 dark:text-white">
+          <p class="mt-2 text-3xl font-semibold text-gray-900 tabular-nums dark:text-white">
             {{ therapyWeekDisplay }}
           </p>
         </div>
@@ -113,7 +121,7 @@
             <UIcon name="i-heroicons-clipboard-document-check-20-solid" class="h-5 w-5" />
             Forms progress
           </div>
-          <p class="mt-2 text-3xl font-semibold tabular-nums text-gray-900 dark:text-white">
+          <p class="mt-2 text-3xl font-semibold text-gray-900 tabular-nums dark:text-white">
             {{ formsProgressDisplay }}
           </p>
         </div>
@@ -124,7 +132,7 @@
             <UIcon name="i-heroicons-document-text-20-solid" class="h-5 w-5" />
             Pending note requests
           </div>
-          <p class="mt-2 text-3xl font-semibold tabular-nums text-gray-900 dark:text-white">
+          <p class="mt-2 text-3xl font-semibold text-gray-900 tabular-nums dark:text-white">
             {{ pendingSessionNotesRequests }}
           </p>
         </div>
