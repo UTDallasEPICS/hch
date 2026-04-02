@@ -101,5 +101,7 @@ export default defineEventHandler(async (event) => {
 
   return {
     submitted: true,
+    totalScore,
+    severity,
   }
 })
