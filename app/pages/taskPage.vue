@@ -328,9 +328,6 @@
         <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
           Tasks to Complete
         </h1>
-        <UBadge class="mt-2" color="warning" variant="soft" size="md">
-          Your status: {{ statusLabel }}
-        </UBadge>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
           Complete the application form and provide the required documents.
         </p>
@@ -407,9 +404,6 @@
         <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
           Waitlist Status
         </h1>
-        <UBadge class="mt-2" color="primary" variant="soft" size="md">
-          Your status: {{ statusLabel }}
-        </UBadge>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">You are on the waitlist.</p>
       </div>
       <div
@@ -437,9 +431,6 @@
         <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
           Tasks to Complete
         </h1>
-        <UBadge class="mt-2" color="success" variant="soft" size="md">
-          Your status: {{ statusLabel }}
-        </UBadge>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
           Complete each clinical assessment form.
         </p>
@@ -520,9 +511,6 @@
         <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
           Tasks
         </h1>
-        <UBadge class="mt-2" color="neutral" variant="soft" size="md">
-          Your status: {{ statusLabel }}
-        </UBadge>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
           You have no pending tasks at this time.
         </p>
