@@ -104,6 +104,7 @@ export default defineEventHandler(async (event) => {
     return {
       displayName,
       statusLabel: 'Not enrolled',
+      clinicalStatus: null,
       therapyWeekDisplay: '—',
       formsProgressDisplay: '—',
       pendingSessionNotesRequests: 0,
@@ -152,6 +153,7 @@ export default defineEventHandler(async (event) => {
   return {
     displayName,
     statusLabel,
+    clinicalStatus: client.status,
     therapyWeekDisplay,
     formsProgressDisplay,
     pendingSessionNotesRequests,

@@ -1,16 +1,27 @@
 <script setup lang="ts">
   import { authClient } from '~/utils/auth-client'
 
-  defineProps<{
+  const props = defineProps<{
     pending: boolean
     displayName?: string
     statusLabel?: string
+    /** Raw client status; drives badge color to match the tasks page. */
+    clinicalStatus?: string | null
     description: string
     therapyWeekDisplay: string
     formsProgressDisplay: string
     pendingSessionNotesRequests: number
     error?: Error | null
   }>()
+
+  /** Same mapping as `taskPage.vue` status badges. */
+  const statusBadgeColor = computed(() => {
+    const s = props.clinicalStatus
+    if (s === 'INCOMPLETE') return 'warning' as const
+    if (s === 'WAITLIST') return 'primary' as const
+    if (s === 'ACTIVE') return 'success' as const
+    return 'neutral' as const
+  })
 
   const emit = defineEmits<{
     retry: []
@@ -34,10 +45,9 @@
           <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
             Welcome, {{ displayName }}!!!
           </h1>
-          <div class="mt-3 flex flex-wrap items-center gap-2">
-            <span class="text-sm text-gray-600 dark:text-gray-400">Your status:</span>
-            <UBadge color="primary" variant="soft" size="md">{{ statusLabel }}</UBadge>
-          </div>
+          <UBadge class="mt-2" :color="statusBadgeColor" variant="soft" size="md">
+            Your status: {{ statusLabel }}
+          </UBadge>
           <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
             {{ description }}
           </p>

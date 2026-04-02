@@ -18,6 +18,7 @@
   type ClientStats = {
     displayName: string
     statusLabel: string
+    clinicalStatus: string | null
     therapyWeekDisplay: string
     formsProgressDisplay: string
     pendingSessionNotesRequests: number
@@ -191,6 +192,7 @@
       :pending="pending"
       :display-name="stats?.displayName"
       :status-label="stats?.statusLabel"
+      :clinical-status="stats?.clinicalStatus ?? null"
       description="Your care journey and tasks at a glance."
       :therapy-week-display="stats?.therapyWeekDisplay ?? '—'"
       :forms-progress-display="stats?.formsProgressDisplay ?? '—'"
@@ -198,5 +200,6 @@
       :error="error"
       @retry="refresh()"
     />
+    <ClientSessionNotesSection />
   </main>
 </template>
