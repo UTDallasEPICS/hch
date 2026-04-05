@@ -4,7 +4,6 @@ import { prisma } from '../../../../utils/prisma'
 import { isAdmin } from '../../../../utils/is-admin'
 
 export default defineEventHandler(async (event) => {
-
   const user = requireAdmin(event)
 
   const clientUserId = getRouterParam(event, 'id')
@@ -37,19 +36,20 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Session note not found' })
   }
 
-  await prisma.sessionNoteEdit.create({
-    data: {
-      sessionNoteId: note.id,
-      originalContent: note.content,
-      reason: body.reason.trim(),
-      signature: body.signature.trim(),
-    },
-  })
-
-  const updated = await prisma.sessionNote.update({
-    where: { id: note.id },
-    data: { content: body.content.trim() },
-  })
+  const [updated] = await prisma.$transaction([
+    prisma.sessionNoteEdit.create({
+      data: {
+        sessionNoteId: note.id,
+        originalContent: note.content,
+        reason: body.reason.trim(),
+        signature: body.signature.trim(),
+      },
+    }),
+    prisma.sessionNote.update({
+      where: { id: note.id },
+      data: { content: body.content.trim() },
+    }),
+  ])
 
   return updated
 })
