@@ -29,6 +29,20 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: 'sqlite',
   }),
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          return {
+            data: {
+              ...user,
+              role: 'CLIENT',
+            },
+          }
+        },
+      },
+    },
+  },
   user: {
     additionalFields: {
       role: {
