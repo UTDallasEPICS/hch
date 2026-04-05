@@ -20,13 +20,11 @@ function hasPdfSignature(fileBytes: Uint8Array) {
 }
 
 export default defineEventHandler(async (event) => {
-
   const user = requireUser(event)
 
-  const clients = await prisma.$queryRawUnsafe<Array<{ status: string | null }>>(
-    'SELECT status FROM "client" WHERE userId = ? LIMIT 1',
-    user.id
-  )
+  const clients = await prisma.$queryRaw<
+    Array<{ status: string | null }>
+  >`SELECT status FROM "client" WHERE userId = ${user.id} LIMIT 1`
   const status = toClientStatusLabel(clients[0]?.status)
   if (status !== 'Prospective' && status !== 'Waitlist') {
     throw createError({
@@ -66,24 +64,17 @@ export default defineEventHandler(async (event) => {
   await writeFile(absolutePath, filePart.data)
 
   const now = new Date()
-  await prisma.$executeRawUnsafe(
-    `INSERT INTO "ReleaseOfInformationAuthorizationForm"
+  await prisma.$executeRaw`
+    INSERT INTO "ReleaseOfInformationAuthorizationForm"
       ("userId", "status", "originalFileName", "storedFileName", "mimeType", "uploadedAt", "createdAt", "updatedAt")
-    VALUES (?, 'SUBMITTED', ?, ?, 'application/pdf', ?, ?, ?)
+    VALUES (${user.id}, 'SUBMITTED', ${filePart.filename}, ${storedFileName}, 'application/pdf', ${now}, ${now}, ${now})
     ON CONFLICT("userId") DO UPDATE SET
       "status" = 'SUBMITTED',
       "originalFileName" = excluded."originalFileName",
       "storedFileName" = excluded."storedFileName",
       "mimeType" = excluded."mimeType",
       "uploadedAt" = excluded."uploadedAt",
-      "updatedAt" = excluded."updatedAt"`,
-    user.id,
-    filePart.filename,
-    storedFileName,
-    now,
-    now,
-    now
-  )
+      "updatedAt" = excluded."updatedAt"`
 
   return {
     submitted: true,
