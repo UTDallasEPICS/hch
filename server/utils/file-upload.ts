@@ -67,7 +67,7 @@ function extractRelativePath(pathOrUrl: string): string {
 export async function deleteFile(pathOrUrl: string): Promise<void> {
   const relativePath = extractRelativePath(pathOrUrl)
   const fullPath = join(process.cwd(), relativePath)
-  if (!fullPath.startsWith(join(process.cwd(), 'uploads'))) {
+  if (!fullPath.startsWith(join(process.cwd(), 'uploads') + '/')) {
     throw new Error('Path traversal attempt detected')
   }
   try {
@@ -80,7 +80,7 @@ export async function deleteFile(pathOrUrl: string): Promise<void> {
 export async function readFile(pathOrUrl: string): Promise<Buffer> {
   const relativePath = extractRelativePath(pathOrUrl)
   const fullPath = join(process.cwd(), relativePath)
-  if (!fullPath.startsWith(join(process.cwd(), 'uploads'))) {
+  if (!fullPath.startsWith(join(process.cwd(), 'uploads') + '/')) {
     throw new Error('Path traversal attempt detected')
   }
   return fs.readFile(fullPath)
@@ -89,7 +89,7 @@ export async function readFile(pathOrUrl: string): Promise<Buffer> {
 export async function fileExists(pathOrUrl: string): Promise<boolean> {
   const relativePath = extractRelativePath(pathOrUrl)
   const fullPath = join(process.cwd(), relativePath)
-  if (!fullPath.startsWith(join(process.cwd(), 'uploads'))) {
+  if (!fullPath.startsWith(join(process.cwd(), 'uploads') + '/')) {
     throw new Error('Path traversal attempt detected')
   }
   try {

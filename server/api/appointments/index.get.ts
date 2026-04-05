@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
   let appointments
 
   // ADMIN → see all
-  if (user.role === 'ADMIN') {
+  if (event.context.isAdmin) {
     appointments = await prisma.appointment.findMany({
       include: {
         client: {

@@ -4,12 +4,15 @@ import { prisma } from '../../utils/prisma'
 import { isAdmin } from '../../utils/is-admin'
 
 export default defineEventHandler(async (event) => {
-
   const user = requireAdmin(event)
 
   const query = getQuery(event)
   const entityType = query.entityType as string | undefined
   const entityId = query.entityId as string | undefined
+  const page = parseInt(query.page as string) || 1
+  const limit = parseInt(query.limit as string) || 50
+
+  const skip = (page - 1) * limit
 
   const where: Record<string, unknown> = {}
   if (entityType) where.entityType = entityType
@@ -17,6 +20,8 @@ export default defineEventHandler(async (event) => {
 
   const audits = await prisma.changeAudit.findMany({
     where,
+    skip,
+    take: limit,
     orderBy: { signedAt: 'desc' },
     include: {
       signedBy: {

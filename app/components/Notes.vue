@@ -391,11 +391,9 @@
 
     isSavingPrevious.value = true
     try {
-      await $fetch('/api/notes/edit', {
-        method: 'POST',
+      await $fetch(`/api/clients/${props.client.id}/session-notes/${editingNoteId.value}`, {
+        method: 'PATCH',
         body: {
-          noteId: editingNoteId.value,
-          clientId: props.client.id,
           content: draft,
           reason: meta.reason,
           signature: meta.signature,
@@ -447,24 +445,22 @@
     try {
       const savedContent = noteContent.value
 
-      const response = (await $fetch('/api/notes/create', {
+      const response = (await $fetch(`/api/clients/${props.client.id}/notes`, {
         method: 'POST',
         body: {
-          clientId: props.client.id,
           content: savedContent,
         },
-      })) as { note: { id: number; createdAt: string } }
+      })) as { id: string; createdAt: string }
 
       console.log('New note created:', response)
 
       // Clear local draft
       localStorage.removeItem(`note_draft_${props.client.id}`)
 
-      // Add to previous notes list (this is what moves it to sidebar)
-      localPreviousNotes.value.unshift({
-        id: response.note.id,
-        date: new Date(response.note.createdAt).toLocaleDateString('en-US'),
-        preview: savedContent.slice(0, 60) + (savedContent.length > 60 ? '...' : ''),
+      // Add to session notes list (this is what moves it to sidebar)
+      localSessionNotes.value.unshift({
+        id: response.id,
+        createdAt: response.createdAt,
         content: savedContent,
       })
 

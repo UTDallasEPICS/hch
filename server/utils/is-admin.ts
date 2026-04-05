@@ -1,7 +1,7 @@
 /**
  * Check if a user is an admin (either by role or admin email list).
  */
-const guaranteedAdminEmails = new Set(['alice@example.com'])
+const guaranteedAdminEmails = new Set<string>()
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase()

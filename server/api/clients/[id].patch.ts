@@ -29,6 +29,18 @@ export default defineEventHandler(async (event) => {
     missedSessions?: number
   }>(event)
 
+  if (
+    !event.context.isAdmin &&
+    (body?.status !== undefined ||
+      body?.therapyWeek !== undefined ||
+      body?.missedSessions !== undefined)
+  ) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Forbidden: Only admins can modify status, therapyWeek, and missedSessions',
+    })
+  }
+
   if (!body?.status && body?.therapyWeek === undefined && body?.missedSessions === undefined) {
     throw createError({
       statusCode: 400,

@@ -22,7 +22,14 @@ export default defineEventHandler(async (event) => {
     return {
       success: true,
     }
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 'P2025') {
+      throw createError({
+        statusCode: 404,
+        statusMessage: 'Appointment not found',
+      })
+    }
+
     if (error && typeof error === 'object' && 'statusCode' in error) {
       throw error
     }
