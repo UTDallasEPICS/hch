@@ -44,9 +44,16 @@ export default defineEventHandler(async (event) => {
       success: true,
       appointment,
     }
-  } catch (error) {
+  } catch (error: any) {
     if (error && typeof error === 'object' && 'statusCode' in error) {
       throw error
+    }
+
+    if (error?.code === 'P2003') {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Invalid client ID or Foreign Key constraint failed',
+      })
     }
 
     console.error('Create appointment error:', error)
