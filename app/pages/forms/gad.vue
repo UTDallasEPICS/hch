@@ -6,7 +6,7 @@
     canViewScores: boolean
     canViewNotes: boolean
     canViewPlan: boolean
-  }>('/api/user/permissions')
+  }>('/api/users/me/permissions')
   const canViewScores = computed(() => permissions.value?.canViewScores ?? false)
 
   const form = reactive({
@@ -82,7 +82,7 @@
 
   onMounted(async () => {
     try {
-      const res = await $fetch('/api/gad/start', { method: 'POST' })
+      const res = await $fetch('/api/forms/gad/start', { method: 'POST' })
       applySavedAnswers(res?.answers)
     } catch (err: any) {
       const msg = err?.data?.statusMessage || err?.message || 'Unable to load form.'
@@ -105,7 +105,7 @@
     try {
       isSaving.value = true
 
-      await $fetch('/api/gad/save', {
+      await $fetch('/api/forms/gad/save', {
         method: 'POST',
         body: form,
       })

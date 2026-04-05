@@ -296,8 +296,8 @@
 
   async function saveEdit() {
     try {
-      await $fetch('/api/appointments/update', {
-        method: 'POST',
+      await $fetch(`/api/appointments/${selectedEvent.value.id}`, {
+        method: 'PUT',
         body: {
           id: selectedEvent.value.id,
           title: editForm.title,
@@ -329,12 +329,9 @@
 
   async function deleteEvent() {
     try {
-      await $fetch('/api/appointments/delete', {
-        method: 'POST',
+      await $fetch(`/api/appointments/${selectedEvent.value.id}`, {
+        method: 'DELETE',
         credentials: 'include',
-        body: {
-          id: selectedEvent.value.id,
-        },
       })
 
       toast.add({
@@ -399,7 +396,7 @@
   async function createSession() {
     console.log('sending appointment', { ...form })
     try {
-      await $fetch('/api/appointments/create', {
+      await $fetch('/api/appointments', {
         method: 'POST',
         body: {
           clientId: form.clientId,

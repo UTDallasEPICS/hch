@@ -91,10 +91,11 @@ export async function getWaitlistIncompleteForms(
   userId: string
 ): Promise<string[]> {
   const incomplete: string[] = []
-  const [aceResponse, gadForm, phqForm, pclForm] = await Promise.all([
-    prisma.aceResponse.findFirst({
+  const [aceForm, gadForm, phqForm, pclForm] = await Promise.all([
+    prisma.aceForm.findFirst({
       where: { userId },
-      orderBy: { completedAt: 'desc' },
+      orderBy: { id: 'desc' },
+      include: { questions: true },
     }),
     prisma.gadForm.findFirst({
       where: { userId },
@@ -117,18 +118,8 @@ export async function getWaitlistIncompleteForms(
     incomplete.push('pcl')
   }
 
-  if (!aceResponse?.responses) {
+  if (aceForm?.status !== 'COMPLETE') {
     incomplete.push('ace')
-  } else {
-    try {
-      const parsed = JSON.parse(aceResponse.responses) as Record<string, unknown>
-      const answered = Object.values(parsed).filter(
-        (v) => v != null && String(v).trim().length > 0
-      ).length
-      if (answered < ACE_QUESTION_COUNT) incomplete.push('ace')
-    } catch {
-      incomplete.push('ace')
-    }
   }
 
   const gadQuestions = gadForm?.questions

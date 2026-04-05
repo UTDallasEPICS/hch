@@ -6,7 +6,7 @@
     canViewScores: boolean
     canViewNotes: boolean
     canViewPlan: boolean
-  }>('/api/user/permissions')
+  }>('/api/users/me/permissions')
   const canViewScores = computed(() => permissions.value?.canViewScores ?? false)
 
   const options = [
@@ -58,7 +58,7 @@
   try {
     isSaving.value = true
 
-    await $fetch('/api/phq/save', {
+    await $fetch('/api/forms/phq/save', {
       method: 'POST',
       body: {
         q1: responses.value[0],
@@ -101,7 +101,7 @@ const loadError = ref<string | null>(null)
 
 onMounted(async () => {
   try {
-    const data = await $fetch('/api/phq/start', {
+    const data = await $fetch('/api/forms/phq/start', {
       method: 'POST',
     })
 

@@ -62,7 +62,7 @@
 
   onMounted(async () => {
     try {
-      const res = await $fetch('/api/ace/start', { method: 'POST' })
+      const res = await $fetch('/api/forms/ace/start', { method: 'POST' })
       applySavedAnswers(res?.answers)
     } catch (err: any) {
       const msg = err?.data?.statusMessage || err?.message || 'Unable to load form.'
@@ -74,7 +74,7 @@
     try {
       isSaving.value = true
 
-      await $fetch('/api/ace/save', {
+      await $fetch('/api/forms/ace/save', {
         method: 'POST',
         body: form,
       })
@@ -114,7 +114,7 @@
     
     try {
       isSaving.value = true
-      await $fetch('/api/ace/save', {
+      await $fetch('/api/forms/ace/save', {
         method: 'POST',
         body: { ...form, isSubmit: true },
       })

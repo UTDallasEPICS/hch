@@ -1,6 +1,6 @@
+import { requireUser } from '../../utils/guard'
 import { defineEventHandler, getHeaders, createError } from 'h3'
 import { prisma } from '../../utils/prisma'
-import { auth } from '../../utils/auth'
 
 export default defineEventHandler(async (event) => {
   const headers = new Headers()
@@ -9,14 +9,14 @@ export default defineEventHandler(async (event) => {
     if (v) headers.set(k, v)
   }
 
-  const session = await auth.api.getSession({ headers })
-  const userId = session?.user?.id
+  const user = requireUser(event)
+  const userId = user.id
 
   if (!userId) {
     throw createError({ statusCode: 403 })
   }
 
-  const user = await prisma.user.findUnique({
+  const dbUser = await prisma.user.findUnique({
     where: { id: userId },
     select: { role: true },
   })

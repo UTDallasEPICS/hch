@@ -1,5 +1,5 @@
+import { requireUser } from '../../../utils/guard'
 import { createError, defineEventHandler, getHeaders, getRouterParam } from 'h3'
-import { auth } from '../../../utils/auth'
 import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
 import { isAllFormsComplete, getIncompleteForms, FORM_LABELS } from '../../../utils/client-forms'
@@ -14,15 +14,8 @@ const PCL_TOTAL = 20
 const ACE_QUESTION_COUNT = 10
 
 export default defineEventHandler(async (event) => {
-  const requestHeaders = new Headers()
-  for (const [key, value] of Object.entries(getHeaders(event))) {
-    if (value !== undefined) requestHeaders.set(key, value)
-  }
 
-  const session = await auth.api.getSession({ headers: requestHeaders })
-  if (!session?.user?.id) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
-  }
+  const user = requireUser(event)
 
   await ensureDefaultDeclarationTemplates(prisma)
 
@@ -33,16 +26,16 @@ export default defineEventHandler(async (event) => {
 
   // Allow admin to view any client, or client to view their own (limited)
   const currentUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: user.id },
     select: { role: true, email: true },
   })
-  const isOwnProfile = session.user.id === clientUserId
+  const isOwnProfile = user.id === clientUserId
   const hasAdminAccess = isAdmin(currentUser?.role ?? null, currentUser?.email ?? null)
   if (!isOwnProfile && !hasAdminAccess) {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 
-  const user = await prisma.user.findFirst({
+  const dbUser = await prisma.user.findFirst({
     where: { id: clientUserId, role: 'CLIENT' },
     include: {
       client: {
@@ -58,11 +51,11 @@ export default defineEventHandler(async (event) => {
     },
   })
 
-  if (!user) {
+  if (!dbUser) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
   }
 
-  const clientProfile = user.client
+  const clientProfile = dbUser.client
   const resolvedClientRowId =
     clientProfile?.id ??
     (
@@ -71,7 +64,7 @@ export default defineEventHandler(async (event) => {
         select: { id: true },
       })
     )?.id
-  const { fname, lname } = parseName(user.name)
+  const { fname, lname } = parseName(dbUser.name)
 
   // Fetch form progress (what client sees on tasks page)
   const [appForm, aceForm, gadForm, phqForm, pclForm] = await Promise.all([
@@ -365,7 +358,7 @@ export default defineEventHandler(async (event) => {
     id: user.id,
     fname,
     lname,
-    name: user.name,
+    name: dbUser.name,
     email: user.email,
     status: (clientProfile?.status ?? 'INCOMPLETE') as ClientStatus,
     therapyWeek: clientProfile?.therapyWeek ?? null,

@@ -22,7 +22,7 @@
     originalFileName: string | null
     templateUrl: string
     uploadedFileUrl: string | null
-  }>('/api/release-of-information/progress', { getCachedData: () => undefined })
+  }>('/api/forms/release-of-information/progress', { getCachedData: () => undefined })
 
   function onFileChange(event: Event) {
     const target = event.target as HTMLInputElement
@@ -72,7 +72,7 @@
 
     try {
       uploading.value = true
-      await $fetch('/api/release-of-information/upload', {
+      await $fetch('/api/forms/release-of-information/upload', {
         method: 'POST',
         body: formData,
       })

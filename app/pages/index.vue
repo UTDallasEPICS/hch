@@ -2,7 +2,7 @@
   import { authClient } from '../utils/auth-client'
   import { capitalizeName } from '~/utils/name'
 
-  const { data: users, pending, error } = await useFetch('/api/get/users', {
+  const { data: users, pending, error } = await useFetch('/api/users', {
     getCachedData: () => undefined,
   })
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
   import { useFormStore } from '~/stores/formStore'
 
-  const { data: adminData } = await useFetch<{ isAdmin: boolean }>('/api/user/is-admin', {
+  const { data: adminData } = await useFetch<{ isAdmin: boolean }>('/api/users/me/is-admin', {
     getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
   })
   if (adminData.value?.isAdmin) {
@@ -12,7 +12,7 @@
     status: string | null
     hasClient: boolean
     userId: string | null
-  }>('/api/user/my-status', {
+  }>('/api/users/me/status', {
     getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
   })
   const userStatus = computed(() => statusData.value?.status ?? 'INCOMPLETE')
@@ -140,44 +140,44 @@
   }
 
   const { form } = useFormStore()
-  const answered = ref(0)
-  const total = ref(50)
-  const submitted = ref(false)
-  const aceAnswered = ref(0)
-  const aceTotal = ref(0)
-  const aceSubmitted = ref(false)
-  const gadAnswered = ref(0)
-  const gadTotal = ref(7)
-  const gadScore = ref<number | null>(null)
-  const gadSeverity = ref<string | null>(null)
-  const gadSubmitted = ref(false)
-  const phqAnswered = ref(0)
-  const phqTotal = ref(10)
-  const phqSubmitted = ref(false)
-  const pclAnswered = ref(0)
-  const pclTotal = ref(20)
-  const pclSubmitted = ref(false)
   const submittingForm = ref<string | null>(null)
 
-  const isApplicationComplete = computed(() => answered.value === total.value)
-  const isAceComplete = computed(() => aceTotal.value > 0 && aceAnswered.value === aceTotal.value)
-  const isGadComplete = computed(() => gadAnswered.value === gadTotal.value)
-  const isPhqComplete = computed(() => phqAnswered.value === phqTotal.value)
-  const isPclComplete = computed(() => pclAnswered.value === pclTotal.value)
+  const isApplicationComplete = computed(() => {
+    const task = getTask('application')
+    return task.answered === task.total && task.total > 0
+  })
+  const isAceComplete = computed(() => {
+    const task = getTask('ace')
+    return task.answered === task.total && task.total > 0
+  })
+  const isGadComplete = computed(() => {
+    const task = getTask('gad')
+    return task.answered === task.total && task.total > 0
+  })
+  const isPhqComplete = computed(() => {
+    const task = getTask('phq')
+    return task.answered === task.total && task.total > 0
+  })
+  const isPclComplete = computed(() => {
+    const task = getTask('pcl')
+    return task.answered === task.total && task.total > 0
+  })
 
   const aceTarget = computed(() =>
-    aceSubmitted.value ? '/forms/ace-form-results' : '/forms/ace-form'
+    getTask('ace').submitted ? '/forms/ace-form-results' : '/forms/ace-form'
   )
 
   const applicationPhoneValid = computed(() => {
     const digits = (form.value?.q5 || '').replace(/\D/g, '')
     return digits.length === 10
   })
-  const showApplicationSubmit = computed(() => isApplicationComplete.value && !submitted.value)
-  const showAceSubmit = computed(() => isAceComplete.value && !aceSubmitted.value)
-  const showGadSubmit = computed(() => isGadComplete.value && !gadSubmitted.value)
-  const showPhqSubmit = computed(() => isPhqComplete.value && !phqSubmitted.value)
-  const showPclSubmit = computed(() => isPclComplete.value && !pclSubmitted.value)
+  const showApplicationSubmit = computed(
+    () => isApplicationComplete.value && !getTask('application').submitted
+  )
+  const showAceSubmit = computed(() => isAceComplete.value && !getTask('ace').submitted)
+  const showGadSubmit = computed(() => isGadComplete.value && !getTask('gad').submitted)
+  const showPhqSubmit = computed(() => isPhqComplete.value && !getTask('phq').submitted)
+  const showPclSubmit = computed(() => isPclComplete.value && !getTask('pcl').submitted)
 
   const isPreWaitlist = computed(() => userStatus.value === 'INCOMPLETE')
   const isWaitlist = computed(() => userStatus.value === 'WAITLIST')
@@ -193,57 +193,18 @@
     return labels[userStatus.value] ?? userStatus.value
   })
 
-  async function loadProgress() {
-    const [appResult, aceProgressResult, gadResult, phqResult, pclResult] =
-      await Promise.allSettled([
-        $fetch<{ answered: number; total: number; submitted?: boolean }>(
-          '/api/application/progress'
-        ),
-        $fetch<{ answered: number; total: number; submitted?: boolean }>(
-          '/api/clients/me/forms/ace'
-        ),
-        $fetch<{
-          answered: number
-          total: number
-          totalScore: number | null
-          severity: string | null
-          submitted?: boolean
-        }>('/api/gad/progress'),
-        $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/phq/progress'),
-        $fetch<{ answered: number; total: number; submitted?: boolean }>('/api/pcl/progress'),
-      ])
-
-    if (appResult.status === 'fulfilled') {
-      answered.value = appResult.value.answered
-      total.value = appResult.value.total
-      submitted.value = Boolean(appResult.value.submitted)
-    }
-
-    if (aceProgressResult.status === 'fulfilled') {
-      aceAnswered.value = aceProgressResult.value.answered
-      aceTotal.value = aceProgressResult.value.total
-      aceSubmitted.value = Boolean(aceProgressResult.value.submitted)
-    }
-
-    if (gadResult.status === 'fulfilled') {
-      gadAnswered.value = gadResult.value.answered
-      gadTotal.value = gadResult.value.total
-      gadScore.value = gadResult.value.totalScore
-      gadSeverity.value = gadResult.value.severity
-      gadSubmitted.value = Boolean(gadResult.value.submitted)
-    }
-
-    if (phqResult.status === 'fulfilled') {
-      phqAnswered.value = phqResult.value.answered
-      phqTotal.value = phqResult.value.total
-      phqSubmitted.value = Boolean(phqResult.value.submitted)
-    }
-
-    if (pclResult.status === 'fulfilled') {
-      pclAnswered.value = pclResult.value.answered
-      pclTotal.value = pclResult.value.total
-      pclSubmitted.value = Boolean(pclResult.value.submitted)
-    }
+  function getTask(key: string): any {
+    if (!profile.value?.tasks)
+      return { answered: 0, total: 0, submitted: false, score: null, severity: null }
+    return (
+      profile.value.tasks.find((t: any) => t.key === key) || {
+        answered: 0,
+        total: 0,
+        submitted: false,
+        score: null,
+        severity: null,
+      }
+    )
   }
 
   async function submitApplication() {
@@ -258,8 +219,7 @@
     }
     try {
       submittingForm.value = 'application'
-      await $fetch('/api/application/submit', { method: 'POST' })
-      submitted.value = true
+      await $fetch('/api/forms/application/submit', { method: 'POST' })
       toast.add({
         title: 'Application Submitted',
         description: 'Your application form has been submitted successfully.',
@@ -274,7 +234,7 @@
           'Unable to submit. Please try again.',
         color: 'error',
       })
-      await loadProgress()
+      await refreshProfile()
     } finally {
       submittingForm.value = null
     }
@@ -284,8 +244,7 @@
     if (!showAceSubmit.value) return
     try {
       submittingForm.value = 'ace'
-      await $fetch('/api/forms/ace-form/submit', { method: 'POST' })
-      aceSubmitted.value = true
+      await $fetch('/api/forms/ace/submit', { method: 'POST' })
       toast.add({
         title: 'ACE Form Submitted',
         description: 'Your ACE form has been submitted successfully.',
@@ -300,7 +259,7 @@
           'Unable to submit. Please try again.',
         color: 'error',
       })
-      await loadProgress()
+      await refreshProfile()
     } finally {
       submittingForm.value = null
     }
@@ -310,8 +269,7 @@
     if (!showGadSubmit.value) return
     try {
       submittingForm.value = 'gad'
-      await $fetch('/api/gad/submit', { method: 'POST' })
-      gadSubmitted.value = true
+      await $fetch('/api/forms/gad/submit', { method: 'POST' })
       toast.add({
         title: 'GAD-7 Form Submitted',
         description: 'Your GAD-7 form has been submitted successfully.',
@@ -326,7 +284,7 @@
           'Unable to submit. Please try again.',
         color: 'error',
       })
-      await loadProgress()
+      await refreshProfile()
     } finally {
       submittingForm.value = null
     }
@@ -336,8 +294,7 @@
     if (!showPhqSubmit.value) return
     try {
       submittingForm.value = 'phq'
-      await $fetch('/api/phq/submit', { method: 'POST' })
-      phqSubmitted.value = true
+      await $fetch('/api/forms/phq/submit', { method: 'POST' })
       toast.add({
         title: 'PHQ-9 Form Submitted',
         description: 'Your PHQ-9 form has been submitted successfully.',
@@ -352,7 +309,7 @@
           'Unable to submit. Please try again.',
         color: 'error',
       })
-      await loadProgress()
+      await refreshProfile()
     } finally {
       submittingForm.value = null
     }
@@ -362,8 +319,7 @@
     if (!showPclSubmit.value) return
     try {
       submittingForm.value = 'pcl'
-      await $fetch('/api/pcl/submit', { method: 'POST' })
-      pclSubmitted.value = true
+      await $fetch('/api/forms/pcl/submit', { method: 'POST' })
       toast.add({
         title: 'PCL-5 Form Submitted',
         description: 'Your PCL-5 form has been submitted successfully.',
@@ -378,7 +334,7 @@
           'Unable to submit. Please try again.',
         color: 'error',
       })
-      await loadProgress()
+      await refreshProfile()
     } finally {
       submittingForm.value = null
     }
@@ -394,24 +350,9 @@
 
   onMounted(async () => {
     try {
-      await loadProgress()
+      await refreshProfile()
     } catch {
-      answered.value = 0
-      total.value = 50
-      submitted.value = false
-      aceAnswered.value = 0
-      aceTotal.value = 0
-      aceSubmitted.value = false
-      gadAnswered.value = 0
-      gadTotal.value = 7
-      gadScore.value = null
-      gadSeverity.value = null
-      phqAnswered.value = 0
-      phqTotal.value = 10
-      phqSubmitted.value = false
-      pclAnswered.value = 0
-      pclTotal.value = 20
-      pclSubmitted.value = false
+      // Error handling
     }
   })
 </script>
@@ -450,7 +391,11 @@
         </NuxtLink>
         <div class="flex shrink-0 items-center gap-3">
           <span class="text-sm text-gray-600 dark:text-gray-400">
-            {{ submitted ? 'Submitted' : `${answered}/${total}` }}
+            {{
+              getTask('application').submitted
+                ? 'Submitted'
+                : `${getTask('application').answered}/${getTask('application').total}`
+            }}
           </span>
           <UButton
             v-if="showApplicationSubmit"
@@ -552,7 +497,9 @@
           {
             name: 'ACE Form',
             to: aceTarget,
-            progress: aceSubmitted ? 'Submitted' : `${aceAnswered}/${aceTotal}`,
+            progress: getTask('ace').submitted
+              ? 'Submitted'
+              : `${getTask('ace').answered}/${getTask('ace').total}`,
             showSubmit: showAceSubmit,
             onSubmit: submitAce,
             key: 'ace',
@@ -560,9 +507,9 @@
           {
             name: 'GAD-7 Form',
             to: '/forms/gad',
-            progress: gadSubmitted
-              ? `Submitted${permissions.canViewScores && gadScore !== null ? ` • ${gadSeverity}` : ''}`
-              : `${gadAnswered}/${gadTotal}`,
+            progress: getTask('gad').submitted
+              ? `Submitted${permissions.canViewScores && getTask('gad').score !== null ? ` • ${getTask('gad').severity}` : ''}`
+              : `${getTask('gad').answered}/${getTask('gad').total}`,
             showSubmit: showGadSubmit,
             onSubmit: submitGad,
             key: 'gad',
@@ -570,7 +517,9 @@
           {
             name: 'PHQ-9 Form',
             to: '/forms/phq',
-            progress: phqSubmitted ? 'Submitted' : `${phqAnswered}/${phqTotal}`,
+            progress: getTask('phq').submitted
+              ? 'Submitted'
+              : `${getTask('phq').answered}/${getTask('phq').total}`,
             showSubmit: showPhqSubmit,
             onSubmit: submitPhq,
             key: 'phq',
@@ -578,7 +527,9 @@
           {
             name: 'PCL-5 Form',
             to: '/forms/pcl',
-            progress: pclSubmitted ? 'Submitted' : `${pclAnswered}/${pclTotal}`,
+            progress: getTask('pcl').submitted
+              ? 'Submitted'
+              : `${getTask('pcl').answered}/${getTask('pcl').total}`,
             showSubmit: showPclSubmit,
             onSubmit: submitPcl,
             key: 'pcl',

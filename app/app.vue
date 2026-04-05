@@ -6,7 +6,7 @@
   const { data: session } = await authClient.useSession(useFetch)
 
   const { data: adminData, refresh: refreshAdminData } = await useFetch<{ isAdmin: boolean }>(
-    '/api/user/is-admin',
+    '/api/users/me/is-admin',
     {
       server: false,
       default: () => ({ isAdmin: false }),

@@ -1,5 +1,5 @@
+import { requireUser } from '../../../../utils/guard'
 import { createError, defineEventHandler, getHeaders, getRouterParam } from 'h3'
-import { auth } from '../../../../utils/auth'
 import { prisma } from '../../../../utils/prisma'
 import { isAdmin } from '../../../../utils/is-admin'
 
@@ -42,15 +42,7 @@ const GAD_OPTIONS: Record<number, string> = {
 }
 
 export default defineEventHandler(async (event) => {
-  const requestHeaders = new Headers()
-  for (const [key, value] of Object.entries(getHeaders(event))) {
-    if (value !== undefined) requestHeaders.set(key, value)
-  }
-
-  const session = await auth.api.getSession({ headers: requestHeaders })
-  if (!session?.user?.id) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
-  }
+  const user = requireUser(event)
 
   const clientUserId = getRouterParam(event, 'id')
   const formKey = getRouterParam(event, 'formKey')
@@ -60,12 +52,12 @@ export default defineEventHandler(async (event) => {
 
   // Allow admin to view any client's form answers, or client to view their own
   const currentUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: user.id },
     select: { role: true, email: true },
   })
   const role = currentUser?.role ?? null
-  const email = currentUser?.email ?? (session.user as { email?: string }).email ?? null
-  const isOwnProfile = session.user.id === clientUserId
+  const email = currentUser?.email ?? user.email ?? null
+  const isOwnProfile = user.id === clientUserId
   const hasAdminAccess = isAdmin(role, email)
   if (!isOwnProfile && !hasAdminAccess) {
     throw createError({ statusCode: 403, statusMessage: 'Admin only' })
@@ -79,10 +71,10 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const user = await prisma.user.findFirst({
+  const dbUser = await prisma.user.findFirst({
     where: { id: clientUserId, role: 'CLIENT' },
   })
-  if (!user) {
+  if (!dbUser) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
   }
 

@@ -1,27 +1,12 @@
+import { requireAdmin } from '../../../utils/guard'
 import { createError, defineEventHandler, getHeaders, getRouterParam, setHeader } from 'h3'
-import { auth } from '../../../utils/auth'
 import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
 import { readFile, fileExists, getMimeType } from '../../../utils/file-upload'
 
 export default defineEventHandler(async (event) => {
-  const requestHeaders = new Headers()
-  for (const [key, value] of Object.entries(getHeaders(event))) {
-    if (value !== undefined) requestHeaders.set(key, value)
-  }
 
-  const session = await auth.api.getSession({ headers: requestHeaders })
-  if (!session?.user?.id) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
-  }
-
-  const currentUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { role: true, email: true },
-  })
-  if (!isAdmin(currentUser?.role ?? null, currentUser?.email ?? null)) {
-    throw createError({ statusCode: 403, statusMessage: 'Admin only' })
-  }
+  const user = requireAdmin(event)
 
   const auditId = getRouterParam(event, 'id')
   if (!auditId) {
@@ -48,7 +33,7 @@ export default defineEventHandler(async (event) => {
 
   setHeader(event, 'Content-Type', mimeType)
   setHeader(event, 'Content-Disposition', `inline; filename="${filename}"`)
-  setHeader(event, 'Content-Length', fileBuffer.length.toString())
+  setHeader(event, 'Content-Length', fileBuffer.length)
 
   return fileBuffer
 })

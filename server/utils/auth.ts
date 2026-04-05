@@ -31,7 +31,11 @@ export const auth = betterAuth({
   }),
   user: {
     additionalFields: {
-      role: 'role',
+      role: {
+        type: 'string',
+        required: false,
+        defaultValue: 'CLIENT',
+      },
     },
   },
   plugins: [

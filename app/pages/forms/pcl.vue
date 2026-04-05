@@ -9,7 +9,7 @@ const worstEvent = ref('')
     canViewScores: boolean
     canViewNotes: boolean
     canViewPlan: boolean
-  }>('/api/user/permissions')
+  }>('/api/users/me/permissions')
   const canViewScores = computed(() => permissions.value?.canViewScores ?? false)
 
 const options = [
@@ -73,7 +73,7 @@ async function saveAndExit() {
 
   try {
     isSaving.value = true
-    await $fetch('/api/pcl/save', { method: 'POST', body: buildPayload() })
+    await $fetch('/api/forms/pcl/save', { method: 'POST', body: buildPayload() })
 
     toast.add({
       title: 'Saved',
@@ -99,7 +99,7 @@ async function saveAndExit() {
 
 onMounted(async () => {
   try {
-    const data = await $fetch<{ answers?: Record<string, any>; submitted?: boolean }>('/api/pcl/load')
+    const data = await $fetch<{ answers?: Record<string, any>; submitted?: boolean }>('/api/forms/pcl/load')
     isReadOnly.value = Boolean(data?.submitted)
     if (data?.answers) {
       for (let i = 1; i <= 20; i++) {

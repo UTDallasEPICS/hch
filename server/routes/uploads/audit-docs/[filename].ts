@@ -12,9 +12,9 @@ export default defineEventHandler(async (event) => {
   if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
     throw createError({ statusCode: 400, statusMessage: 'Invalid path' })
   }
-  
+
   const allowedExtensions = ['.pdf', '.doc', '.docx']
-  const hasValidExt = allowedExtensions.some(ext => filename.toLowerCase().endsWith(ext))
+  const hasValidExt = allowedExtensions.some((ext) => filename.toLowerCase().endsWith(ext))
   if (!hasValidExt) {
     throw createError({ statusCode: 400, statusMessage: 'Invalid file type' })
   }
@@ -28,15 +28,16 @@ export default defineEventHandler(async (event) => {
     }
 
     const buffer = await fs.readFile(filePath)
-    
+
     // Set content type based on extension
     let contentType = 'application/octet-stream'
     if (filename.endsWith('.pdf')) contentType = 'application/pdf'
     else if (filename.endsWith('.doc')) contentType = 'application/msword'
-    else if (filename.endsWith('.docx')) contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    else if (filename.endsWith('.docx'))
+      contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
     setHeader(event, 'Content-Type', contentType)
-    setHeader(event, 'Content-Length', buffer.length.toString())
+    setHeader(event, 'Content-Length', buffer.length)
     setHeader(event, 'Content-Disposition', `inline; filename="${filename}"`)
 
     return buffer

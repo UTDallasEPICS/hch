@@ -13,7 +13,7 @@
     canViewScores: boolean
     canViewNotes: boolean
     canViewPlan: boolean
-  }>('/api/user/permissions')
+  }>('/api/users/me/permissions')
   const canViewScores = computed(() => permissions.value?.canViewScores ?? false)
 
   const TOTAL_STEPS = 5
@@ -151,7 +151,7 @@
 
     try {
       const payload = toPayload()
-      await $fetch('/api/application/save', { method: 'POST', body: payload })
+      await $fetch('/api/forms/application/save', { method: 'POST', body: payload })
       return true
     } catch (error: any) {
       if (showError) {
@@ -218,7 +218,7 @@
         return
       }
 
-      await $fetch('/api/application/submit', { method: 'POST' })
+      await $fetch('/api/forms/application/submit', { method: 'POST' })
       isReadOnly.value = true
       toast.add({
         title: 'Application submitted',
@@ -290,7 +290,7 @@
   onMounted(async () => {
     try {
       const response = await $fetch<{ answers?: AppAnswerPayload | null; submitted?: boolean }>(
-        '/api/application/start',
+        '/api/forms/application/start',
         {
           method: 'POST',
         }

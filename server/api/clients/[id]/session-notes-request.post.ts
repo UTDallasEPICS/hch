@@ -1,6 +1,6 @@
+import { requireUser } from '../../../utils/guard'
 import { createError, defineEventHandler, getHeaders, getRouterParam, readBody } from 'h3'
 import { z } from 'zod'
-import { auth } from '../../../utils/auth'
 import { prisma } from '../../../utils/prisma'
 import { sendAppEmail, getAdminNotificationEmails } from '../../../utils/mail'
 import { formatStoredUserNameForDisplay } from '../../../utils/name'
@@ -12,18 +12,11 @@ const bodySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  const requestHeaders = new Headers()
-  for (const [key, value] of Object.entries(getHeaders(event))) {
-    if (value !== undefined) requestHeaders.set(key, value)
-  }
 
-  const session = await auth.api.getSession({ headers: requestHeaders })
-  if (!session?.user?.id) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
-  }
+  const user = requireUser(event)
 
   const clientUserId = getRouterParam(event, 'id')
-  if (!clientUserId || clientUserId !== session.user.id) {
+  if (!clientUserId || clientUserId !== user.id) {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 

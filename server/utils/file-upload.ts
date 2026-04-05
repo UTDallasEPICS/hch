@@ -26,11 +26,11 @@ export async function saveBase64File(
     throw new Error('Invalid base64 data URL format')
   }
 
-  const mimeType = matches[1]
-  const base64Data = matches[2]
+  const mimeType = matches[1] || ''
+  const base64Data = matches[2] || ''
   const buffer = Buffer.from(base64Data, 'base64')
 
-  const ext = getExtensionFromMime(mimeType) || getExtensionFromFilename(originalFilename)
+  const ext = getExtensionFromMime(mimeType) || getExtensionFromFilename(originalFilename || '')
   const uniqueId = randomUUID()
   const filename = `${uniqueId}${ext}`
   const filePath = join(UPLOADS_DIR, filename)

@@ -10,8 +10,6 @@ export default defineNuxtConfig({
 
   srcDir: 'app',
   nitro: {
-    // Allow larger payloads for justification flows (reasoning + signature + optional PDF/Word)
-    bodyLimit: '15mb',
     // Serve uploaded files as static assets (for development)
     publicAssets: [
       {

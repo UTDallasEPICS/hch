@@ -1,5 +1,5 @@
+import { requireUser } from '../../utils/guard'
 import { createError, defineEventHandler, getHeaders, getRouterParam, readBody } from 'h3'
-import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
 import { isAllFormsComplete } from '../../utils/client-forms'
 import type { ClientStatus } from '../../../prisma/generated/client'
@@ -9,18 +9,8 @@ const VALID_STATUSES = ['Prospective', 'Waitlist', 'Active', 'Archived'] as cons
 const MAX_THERAPY_WEEKS = 26
 
 export default defineEventHandler(async (event) => {
-  const requestHeaders = new Headers()
-  for (const [key, value] of Object.entries(getHeaders(event))) {
-    if (value !== undefined) requestHeaders.set(key, value)
-  }
 
-  const session = await auth.api.getSession({ headers: requestHeaders })
-  if (!session?.user?.id) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: 'Unauthorized',
-    })
-  }
+  const user = requireUser(event)
 
   const userId = getRouterParam(event, 'id')
   if (!userId) {
@@ -43,12 +33,12 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const user = await prisma.user.findUnique({
+  const dbUser = await prisma.user.findUnique({
     where: { id: userId, role: 'CLIENT' },
     include: { client: true },
   })
 
-  if (!user) {
+  if (!dbUser) {
     throw createError({
       statusCode: 404,
       statusMessage: 'Client not found',
@@ -75,7 +65,7 @@ export default defineEventHandler(async (event) => {
       }
     }
     if (targetStatus === 'ACTIVE') {
-      const currentStatus = user.client?.status ?? 'INCOMPLETE'
+      const currentStatus = dbUser.client?.status ?? 'INCOMPLETE'
       if (currentStatus !== 'WAITLIST' && currentStatus !== 'ARCHIVED') {
         throw createError({
           statusCode: 400,
@@ -84,7 +74,7 @@ export default defineEventHandler(async (event) => {
       }
     }
     if (targetStatus === 'ARCHIVED') {
-      const currentStatus = user.client?.status ?? 'INCOMPLETE'
+      const currentStatus = dbUser.client?.status ?? 'INCOMPLETE'
       if (currentStatus !== 'ACTIVE') {
         throw createError({
           statusCode: 400,
@@ -112,7 +102,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  let client = user.client
+  let client = dbUser.client
   if (!client) {
     client = await prisma.client.create({
       data: {
