@@ -2,7 +2,6 @@ import 'dotenv/config'
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import { PrismaClient } from './generated/client'
 import { ensureDefaultDeclarationTemplates, backfillSessionNotesRequestTemplates } from '../server/utils/declaration-templates'
-import { getAceFormQuestions } from '../server/utils/ace-questions'
 
 const connectionString = process.env.DATABASE_URL ?? 'file:./dev.db'
 const adapter = new PrismaBetterSqlite3({ url: connectionString })
@@ -94,17 +93,35 @@ async function seedForms(userId: string) {
     }
   })
 
-  // 5. ACE (Dynamic Form)
-  const aceQuestions = getAceFormQuestions()
-  const responses = Object.fromEntries(aceQuestions.map(q => [q.alias, 'No']))
-  responses[aceQuestions[0].alias] = 'Yes'
-  responses[aceQuestions[1].alias] = 'Yes'
-
-  await prisma.aceResponse.create({
-    data: {
+  // 5. ACE (Hardcoded Form)
+  const aceForm = await prisma.aceForm.upsert({
+    where: { userId },
+    update: {},
+    create: {
       userId,
-      responses: JSON.stringify(responses),
-      completedAt: new Date(),
+      status: 'COMPLETE',
+      totalScore: 2,
+      severity: 'Low',
+      submittedAt: new Date(),
+    }
+  })
+
+  await prisma.aceQuestion.upsert({
+    where: { formId: aceForm.id },
+    update: {},
+    create: {
+      formId: aceForm.id,
+      userId,
+      a01: 'Yes',
+      a02: 'Yes',
+      a03: 'No',
+      a04: 'No',
+      a05: 'No',
+      a06: 'No',
+      a07: 'No',
+      a08: 'No',
+      a09: 'No',
+      a10: 'No',
     }
   })
 }
