@@ -9,7 +9,6 @@ const VALID_STATUSES = ['Prospective', 'Waitlist', 'Active', 'Archived'] as cons
 const MAX_THERAPY_WEEKS = 26
 
 export default defineEventHandler(async (event) => {
-
   const user = requireUser(event)
 
   const userId = getRouterParam(event, 'id')
@@ -18,6 +17,10 @@ export default defineEventHandler(async (event) => {
       statusCode: 400,
       statusMessage: 'Missing client id',
     })
+  }
+
+  if (user.id !== userId && !event.context.isAdmin) {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 
   const body = await readBody<{
