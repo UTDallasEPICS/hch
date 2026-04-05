@@ -2,6 +2,7 @@
   import NotesToolbar from '~/components/NotesToolbar.vue'
   import { useDebounceFn } from '@vueuse/core'
   import { marked } from 'marked'
+  import DOMPurify from 'dompurify'
   import { useWindowSize } from '@vueuse/core'
 
   type SessionNoteRow = { id: string; content: string; createdAt: string }
@@ -224,7 +225,9 @@
   }
 
   const renderedNoteContent = computed(() =>
-    selectedNoteData.value ? marked(selectedNoteData.value.content) : ''
+    selectedNoteData.value
+      ? DOMPurify.sanitize(marked.parse(selectedNoteData.value.content) as string)
+      : ''
   )
 
   function startEditPrevious() {
@@ -313,6 +316,11 @@
     () => nextTick(() => applyInitialFocus()),
     { deep: true, immediate: true }
   )
+
+  async function submitAndCloseModal() {
+    showSubmitModal.value = false
+    await submitPreviousEdit()
+  }
 
   async function submitPreviousEdit() {
     if (editingSessionNoteId.value !== null) {
@@ -930,10 +938,10 @@
           </button>
           <button
             type="button"
-            @click.prevent="confirmSaveNote()"
+            @click.prevent="submitAndCloseModal"
             class="bg-primary-500 hover:bg-primary-600 rounded-lg px-4 py-2 text-sm text-white"
           >
-            Save
+            Submit
           </button>
         </div>
       </div>
@@ -961,10 +969,7 @@
           </button>
           <button
             type="button"
-            @click.prevent="
-              showSubmitModal = false
-              submitPreviousEdit()
-            "
+            @click.prevent="submitAndCloseModal"
             class="bg-primary-500 hover:bg-primary-600 rounded-lg px-4 py-2 text-sm text-white"
           >
             Submit
@@ -1014,10 +1019,15 @@
           </button>
           <button
             type="button"
-            @click.prevent="confirmEdit"
+            @click.prevent="
+              () => {
+                showSubmitModal = false
+                submitPreviousEdit()
+              }
+            "
             class="bg-primary-500 hover:bg-primary-600 rounded-lg px-4 py-2 text-sm text-white"
           >
-            Confirm Edit
+            Submit
           </button>
         </div>
       </div>
