@@ -1,6 +1,7 @@
 import { requireUser } from '../../../utils/guard'
 import { createError, defineEventHandler, getHeaders } from 'h3'
 import { prisma } from '../../../utils/prisma'
+import { calculatePhqScore } from '../../../utils/scoring'
 
 const TOTAL_ITEMS = 10
 
@@ -62,12 +63,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  let totalScore = 0
-  for (let index = 1; index <= 9; index += 1) {
-    const key = `q${index}` as keyof typeof form.questions
-    const value = form.questions[key]
-    totalScore += typeof value === 'number' && value >= 0 ? value : 0
-  }
+  const { score: totalScore } = calculatePhqScore(form.questions)
 
   await prisma.phqForm.update({
     where: {

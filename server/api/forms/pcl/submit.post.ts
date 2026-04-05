@@ -1,12 +1,12 @@
 import { requireUser } from '../../../utils/guard'
 import { createError, defineEventHandler, getHeaders } from 'h3'
 import { prisma } from '../../../utils/prisma'
+import { calculatePclScore } from '../../../utils/scoring'
 
 const TOTAL_QUESTIONS = 20
 const TOTAL_ITEMS = 21
 
 export default defineEventHandler(async (event) => {
-
   const user = requireUser(event)
 
   const userId = user.id
@@ -67,17 +67,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  let totalScore = 0
-  for (let index = 1; index <= TOTAL_QUESTIONS; index += 1) {
-    const key = `q${String(index).padStart(2, '0')}` as keyof typeof form.questions
-    const value = form.questions[key]
-    totalScore += typeof value === 'number' ? value : 0
-  }
-
-  let severity = 'Minimal'
-  if (totalScore > 60) severity = 'Severe'
-  else if (totalScore > 40) severity = 'Moderate'
-  else if (totalScore > 20) severity = 'Mild'
+  const { score: totalScore, severity } = calculatePclScore(form.questions)
 
   await prisma.pclForm.update({
     where: {

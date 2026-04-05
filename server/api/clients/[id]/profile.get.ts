@@ -6,6 +6,7 @@ import { isAllFormsComplete, getIncompleteForms, FORM_LABELS } from '../../../ut
 import { parseName } from '../../../utils/name'
 import type { ClientStatus } from '../../../../prisma/generated/client'
 import { ensureDefaultDeclarationTemplates } from '../../../utils/declaration-templates'
+import { calculateAceScore, calculatePhqScore, calculatePclScore } from '../../../utils/scoring'
 
 const APP_TOTAL = 50
 const GAD_TOTAL = 7
@@ -14,7 +15,6 @@ const PCL_TOTAL = 20
 const ACE_QUESTION_COUNT = 10
 
 export default defineEventHandler(async (event) => {
-
   const user = requireUser(event)
 
   await ensureDefaultDeclarationTemplates(prisma)
@@ -168,44 +168,30 @@ export default defineEventHandler(async (event) => {
   const incompleteForms = await getIncompleteForms(prisma, clientUserId)
 
   // ACE score: count of "Yes" answers; severity per interpretation breakdown
-  const aceScore = aceForm?.totalScore ?? null
-  const aceSeverity = aceForm?.severity ?? null
+  let aceScore = aceForm?.totalScore ?? null
+  let aceSeverity = aceForm?.severity ?? null
+  if (aceScore == null && aceQuestionsDb) {
+    const calculated = calculateAceScore(aceQuestionsDb)
+    aceScore = calculated.score
+    aceSeverity = calculated.severity
+  }
 
   // PHQ totalScore: compute from questions if not stored (backward compat)
   let phqScore = phqForm?.totalScore ?? null
   let phqSeverity = phqForm?.severity ?? null
   if (phqScore == null && phqQuestions) {
-    let sum = 0
-    for (let i = 1; i <= 9; i++) {
-      const key = `q${i}` as keyof typeof phqQuestions
-      const v = phqQuestions[key]
-      sum += typeof v === 'number' ? v : 0
-    }
-    phqScore = sum
-    if (phqScore > 19) phqSeverity = 'Severe depression'
-    else if (phqScore > 14) phqSeverity = 'Moderately severe depression'
-    else if (phqScore > 9) phqSeverity = 'Moderate depression'
-    else if (phqScore > 4) phqSeverity = 'Mild depression'
-    else phqSeverity = 'Minimal or no depression'
+    const calculated = calculatePhqScore(phqQuestions)
+    phqScore = calculated.score
+    phqSeverity = calculated.severity
   }
 
   // PCL totalScore: compute from questions if not stored (backward compat)
   let pclScore = pclForm?.totalScore ?? null
   let pclSeverity = pclForm?.severity ?? null
   if (pclScore == null && pclQuestions) {
-    let sum = 0
-    for (let i = 1; i <= PCL_TOTAL; i++) {
-      const key = `q${String(i).padStart(2, '0')}` as keyof typeof pclQuestions
-      const v = pclQuestions[key]
-      sum += typeof v === 'number' ? v : 0
-    }
-    pclScore = sum > 0 ? sum : null
-    if (pclScore != null) {
-      if (pclScore > 60) pclSeverity = 'Severe'
-      else if (pclScore > 40) pclSeverity = 'Moderate'
-      else if (pclScore > 20) pclSeverity = 'Mild'
-      else pclSeverity = 'Minimal'
-    }
+    const calculated = calculatePclScore(pclQuestions)
+    pclScore = calculated.score
+    pclSeverity = calculated.severity
   }
 
   const tasks = [
