@@ -384,7 +384,7 @@
         class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
       >
         <NuxtLink
-          to="/application"
+          to="/forms/application"
           class="hover:text-primary-600 dark:hover:text-primary-400 min-w-0 flex-1 font-semibold text-gray-900 dark:text-white"
         >
           Application Form

@@ -198,7 +198,7 @@ export default defineEventHandler(async (event) => {
     {
       key: 'application',
       name: FORM_LABELS.application,
-      to: '/application',
+      to: '/forms/application',
       answered: appAnswered,
       total: APP_TOTAL,
       submitted: appForm?.status === 'COMPLETE',
@@ -216,7 +216,7 @@ export default defineEventHandler(async (event) => {
     {
       key: 'gad',
       name: 'GAD-7',
-      to: '/gad',
+      to: '/forms/gad',
       answered: gadAnswered,
       total: GAD_TOTAL,
       submitted: gadForm?.status === 'COMPLETE',
@@ -226,7 +226,7 @@ export default defineEventHandler(async (event) => {
     {
       key: 'phq',
       name: 'PHQ-9',
-      to: '/phq',
+      to: '/forms/phq',
       answered: phqAnswered,
       total: PHQ_TOTAL,
       submitted: phqForm?.status === 'COMPLETE',
@@ -236,7 +236,7 @@ export default defineEventHandler(async (event) => {
     {
       key: 'pcl',
       name: 'PCL-5',
-      to: '/pcl',
+      to: '/forms/pcl',
       answered: pclAnswered,
       total: PCL_TOTAL,
       submitted: pclForm?.status === 'COMPLETE',
