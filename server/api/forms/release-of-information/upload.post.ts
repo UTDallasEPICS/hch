@@ -1,5 +1,5 @@
 import { requireUser } from '../../../utils/guard'
-import { createError, defineEventHandler, getHeaders, readMultipartFormData } from 'h3'
+import { createError, defineEventHandler, readMultipartFormData } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -20,12 +20,15 @@ function hasPdfSignature(fileBytes: Uint8Array) {
 }
 
 export default defineEventHandler(async (event) => {
+  const db = prisma as any
+
   const user = requireUser(event)
 
-  const clients = await prisma.$queryRaw<
-    Array<{ status: string | null }>
-  >`SELECT status FROM "client" WHERE userId = ${user.id} LIMIT 1`
-  const status = toClientStatusLabel(clients[0]?.status)
+  const client = await db.client.findUnique({
+    where: { userId: user.id },
+    select: { status: true },
+  })
+  const status = toClientStatusLabel(client?.status)
   if (status !== 'Prospective' && status !== 'Waitlist') {
     throw createError({
       statusCode: 403,
@@ -64,17 +67,24 @@ export default defineEventHandler(async (event) => {
   await writeFile(absolutePath, filePart.data)
 
   const now = new Date()
-  await prisma.$executeRaw`
-    INSERT INTO "ReleaseOfInformationAuthorizationForm"
-      ("userId", "status", "originalFileName", "storedFileName", "mimeType", "uploadedAt", "createdAt", "updatedAt")
-    VALUES (${user.id}, 'SUBMITTED', ${filePart.filename}, ${storedFileName}, 'application/pdf', ${now}, ${now}, ${now})
-    ON CONFLICT("userId") DO UPDATE SET
-      "status" = 'SUBMITTED',
-      "originalFileName" = excluded."originalFileName",
-      "storedFileName" = excluded."storedFileName",
-      "mimeType" = excluded."mimeType",
-      "uploadedAt" = excluded."uploadedAt",
-      "updatedAt" = excluded."updatedAt"`
+  await db.releaseOfInformationAuthorizationForm.upsert({
+    where: { userId: user.id },
+    update: {
+      status: 'SUBMITTED',
+      originalFileName: filePart.filename,
+      storedFileName,
+      mimeType: 'application/pdf',
+      uploadedAt: now,
+    },
+    create: {
+      userId: user.id,
+      status: 'SUBMITTED',
+      originalFileName: filePart.filename,
+      storedFileName,
+      mimeType: 'application/pdf',
+      uploadedAt: now,
+    },
+  })
 
   return {
     submitted: true,

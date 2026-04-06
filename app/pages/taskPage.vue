@@ -373,7 +373,7 @@
         </p>
       </div>
       <div
-        class="mb-6 flex items-center justify-between px-1 text-sm font-medium text-gray-700 dark:text-gray-300"
+        class="mb-6 flex items-center justify-between px-1 text-sm font-medium text-black dark:text-white"
       >
         <span>Form</span>
         <span>Progress</span>
@@ -385,7 +385,7 @@
       >
         <NuxtLink
           to="/forms/application"
-          class="hover:text-primary-600 dark:hover:text-primary-400 min-w-0 flex-1 font-semibold text-gray-900 dark:text-white"
+          class="hover:text-primary-600 dark:hover:text-primary-400 min-w-0 flex-1 font-semibold text-black dark:text-white"
         >
           Application Form
         </NuxtLink>
@@ -409,65 +409,181 @@
         </div>
       </div>
 
-      <!-- Physician Statement Form (button only) -->
+      <!-- Physician Statement Form -->
       <div
         class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
       >
-        <span class="min-w-0 flex-1 font-semibold text-gray-900 dark:text-white">
+        <span class="min-w-0 flex-1 font-semibold text-black dark:text-white">
           Provide Physician Statement Form
         </span>
-        <UButton
-          label="Provide"
-          color="primary"
-          variant="soft"
-          size="sm"
-          @click="handlePhysicianStatement"
-        />
+        <div class="flex shrink-0 items-center gap-3">
+          <span class="text-sm text-gray-600 dark:text-gray-400">
+            {{ getTask('physicianStatement').submitted ? 'Submitted' : 'Pending' }}
+          </span>
+          <UButton
+            :label="getTask('physicianStatement').submitted ? 'View' : 'Provide'"
+            :color="getTask('physicianStatement').submitted ? 'success' : 'primary'"
+            variant="soft"
+            size="sm"
+            @click="handlePhysicianStatement"
+          />
+        </div>
       </div>
 
-      <!-- Release of Information Authorization Form (button only) -->
+      <!-- Release of Information Authorization Form -->
       <div
         class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
       >
-        <span class="min-w-0 flex-1 font-semibold text-gray-900 dark:text-white">
+        <span class="min-w-0 flex-1 font-semibold text-black dark:text-white">
           Provide Release of Information Authorization Form
         </span>
-        <UButton
-          label="Provide"
-          color="primary"
-          variant="soft"
-          size="sm"
-          @click="handleReleaseOfInfo"
-        />
+        <div class="flex shrink-0 items-center gap-3">
+          <span class="text-sm text-gray-600 dark:text-gray-400">
+            {{ getTask('releaseOfInformationAuthorization').submitted ? 'Submitted' : 'Pending' }}
+          </span>
+          <UButton
+            :label="getTask('releaseOfInformationAuthorization').submitted ? 'View' : 'Provide'"
+            :color="getTask('releaseOfInformationAuthorization').submitted ? 'success' : 'primary'"
+            variant="soft"
+            size="sm"
+            @click="handleReleaseOfInfo"
+          />
+        </div>
       </div>
     </template>
 
-    <!-- Waitlist: Status only, no forms -->
+    <!-- Waitlist: all tasks (pre-waitlist completed + clinical assessments) -->
     <template v-else-if="isWaitlist">
       <div class="mb-8">
         <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
-          Waitlist Status
+          Tasks to Complete
         </h1>
         <UBadge class="mt-2" color="primary" variant="soft" size="md">
           Your status: {{ statusLabel }}
         </UBadge>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">You are on the waitlist.</p>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          Complete each clinical assessment form while you wait for a spot to open.
+        </p>
       </div>
       <div
-        class="border-primary-200 bg-primary-50 dark:border-primary-800 dark:bg-primary-950/30 rounded-xl border p-6"
+        class="mb-6 flex items-center justify-between px-1 text-sm font-medium text-black dark:text-white"
       >
-        <div class="flex items-center gap-3">
-          <UIcon
-            name="i-heroicons-queue-list"
-            class="text-primary-600 dark:text-primary-400 h-10 w-10 shrink-0"
+        <span>Forms</span>
+        <span>Progress</span>
+      </div>
+
+      <!-- Completed pre-waitlist tasks (read-only) -->
+      <div
+        class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 opacity-60 dark:border-gray-700 dark:bg-gray-900"
+      >
+        <NuxtLink
+          to="/forms/application"
+          class="hover:text-primary-600 dark:hover:text-primary-400 min-w-0 flex-1 font-semibold text-black dark:text-white"
+        >
+          Application Form
+        </NuxtLink>
+        <div class="flex shrink-0 items-center gap-3">
+          <UBadge color="success" variant="subtle" size="sm">Submitted</UBadge>
+        </div>
+      </div>
+
+      <div
+        class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 opacity-60 dark:border-gray-700 dark:bg-gray-900"
+      >
+        <NuxtLink
+          to="/forms/physician-statement"
+          class="hover:text-primary-600 dark:hover:text-primary-400 min-w-0 flex-1 font-semibold text-black dark:text-white"
+        >
+          Provide Physician Statement Form
+        </NuxtLink>
+        <div class="flex shrink-0 items-center gap-3">
+          <UBadge color="success" variant="subtle" size="sm">Submitted</UBadge>
+        </div>
+      </div>
+
+      <div
+        class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 opacity-60 dark:border-gray-700 dark:bg-gray-900"
+      >
+        <NuxtLink
+          to="/forms/release-of-information-authorization"
+          class="hover:text-primary-600 dark:hover:text-primary-400 min-w-0 flex-1 font-semibold text-black dark:text-white"
+        >
+          Provide Release of Information Authorization Form
+        </NuxtLink>
+        <div class="flex shrink-0 items-center gap-3">
+          <UBadge color="success" variant="subtle" size="sm">Submitted</UBadge>
+        </div>
+      </div>
+
+      <div class="mt-8 mb-2 px-1 text-sm font-medium text-black dark:text-white">
+        Clinical assessments
+      </div>
+
+      <div
+        v-for="formItem in [
+          {
+            name: 'ACE Form',
+            to: aceTarget,
+            progress: getTask('ace').submitted
+              ? 'Submitted'
+              : `${getTask('ace').answered}/${getTask('ace').total}`,
+            showSubmit: showAceSubmit,
+            onSubmit: submitAce,
+            key: 'ace',
+          },
+          {
+            name: 'GAD-7 Form',
+            to: '/forms/gad',
+            progress: getTask('gad').submitted
+              ? `Submitted${permissions.canViewScores && getTask('gad').score !== null ? ` • ${getTask('gad').severity}` : ''}`
+              : `${getTask('gad').answered}/${getTask('gad').total}`,
+            showSubmit: showGadSubmit,
+            onSubmit: submitGad,
+            key: 'gad',
+          },
+          {
+            name: 'PHQ-9 Form',
+            to: '/forms/phq',
+            progress: getTask('phq').submitted
+              ? 'Submitted'
+              : `${getTask('phq').answered}/${getTask('phq').total}`,
+            showSubmit: showPhqSubmit,
+            onSubmit: submitPhq,
+            key: 'phq',
+          },
+          {
+            name: 'PCL-5 Form',
+            to: '/forms/pcl',
+            progress: getTask('pcl').submitted
+              ? 'Submitted'
+              : `${getTask('pcl').answered}/${getTask('pcl').total}`,
+            showSubmit: showPclSubmit,
+            onSubmit: submitPcl,
+            key: 'pcl',
+          },
+        ]"
+        :key="formItem.key"
+        class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
+      >
+        <NuxtLink
+          :to="formItem.to"
+          class="hover:text-primary-600 dark:hover:text-primary-400 min-w-0 flex-1 font-semibold text-black dark:text-white"
+        >
+          {{ formItem.name }}
+        </NuxtLink>
+        <div class="flex shrink-0 items-center gap-3">
+          <span class="text-sm text-gray-600 dark:text-gray-400">
+            {{ formItem.progress }}
+          </span>
+          <UButton
+            v-if="formItem.showSubmit"
+            label="Submit"
+            color="primary"
+            variant="solid"
+            size="sm"
+            :loading="submittingForm === formItem.key"
+            @click="formItem.onSubmit"
           />
-          <div>
-            <h2 class="font-semibold text-gray-900 dark:text-white">You are on the waitlist</h2>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              We will contact you when a spot becomes available. No further action is needed at this
-              time.
-            </p>
-          </div>
         </div>
       </div>
     </template>
@@ -486,7 +602,7 @@
         </p>
       </div>
       <div
-        class="mb-6 flex items-center justify-between px-1 text-sm font-medium text-gray-700 dark:text-gray-300"
+        class="mb-6 flex items-center justify-between px-1 text-sm font-medium text-black dark:text-white"
       >
         <span>Form</span>
         <span>Progress</span>
@@ -540,7 +656,7 @@
       >
         <NuxtLink
           :to="formItem.to"
-          class="hover:text-primary-600 dark:hover:text-primary-400 min-w-0 flex-1 font-semibold text-gray-900 dark:text-white"
+          class="hover:text-primary-600 dark:hover:text-primary-400 min-w-0 flex-1 font-semibold text-black dark:text-white"
         >
           {{ formItem.name }}
         </NuxtLink>

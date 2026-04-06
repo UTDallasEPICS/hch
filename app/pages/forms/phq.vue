@@ -1,6 +1,9 @@
 <script setup lang="ts">
   const toast = useToast()
   const isSaving = ref(false)
+  const isSubmitting = ref(false)
+
+  const allAnswered = computed(() => responses.value.every((v) => v >= 0))
 
   const { data: permissions } = await useFetch<{
     canViewScores: boolean
@@ -39,8 +42,7 @@
   const difficulty = ref<number | null>(null)
   const TOTAL_ITEMS = 10 // 9 questions + difficulty
   const completedCount = computed(
-    () =>
-      responses.value.filter((v) => v >= 0).length + (difficulty.value !== null ? 1 : 0)
+    () => responses.value.filter((v) => v >= 0).length + (difficulty.value !== null ? 1 : 0)
   )
   const progressPercent = computed(() =>
     TOTAL_ITEMS ? Math.round((completedCount.value / TOTAL_ITEMS) * 100) : 0
@@ -55,76 +57,107 @@
   }
 
   async function saveForm() {
-  try {
-    isSaving.value = true
+    try {
+      isSaving.value = true
 
-    await $fetch('/api/forms/phq/save', {
-      method: 'POST',
-      body: {
-        q1: responses.value[0],
-        q2: responses.value[1],
-        q3: responses.value[2],
-        q4: responses.value[3],
-        q5: responses.value[4],
-        q6: responses.value[5],
-        q7: responses.value[6],
-        q8: responses.value[7],
-        q9: responses.value[8],
-        q10: difficulty.value,
-      },
-    })
+      await $fetch('/api/forms/phq/save', {
+        method: 'POST',
+        body: {
+          q1: responses.value[0],
+          q2: responses.value[1],
+          q3: responses.value[2],
+          q4: responses.value[3],
+          q5: responses.value[4],
+          q6: responses.value[5],
+          q7: responses.value[6],
+          q8: responses.value[7],
+          q9: responses.value[8],
+          q10: difficulty.value,
+        },
+      })
 
-    toast.add({
-      title: 'Saved',
-      color: 'success',
-    })
+      toast.add({
+        title: 'Saved',
+        color: 'success',
+      })
 
-    await navigateTo('/taskPage')
-  } catch (error: any) {
-    const description =
-      error?.data?.statusMessage ||
-      error?.data?.message ||
-      error?.statusMessage ||
-      'Unable to save your responses. Please try again.'
+      await navigateTo('/taskPage')
+    } catch (error: any) {
+      const description =
+        error?.data?.statusMessage ||
+        error?.data?.message ||
+        error?.statusMessage ||
+        'Unable to save your responses. Please try again.'
 
-    toast.add({
-      title: 'Save failed',
-      description,
-      color: 'error',
-    })
-  } finally {
-    isSaving.value = false
-  }
-}
-
-const loadError = ref<string | null>(null)
-
-onMounted(async () => {
-  try {
-    const data = await $fetch('/api/forms/phq/start', {
-      method: 'POST',
-    })
-
-    if (data?.answers) {
-      responses.value = [
-        data.answers.q1 ?? -1,
-        data.answers.q2 ?? -1,
-        data.answers.q3 ?? -1,
-        data.answers.q4 ?? -1,
-        data.answers.q5 ?? -1,
-        data.answers.q6 ?? -1,
-        data.answers.q7 ?? -1,
-        data.answers.q8 ?? -1,
-        data.answers.q9 ?? -1,
-      ]
-      difficulty.value = (data.answers.q10 ?? null) as number | null
+      toast.add({
+        title: 'Save failed',
+        description,
+        color: 'error',
+      })
+    } finally {
+      isSaving.value = false
     }
-  } catch (err: any) {
-    loadError.value =
-      err?.data?.statusMessage || err?.message || 'Unable to load form.'
   }
-})
 
+  async function submitForm() {
+    try {
+      isSubmitting.value = true
+      await $fetch('/api/forms/phq/save', {
+        method: 'POST',
+        body: {
+          q1: responses.value[0],
+          q2: responses.value[1],
+          q3: responses.value[2],
+          q4: responses.value[3],
+          q5: responses.value[4],
+          q6: responses.value[5],
+          q7: responses.value[6],
+          q8: responses.value[7],
+          q9: responses.value[8],
+          q10: difficulty.value,
+        },
+      })
+      await $fetch('/api/forms/phq/submit', { method: 'POST' })
+      toast.add({ title: 'PHQ-9 Submitted', color: 'success' })
+      await navigateTo('/taskPage')
+    } catch (error: any) {
+      const description =
+        error?.data?.statusMessage ||
+        error?.data?.message ||
+        error?.statusMessage ||
+        'Unable to submit. Please try again.'
+      toast.add({ title: 'Submission failed', description, color: 'error' })
+    } finally {
+      isSubmitting.value = false
+    }
+  }
+
+  const loadError = ref<string | null>(null)
+
+  onMounted(async () => {
+    try {
+      const data = await $fetch('/api/forms/phq/start', {
+        method: 'POST',
+      })
+
+      if (data?.answers) {
+        responses.value = [
+          data.answers.q1 ?? -1,
+          data.answers.q2 ?? -1,
+          data.answers.q3 ?? -1,
+          data.answers.q4 ?? -1,
+          data.answers.q5 ?? -1,
+          data.answers.q6 ?? -1,
+          data.answers.q7 ?? -1,
+          data.answers.q8 ?? -1,
+          data.answers.q9 ?? -1,
+        ]
+        difficulty.value = (data.answers.q10 ?? null) as number | null
+      }
+    } catch (err: any) {
+      loadError.value = err?.data?.statusMessage || err?.message || 'Unable to load form.'
+    }
+  })
 </script>
 
 <template>
@@ -176,15 +209,11 @@ onMounted(async () => {
           :key="index"
           class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
         >
-          <p class="font-medium text-gray-900 dark:text-white mb-3">
+          <p class="mb-3 font-medium text-gray-900 dark:text-white">
             {{ index + 1 }}. {{ question }}
           </p>
-          <div class="flex justify-between mt-4">
-            <label
-              v-for="opt in options"
-              :key="opt.value"
-              class="flex flex-col items-center gap-1"
-            >
+          <div class="mt-4 flex justify-between">
+            <label v-for="opt in options" :key="opt.value" class="flex flex-col items-center gap-1">
               <span class="text-sm text-gray-700 dark:text-gray-300">{{ opt.label }}</span>
               <input
                 type="radio"
@@ -200,11 +229,11 @@ onMounted(async () => {
         <div
           class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
         >
-          <p class="font-medium text-gray-900 dark:text-white mb-3">
-            If you checked off any problems, how difficult have these problems made it for you
-            to do your work, take care of things at home, or get along with other people?
+          <p class="mb-3 font-medium text-gray-900 dark:text-white">
+            If you checked off any problems, how difficult have these problems made it for you to do
+            your work, take care of things at home, or get along with other people?
           </p>
-          <div class="flex justify-between mt-4">
+          <div class="mt-4 flex justify-between">
             <label
               v-for="opt in difficultyOptions"
               :key="opt.value"
@@ -240,7 +269,7 @@ onMounted(async () => {
             variant="outline"
             color="neutral"
             size="lg"
-            :disabled="isSaving"
+            :disabled="isSaving || isSubmitting"
             @click="clearForm"
           />
           <UButton
@@ -250,6 +279,18 @@ onMounted(async () => {
             variant="soft"
             size="lg"
             :loading="isSaving"
+            :disabled="isSubmitting"
+          />
+          <UButton
+            v-if="allAnswered"
+            type="button"
+            label="Submit"
+            color="primary"
+            variant="solid"
+            size="lg"
+            :loading="isSubmitting"
+            :disabled="isSaving"
+            @click="submitForm"
           />
         </div>
       </form>

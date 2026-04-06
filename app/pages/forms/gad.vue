@@ -38,9 +38,10 @@
   const TOTAL_QUESTIONS = 8 // 7 main + 1 difficulty
 
   const completedCount = computed(
-    () => [form.g1, form.g2, form.g3, form.g4, form.g5, form.g6, form.g7, form.g8].filter(
-      (v) => v !== null && v !== undefined
-    ).length
+    () =>
+      [form.g1, form.g2, form.g3, form.g4, form.g5, form.g6, form.g7, form.g8].filter(
+        (v) => v !== null && v !== undefined
+      ).length
   )
   const progressPercent = computed(() =>
     TOTAL_QUESTIONS ? Math.round((completedCount.value / TOTAL_QUESTIONS) * 100) : 0
@@ -101,6 +102,19 @@
     form.g8 = null
   }
 
+  const isSubmitting = ref(false)
+
+  const allAnswered = computed(
+    () =>
+      form.g1 !== null &&
+      form.g2 !== null &&
+      form.g3 !== null &&
+      form.g4 !== null &&
+      form.g5 !== null &&
+      form.g6 !== null &&
+      form.g7 !== null
+  )
+
   async function saveAndExit() {
     try {
       isSaving.value = true
@@ -130,6 +144,25 @@
       })
     } finally {
       isSaving.value = false
+    }
+  }
+
+  async function submitForm() {
+    try {
+      isSubmitting.value = true
+      await $fetch('/api/forms/gad/save', { method: 'POST', body: form })
+      await $fetch('/api/forms/gad/submit', { method: 'POST' })
+      toast.add({ title: 'GAD-7 Submitted', color: 'success' })
+      await navigateTo('/taskPage')
+    } catch (error: any) {
+      const description =
+        error?.data?.statusMessage ||
+        error?.data?.message ||
+        error?.statusMessage ||
+        'Unable to submit. Please try again.'
+      toast.add({ title: 'Submission failed', description, color: 'error' })
+    } finally {
+      isSubmitting.value = false
     }
   }
 </script>
@@ -185,7 +218,7 @@
           :key="questionKey"
           class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
         >
-          <p class="font-medium text-gray-900 dark:text-white mb-3">
+          <p class="mb-3 font-medium text-gray-900 dark:text-white">
             {{ index + 1 }}.
             {{
               [
@@ -199,12 +232,8 @@
               ][index]
             }}
           </p>
-          <div class="flex justify-between mt-4">
-            <label
-              v-for="opt in options"
-              :key="opt.value"
-              class="flex flex-col items-center gap-1"
-            >
+          <div class="mt-4 flex justify-between">
+            <label v-for="opt in options" :key="opt.value" class="flex flex-col items-center gap-1">
               <span class="text-sm text-gray-700 dark:text-gray-300">{{ opt.label }}</span>
               <input
                 type="radio"
@@ -220,10 +249,10 @@
         <div
           class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
         >
-          <p class="font-medium text-gray-900 dark:text-white mb-3">
+          <p class="mb-3 font-medium text-gray-900 dark:text-white">
             If you checked any problems, how difficult have they made it for you?
           </p>
-          <div class="flex justify-between mt-4">
+          <div class="mt-4 flex justify-between">
             <label
               v-for="opt in difficultyOptions"
               :key="opt.value"
@@ -263,7 +292,7 @@
             variant="outline"
             color="neutral"
             size="lg"
-            :disabled="isSaving"
+            :disabled="isSaving || isSubmitting"
             @click="clearForm"
           />
           <UButton
@@ -273,6 +302,18 @@
             variant="soft"
             size="lg"
             :loading="isSaving"
+            :disabled="isSubmitting"
+          />
+          <UButton
+            v-if="allAnswered"
+            type="button"
+            label="Submit"
+            color="primary"
+            variant="solid"
+            size="lg"
+            :loading="isSubmitting"
+            :disabled="isSaving"
+            @click="submitForm"
           />
         </div>
       </form>

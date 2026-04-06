@@ -67,33 +67,42 @@ export default defineEventHandler(async (event) => {
   const { fname, lname } = parseName(dbUser.name)
 
   // Fetch form progress (what client sees on tasks page)
-  const [appForm, aceForm, gadForm, phqForm, pclForm] = await Promise.all([
-    prisma.appForm.findFirst({
-      where: { userId: clientUserId },
-      orderBy: { id: 'desc' },
-      include: { questions: true },
-    }),
-    prisma.aceForm.findFirst({
-      where: { userId: clientUserId },
-      orderBy: { id: 'desc' },
-      include: { questions: true },
-    }),
-    prisma.gadForm.findFirst({
-      where: { userId: clientUserId },
-      orderBy: { id: 'desc' },
-      include: { questions: true },
-    }),
-    prisma.phqForm.findFirst({
-      where: { userId: clientUserId },
-      orderBy: { id: 'desc' },
-      include: { questions: true },
-    }),
-    prisma.pclForm.findFirst({
-      where: { userId: clientUserId },
-      orderBy: { id: 'desc' },
-      include: { questions: true },
-    }),
-  ])
+  const [appForm, physicianStatementForm, roiForm, aceForm, gadForm, phqForm, pclForm] =
+    await Promise.all([
+      prisma.appForm.findFirst({
+        where: { userId: clientUserId },
+        orderBy: { id: 'desc' },
+        include: { questions: true },
+      }),
+      prisma.physicianStatementForm.findUnique({
+        where: { userId: clientUserId },
+        select: { status: true },
+      }),
+      prisma.releaseOfInformationAuthorizationForm.findUnique({
+        where: { userId: clientUserId },
+        select: { status: true },
+      }),
+      prisma.aceForm.findFirst({
+        where: { userId: clientUserId },
+        orderBy: { id: 'desc' },
+        include: { questions: true },
+      }),
+      prisma.gadForm.findFirst({
+        where: { userId: clientUserId },
+        orderBy: { id: 'desc' },
+        include: { questions: true },
+      }),
+      prisma.phqForm.findFirst({
+        where: { userId: clientUserId },
+        orderBy: { id: 'desc' },
+        include: { questions: true },
+      }),
+      prisma.pclForm.findFirst({
+        where: { userId: clientUserId },
+        orderBy: { id: 'desc' },
+        include: { questions: true },
+      }),
+    ])
 
   // Application progress
   let appAnswered = 0
@@ -194,6 +203,9 @@ export default defineEventHandler(async (event) => {
     pclSeverity = calculated.severity
   }
 
+  const physicianStatementSubmitted = physicianStatementForm?.status === 'SUBMITTED'
+  const roiSubmitted = roiForm?.status === 'SUBMITTED'
+
   const tasks = [
     {
       key: 'application',
@@ -202,6 +214,22 @@ export default defineEventHandler(async (event) => {
       answered: appAnswered,
       total: APP_TOTAL,
       submitted: appForm?.status === 'COMPLETE',
+    },
+    {
+      key: 'physicianStatement',
+      name: FORM_LABELS.physicianStatement,
+      to: '/forms/physician-statement',
+      answered: physicianStatementSubmitted ? 1 : 0,
+      total: 1,
+      submitted: physicianStatementSubmitted,
+    },
+    {
+      key: 'releaseOfInformationAuthorization',
+      name: FORM_LABELS.releaseOfInformationAuthorization,
+      to: '/forms/release-of-information-authorization',
+      answered: roiSubmitted ? 1 : 0,
+      total: 1,
+      submitted: roiSubmitted,
     },
     {
       key: 'ace',
