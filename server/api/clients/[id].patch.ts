@@ -1,25 +1,15 @@
+import { requireUser } from '../../utils/guard'
 import { createError, defineEventHandler, getHeaders, getRouterParam, readBody } from 'h3'
-import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
 import { isAllFormsComplete } from '../../utils/client-forms'
-import type { ClientStatus } from '../../../../prisma/generated/client'
+import type { ClientStatus } from '../../../prisma/generated/client'
+import { isClientStatusLabel, toDbClientStatus } from '../../utils/client-status'
 
-const VALID_STATUSES: ClientStatus[] = ['INCOMPLETE', 'WAITLIST', 'ACTIVE', 'ARCHIVED']
+const VALID_STATUSES = ['Prospective', 'Waitlist', 'Active', 'Archived'] as const
 const MAX_THERAPY_WEEKS = 26
 
 export default defineEventHandler(async (event) => {
-  const requestHeaders = new Headers()
-  for (const [key, value] of Object.entries(getHeaders(event))) {
-    if (value !== undefined) requestHeaders.set(key, value)
-  }
-
-  const session = await auth.api.getSession({ headers: requestHeaders })
-  if (!session?.user?.id) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: 'Unauthorized',
-    })
-  }
+  const user = requireUser(event)
 
   const userId = getRouterParam(event, 'id')
   if (!userId) {
@@ -29,29 +19,41 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  if (user.id !== userId && !event.context.isAdmin) {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
+  }
+
   const body = await readBody<{
-    status?: ClientStatus
+    status?: string
     therapyWeek?: number | null
     missedSessions?: number
   }>(event)
 
   if (
-    !body?.status &&
-    body?.therapyWeek === undefined &&
-    body?.missedSessions === undefined
+    !event.context.isAdmin &&
+    (body?.status !== undefined ||
+      body?.therapyWeek !== undefined ||
+      body?.missedSessions !== undefined)
   ) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Forbidden: Only admins can modify status, therapyWeek, and missedSessions',
+    })
+  }
+
+  if (!body?.status && body?.therapyWeek === undefined && body?.missedSessions === undefined) {
     throw createError({
       statusCode: 400,
       statusMessage: 'At least one of status, therapyWeek, or missedSessions is required',
     })
   }
 
-  const user = await prisma.user.findUnique({
+  const dbUser = await prisma.user.findUnique({
     where: { id: userId, role: 'CLIENT' },
     include: { client: true },
   })
 
-  if (!user) {
+  if (!dbUser) {
     throw createError({
       statusCode: 404,
       statusMessage: 'Client not found',
@@ -59,13 +61,16 @@ export default defineEventHandler(async (event) => {
   }
 
   if (body.status !== undefined) {
-    if (!VALID_STATUSES.includes(body.status)) {
+    if (!isClientStatusLabel(body.status)) {
       throw createError({
         statusCode: 400,
         statusMessage: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`,
       })
     }
-    if (body.status === 'WAITLIST') {
+
+    const targetStatus = toDbClientStatus(body.status)
+
+    if (targetStatus === 'WAITLIST') {
       const allFormsComplete = await isAllFormsComplete(prisma, userId)
       if (!allFormsComplete) {
         throw createError({
@@ -74,8 +79,8 @@ export default defineEventHandler(async (event) => {
         })
       }
     }
-    if (body.status === 'ACTIVE') {
-      const currentStatus = user.client?.status ?? 'INCOMPLETE'
+    if (targetStatus === 'ACTIVE') {
+      const currentStatus = dbUser.client?.status ?? 'INCOMPLETE'
       if (currentStatus !== 'WAITLIST' && currentStatus !== 'ARCHIVED') {
         throw createError({
           statusCode: 400,
@@ -83,8 +88,8 @@ export default defineEventHandler(async (event) => {
         })
       }
     }
-    if (body.status === 'ARCHIVED') {
-      const currentStatus = user.client?.status ?? 'INCOMPLETE'
+    if (targetStatus === 'ARCHIVED') {
+      const currentStatus = dbUser.client?.status ?? 'INCOMPLETE'
       if (currentStatus !== 'ACTIVE') {
         throw createError({
           statusCode: 400,
@@ -112,12 +117,12 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  let client = user.client
+  let client = dbUser.client
   if (!client) {
     client = await prisma.client.create({
       data: {
         userId,
-        status: (body.status as ClientStatus) ?? 'INCOMPLETE',
+        status: body.status ? toDbClientStatus(body.status) : 'INCOMPLETE',
         therapyWeek: therapyWeek ?? null,
         missedSessions: missedSessions ?? 0,
       },
@@ -129,7 +134,7 @@ export default defineEventHandler(async (event) => {
     therapyWeek?: number | null
     missedSessions?: number
   } = {}
-  if (body.status !== undefined) updateData.status = body.status
+  if (body.status !== undefined) updateData.status = toDbClientStatus(body.status)
   if (therapyWeek !== undefined) updateData.therapyWeek = therapyWeek
   if (missedSessions !== undefined) updateData.missedSessions = missedSessions
 

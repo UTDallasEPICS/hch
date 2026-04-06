@@ -1,0 +1,82 @@
+export function calculatePhqScore(questions: Record<string, any> | undefined): {
+  score: number | null
+  severity: string | null
+} {
+  if (!questions) return { score: null, severity: null }
+
+  let score = 0
+  let answered = false
+  for (let i = 1; i <= 9; i++) {
+    const key = `q${i}`
+    const val = questions[key]
+    if (typeof val === 'number' && val >= 0) {
+      score += val
+      answered = true
+    }
+  }
+
+  if (!answered) return { score: null, severity: null }
+
+  let severity = 'Minimal or no depression'
+  if (score > 19) severity = 'Severe depression'
+  else if (score > 14) severity = 'Moderately severe depression'
+  else if (score > 9) severity = 'Moderate depression'
+  else if (score > 4) severity = 'Mild depression'
+
+  return { score, severity }
+}
+
+export function calculatePclScore(questions: Record<string, any> | undefined): {
+  score: number | null
+  severity: string | null
+} {
+  if (!questions) return { score: null, severity: null }
+
+  let score = 0
+  let answered = false
+  for (let i = 1; i <= 20; i++) {
+    const key = `q${String(i).padStart(2, '0')}`
+    const val = questions[key]
+    if (typeof val === 'number' && val >= 0) {
+      score += val
+      answered = true
+    }
+  }
+
+  if (!answered) return { score: null, severity: null }
+
+  let severity = 'Minimal'
+  if (score > 60) severity = 'Severe'
+  else if (score > 40) severity = 'Moderate'
+  else if (score > 20) severity = 'Mild'
+
+  return { score, severity }
+}
+
+export function calculateAceScore(questions: Record<string, any> | undefined): {
+  score: number | null
+  severity: string | null
+} {
+  if (!questions) return { score: null, severity: null }
+
+  let score = 0
+  let answered = false
+  for (let i = 1; i <= 10; i++) {
+    const key = `a${String(i).padStart(2, '0')}`
+    const val = questions[key]
+    if (val === 'Yes' || val === true) {
+      score += 1
+    }
+    if (val !== null && val !== undefined) {
+      answered = true
+    }
+  }
+
+  if (!answered) return { score: null, severity: null }
+
+  let severity = 'Low risk'
+  if (score >= 4) severity = 'High risk'
+  else if (score >= 1) severity = 'Moderate risk'
+
+  return { score, severity }
+}

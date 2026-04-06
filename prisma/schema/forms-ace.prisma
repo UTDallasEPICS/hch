@@ -1,0 +1,36 @@
+model AceForm {
+  id          Int          @id @default(autoincrement())
+  userId      String       @unique
+  status      String       @default("IN_PROGRESS")
+  totalScore  Int?
+  severity    String?
+  submittedAt DateTime?
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions   AceQuestion?
+
+  @@index([userId])
+  @@map("ace_form")
+}
+
+model AceQuestion {
+  id     Int    @id @default(autoincrement())
+  formId Int    @unique
+  userId String
+
+  a01 String?
+  a02 String?
+  a03 String?
+  a04 String?
+  a05 String?
+  a06 String?
+  a07 String?
+  a08 String?
+  a09 String?
+  a10 String?
+
+  form AceForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("ace_question")
+}

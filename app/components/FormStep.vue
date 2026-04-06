@@ -279,7 +279,9 @@
       if (Array.isArray(parsed)) {
         return parsed.map((m) => ({
           firstName: String(m?.firstName ?? '').trim(),
-          middleInitial: String(m?.middleInitial ?? '').trim().slice(0, 1),
+          middleInitial: String(m?.middleInitial ?? '')
+            .trim()
+            .slice(0, 1),
           lastName: String(m?.lastName ?? '').trim(),
           age: String(m?.age ?? '').trim(),
           relationship: String(m?.relationship ?? '').trim(),
@@ -294,7 +296,7 @@
       .filter(Boolean)
       .map((line) => {
         const m = line.match(/^(.+?)(?:\s*,\s*(\d+)(?:\s*-\s*(.+))?)?\s*$/)
-        const namePart = m ? m[1] ?? line : line
+        const namePart = m ? (m[1] ?? line) : line
         const agePart = m?.[2] ?? ''
         const relPart = m?.[3] ?? ''
         const nameParts = namePart.split(/\s+/).filter(Boolean)
@@ -322,8 +324,7 @@
   })
 
   function syncMembersToForm() {
-    form.value.q16 =
-      houseMembers.value.length > 0 ? JSON.stringify(houseMembers.value) : ''
+    form.value.q16 = houseMembers.value.length > 0 ? JSON.stringify(houseMembers.value) : ''
   }
 
   watch(
@@ -396,7 +397,9 @@
       if (parsed && typeof parsed === 'object') {
         return {
           firstName: String(parsed?.firstName ?? '').trim(),
-          middleInitial: String(parsed?.middleInitial ?? '').trim().slice(0, 1),
+          middleInitial: String(parsed?.middleInitial ?? '')
+            .trim()
+            .slice(0, 1),
           lastName: String(parsed?.lastName ?? '').trim(),
           age: String(parsed?.age ?? '').trim(),
           relationship: String(parsed?.relationship ?? '').trim(),
@@ -425,11 +428,7 @@
     { immediate: true }
   )
 
-  watch(
-    therapyPerson,
-    () => syncTherapyPersonToForm(),
-    { deep: true }
-  )
+  watch(therapyPerson, () => syncTherapyPersonToForm(), { deep: true })
 </script>
 
 <template>
@@ -462,7 +461,10 @@
           placeholder="10 digits"
           @keydown="blockNonNumericInput"
         />
-        <p v-if="phoneDigitsCount > 0 && !isPhoneValid" class="mt-1 text-sm text-amber-600 dark:text-amber-400">
+        <p
+          v-if="phoneDigitsCount > 0 && !isPhoneValid"
+          class="mt-1 text-sm text-amber-600 dark:text-amber-400"
+        >
           Phone Number must be exactly 10 digits.
         </p>
       </div>
@@ -567,9 +569,7 @@
             class="rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
           >
             <div class="mb-3 flex items-center justify-between">
-              <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Add Members
-              </p>
+              <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Add Members</p>
               <UButton
                 icon="i-heroicons-plus-20-solid"
                 color="primary"

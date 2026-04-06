@@ -240,7 +240,7 @@ export function useFormStore() {
   }
 
   /**
-   * Hydrate form from API response (e.g. /api/application/start).
+   * Hydrate form from API response (e.g. /api/forms/application/start).
    * Expects keys q01–q50.
    */
   function applySavedAnswers(answers?: AppAnswerPayload | null) {

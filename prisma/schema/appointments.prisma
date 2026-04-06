@@ -1,0 +1,18 @@
+model Appointment {
+  id          String   @id @default(cuid())
+  clientId    String
+  adminId     String
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  status      String   @default("SCHEDULED")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  client      User     @relation("ClientAppointments", fields: [clientId], references: [id], onDelete: Restrict)
+  admin       User     @relation("AdminAppointments", fields: [adminId], references: [id], onDelete: Restrict)
+
+  @@index([clientId])
+  @@index([adminId])
+  @@map("Appointment")
+}

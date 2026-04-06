@@ -1,82 +1,92 @@
+import { requireAdmin } from '../../utils/guard'
 import { createError, defineEventHandler, getHeaders, getQuery } from 'h3'
-import { auth } from '../../utils/auth'
 import { prisma } from '../../utils/prisma'
 import { isAdmin } from '../../utils/is-admin'
-import { isAllFormsComplete, getIncompleteForms } from '../../utils/client-forms'
-import { parseName } from '../../utils/name'
-import type { ClientStatus } from '../../../../prisma/generated/client'
+import {
+  isAllFormsComplete,
+  areAllFormsComplete,
+  isWaitlistFormsComplete,
+  getIncompleteForms,
+} from '../../utils/client-forms'
+import { isClinicalClient } from '../../utils/is-clinical-client'
+import {
+  isClientStatusLabel,
+  toClientStatusLabel,
+  toDbClientStatus,
+} from '../../utils/client-status'
+import { joinName, parseName } from '../../utils/name'
+import type { ClientStatus } from '../../../prisma/generated/client'
 
 export default defineEventHandler(async (event) => {
-  const requestHeaders = new Headers()
-  for (const [key, value] of Object.entries(getHeaders(event))) {
-    if (value !== undefined) requestHeaders.set(key, value)
-  }
-
-  const session = await auth.api.getSession({ headers: requestHeaders })
-  if (!session?.user?.id) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: 'Unauthorized',
-    })
-  }
-
-  const currentUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { role: true, email: true },
-  })
-  if (!isAdmin(currentUser?.role ?? null, currentUser?.email ?? null)) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: 'Forbidden',
-    })
-  }
+  const user = requireAdmin(event)
 
   const query = getQuery(event)
   const statusFilter = query.status as string | undefined
 
-  const validStatuses = ['INCOMPLETE', 'WAITLIST', 'ACTIVE', 'ARCHIVED']
-  const hasStatusFilter = statusFilter && validStatuses.includes(statusFilter)
+  const hasStatusFilter = Boolean(statusFilter && isClientStatusLabel(statusFilter))
+  const dbStatusFilter = toDbClientStatus(statusFilter)
 
   const users = await prisma.user.findMany({
     where: {
       role: 'CLIENT',
       ...(hasStatusFilter &&
-        (statusFilter === 'INCOMPLETE'
+        (dbStatusFilter === 'INCOMPLETE'
           ? {
-              OR: [
-                { client: null },
-                { client: { status: 'INCOMPLETE' as ClientStatus } },
-              ],
+              OR: [{ client: null }, { client: { status: 'INCOMPLETE' as ClientStatus } }],
             }
           : {
               client: {
-                status: statusFilter as ClientStatus,
+                status: dbStatusFilter as ClientStatus,
               },
             })),
     },
     include: {
       client: true,
+      appForms: {
+        orderBy: { id: 'desc' },
+        take: 1,
+        include: {
+          questions: {
+            select: {
+              q02: true,
+              q03: true,
+            },
+          },
+        },
+      },
     },
     orderBy: { createdAt: 'desc' },
   })
 
+  const clinicalUsers = users.filter((u) => isClinicalClient(u.role, u.email))
+
   const clients = await Promise.all(
-    users.map(async (user) => {
+    clinicalUsers.map(async (user) => {
       const clientProfile = user.client
-      const storedStatus = clientProfile?.status ?? 'INCOMPLETE'
+      const storedStatus = (clientProfile?.status ?? 'INCOMPLETE') as ClientStatus
+      const statusLabel = toClientStatusLabel(storedStatus)
       const therapyWeek = clientProfile?.therapyWeek ?? null
       const missedSessions = clientProfile?.missedSessions ?? 0
-      const allFormsComplete = await isAllFormsComplete(prisma, user.id)
-      const incompleteForms = storedStatus === 'INCOMPLETE' ? await getIncompleteForms(prisma, user.id) : []
-      const { fname, lname } = parseName(user.name)
+      const allFormsComplete =
+        storedStatus === 'WAITLIST'
+          ? await isWaitlistFormsComplete(prisma, user.id)
+          : await areAllFormsComplete(prisma, user.id)
+      const incompleteForms =
+        storedStatus === 'INCOMPLETE' || storedStatus === 'WAITLIST'
+          ? await getIncompleteForms(prisma, user.id, storedStatus)
+          : []
+      const latestAnswers = user.appForms[0]?.questions
+      const fallbackName = joinName(latestAnswers?.q02 ?? '', latestAnswers?.q03 ?? '')
+      const resolvedName = user.name?.trim() ? user.name : fallbackName
+      const { fname, lname } = parseName(resolvedName)
 
       return {
         id: user.id,
         fname,
         lname,
-        name: user.name,
+        name: resolvedName,
         email: user.email,
-        status: storedStatus,
+        status: statusLabel,
         allFormsComplete,
         therapyWeek,
         missedSessions,
