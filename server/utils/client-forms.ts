@@ -146,3 +146,9 @@ export async function getWaitlistIncompleteForms(
 export async function isAllFormsComplete(prisma: PrismaClient, userId: string): Promise<boolean> {
   return isPreWaitlistComplete(prisma, userId)
 }
+
+/** Application, ACE, GAD-7, PHQ-9, and PCL-5 all submitted (single source of truth). */
+export async function areAllFormsComplete(prisma: PrismaClient, userId: string): Promise<boolean> {
+  const incomplete = await getIncompleteForms(prisma, userId)
+  return incomplete.length === 0
+}

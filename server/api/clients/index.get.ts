@@ -4,9 +4,11 @@ import { prisma } from '../../utils/prisma'
 import { isAdmin } from '../../utils/is-admin'
 import {
   isAllFormsComplete,
+  areAllFormsComplete,
   isWaitlistFormsComplete,
   getIncompleteForms,
 } from '../../utils/client-forms'
+import { isClinicalClient } from '../../utils/is-clinical-client'
 import {
   isClientStatusLabel,
   toClientStatusLabel,
@@ -16,7 +18,6 @@ import { joinName, parseName } from '../../utils/name'
 import type { ClientStatus } from '../../../prisma/generated/client'
 
 export default defineEventHandler(async (event) => {
-
   const user = requireAdmin(event)
 
   const query = getQuery(event)
@@ -57,8 +58,10 @@ export default defineEventHandler(async (event) => {
     orderBy: { createdAt: 'desc' },
   })
 
+  const clinicalUsers = users.filter((u) => isClinicalClient(u.role, u.email))
+
   const clients = await Promise.all(
-    users.map(async (user) => {
+    clinicalUsers.map(async (user) => {
       const clientProfile = user.client
       const storedStatus = (clientProfile?.status ?? 'INCOMPLETE') as ClientStatus
       const statusLabel = toClientStatusLabel(storedStatus)
@@ -67,7 +70,7 @@ export default defineEventHandler(async (event) => {
       const allFormsComplete =
         storedStatus === 'WAITLIST'
           ? await isWaitlistFormsComplete(prisma, user.id)
-          : await isAllFormsComplete(prisma, user.id)
+          : await areAllFormsComplete(prisma, user.id)
       const incompleteForms =
         storedStatus === 'INCOMPLETE' || storedStatus === 'WAITLIST'
           ? await getIncompleteForms(prisma, user.id, storedStatus)

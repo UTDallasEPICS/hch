@@ -2,7 +2,8 @@ import { requireUser } from '../../../utils/guard'
 import { createError, defineEventHandler, getHeaders, getRouterParam } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
-import { isAllFormsComplete, getIncompleteForms, FORM_LABELS } from '../../../utils/client-forms'
+import { isClinicalClient } from '../../../utils/is-clinical-client'
+import { getIncompleteForms, FORM_LABELS } from '../../../utils/client-forms'
 import { parseName } from '../../../utils/name'
 import type { ClientStatus } from '../../../../prisma/generated/client'
 import { ensureDefaultDeclarationTemplates } from '../../../utils/declaration-templates'
@@ -52,6 +53,10 @@ export default defineEventHandler(async (event) => {
   })
 
   if (!dbUser) {
+    throw createError({ statusCode: 404, statusMessage: 'Client not found' })
+  }
+
+  if (!isClinicalClient(dbUser.role, dbUser.email)) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
   }
 
@@ -173,8 +178,8 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const allFormsComplete = await isAllFormsComplete(prisma, clientUserId)
   const incompleteForms = await getIncompleteForms(prisma, clientUserId)
+  const allFormsComplete = incompleteForms.length === 0
 
   // ACE score: count of "Yes" answers; severity per interpretation breakdown
   let aceScore = aceForm?.totalScore ?? null

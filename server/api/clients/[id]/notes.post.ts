@@ -4,7 +4,6 @@ import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
 
 export default defineEventHandler(async (event) => {
-
   const user = requireAdmin(event)
 
   const clientUserId = getRouterParam(event, 'id')
@@ -12,10 +11,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing client id' })
   }
 
-  const body = await readBody<{ content: string }>(event)
+  const body = await readBody<{ content: string; attended?: boolean }>(event)
   if (!body?.content || typeof body.content !== 'string') {
     throw createError({ statusCode: 400, statusMessage: 'Content is required' })
   }
+  const attended = body.attended !== false // default true
 
   const dbUser = await prisma.user.findFirst({
     where: { id: clientUserId, role: 'CLIENT' },
@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const note = await prisma.sessionNote.create({
-    data: { clientId: client.id, content: body.content.trim() },
+    data: { clientId: client.id, content: body.content.trim(), attended },
   })
 
   return note

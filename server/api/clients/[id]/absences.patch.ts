@@ -2,10 +2,10 @@ import { requireAdmin } from '../../../utils/guard'
 import { createError, defineEventHandler, getHeaders, getRouterParam, readBody } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
+import { isClinicalClient } from '../../../utils/is-clinical-client'
 import { saveBase64File } from '../../../utils/file-upload'
 
 export default defineEventHandler(async (event) => {
-
   const user = requireAdmin(event)
 
   const clientUserId = getRouterParam(event, 'id')
@@ -62,6 +62,10 @@ export default defineEventHandler(async (event) => {
   })
 
   if (!dbUser) {
+    throw createError({ statusCode: 404, statusMessage: 'Client not found' })
+  }
+
+  if (!isClinicalClient(dbUser.role, dbUser.email)) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
   }
 

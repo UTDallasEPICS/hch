@@ -449,6 +449,7 @@
         method: 'POST',
         body: {
           content: savedContent,
+          attended: !isAbsent.value,
         },
       })) as { id: string; createdAt: string }
 
@@ -485,6 +486,7 @@
 
   //Auto-save and status tracking
   const saveStatus = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const isAbsent = ref(false)
   const lastSaved = ref<Date | null>(null)
 
   //Auto-save and status tracking for previous notes
@@ -886,6 +888,22 @@
                   @click="showSaveModal = true"
                   class="w-auto"
                 />
+                <UButtonGroup v-if="!isEditingPreviousPanel">
+                  <UButton
+                    :color="!isAbsent ? 'success' : 'neutral'"
+                    :variant="!isAbsent ? 'solid' : 'outline'"
+                    label="Present"
+                    size="sm"
+                    @click="isAbsent = false"
+                  />
+                  <UButton
+                    :color="isAbsent ? 'error' : 'neutral'"
+                    :variant="isAbsent ? 'solid' : 'outline'"
+                    label="Absent"
+                    size="sm"
+                    @click="isAbsent = true"
+                  />
+                </UButtonGroup>
               </div>
             </div>
           </div>
