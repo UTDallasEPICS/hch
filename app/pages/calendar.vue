@@ -15,10 +15,24 @@
         | ({ id: string; role?: string } & Record<string, unknown>)
         | null) ?? null
   )
+  const { data: adminData, refresh: refreshAdminData } = await useFetch<{ isAdmin: boolean }>(
+    '/api/users/me/is-admin',
+    {
+      server: false,
+      default: () => ({ isAdmin: false }),
+    }
+  )
+  watch(
+    () => currentUser.value?.id,
+    () => {
+      refreshAdminData()
+    },
+    { immediate: true }
+  )
   const toast = useToast()
   const clients = ref<any[]>([])
   const events = ref<any[]>([])
-  const isAdmin = computed(() => currentUser.value?.role === 'ADMIN')
+  const isAdmin = computed(() => adminData.value?.isAdmin ?? false)
   const clientColors = [
     '#3b82f6', // blue
     '#10b981', // green
@@ -163,6 +177,14 @@
     },
     { immediate: true }
   )
+
+  watch(isAdmin, async (admin) => {
+    if (admin && currentUser.value?.id) {
+      await loadClients()
+    } else if (!admin) {
+      clients.value = []
+    }
+  })
 
   const isViewModalOpen = ref(false)
   const selectedEvent = ref<any>(null)
@@ -461,28 +483,18 @@
             <option value="month">Month</option>
           </select>
         </div>
-
-        <UButton
-          v-if="isAdmin"
-          icon="i-heroicons-plus"
-          class="fixed right-6 bottom-8 z-50 rounded-full shadow-lg lg:hidden"
-          size="xl"
-          @click="openCreateModal"
-        />
       </div>
     </div>
-    <div class="flex gap-6">
-      <!-- sidebar -->
-      <div class="hidden w-64 space-y-4 lg:block">
-        <UButton
-          v-if="isAdmin"
-          icon="i-heroicons-plus"
-          label="Create Event"
-          block
-          @click="openCreateModal"
-        />
-      </div>
 
+    <div v-if="isAdmin" class="flex justify-start">
+      <UButton
+        icon="i-heroicons-plus"
+        label="Create Event"
+        @click="openCreateModal"
+      />
+    </div>
+
+    <div class="flex gap-6">
       <!-- main calendar -->
       <div class="flex-1 rounded-xl bg-white p-4 shadow dark:bg-gray-900">
         <FullCalendar ref="calendarRef" :options="calendarOptions" class="min-h-[700px]" />
