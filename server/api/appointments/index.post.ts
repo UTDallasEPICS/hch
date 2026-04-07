@@ -1,6 +1,8 @@
 import { requireAdmin } from '../../utils/guard'
 import { prisma } from '../../utils/prisma'
-import { readBody, createError, defineEventHandler, getHeaders } from 'h3'
+import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/video-conference'
+import { readBody, createError, defineEventHandler } from 'h3'
+import type { VideoConferenceProvider } from '../../../prisma/generated/enums'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -9,7 +11,7 @@ export default defineEventHandler(async (event) => {
     const user = requireAdmin(event)
     const adminId = user.id
 
-    const { clientId, title, description, date, startTime, endTime } = body
+    const { clientId, title, description, date, startTime, endTime, videoProvider, videoJoinUrl } = body
 
     if (!clientId || !title || !date || !startTime || !endTime) {
       throw createError({
@@ -28,6 +30,15 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    const parsedProvider = parseVideoProviderInput(videoProvider) as VideoConferenceProvider | null
+    const normalizedJoin = normalizeVideoJoinUrl(videoJoinUrl)
+    if (normalizedJoin && !parsedProvider) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Choose a video provider when adding a join link',
+      })
+    }
+
     const appointment = await prisma.appointment.create({
       data: {
         clientId,
@@ -37,6 +48,8 @@ export default defineEventHandler(async (event) => {
         startTime: start,
         endTime: end,
         status: 'SCHEDULED',
+        ...(parsedProvider != null && { videoProvider: parsedProvider }),
+        ...(normalizedJoin != null && { videoJoinUrl: normalizedJoin }),
       },
     })
 

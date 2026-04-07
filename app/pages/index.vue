@@ -17,6 +17,15 @@
     clientDisplayName?: string
   }
 
+  type UpcomingAppointmentItem = {
+    id: string
+    title: string
+    startTime: string
+    endTime: string
+    videoProvider: string | null
+    videoJoinUrl: string | null
+  }
+
   type ClientStats = {
     displayName: string
     clientDisplayName?: string
@@ -25,6 +34,7 @@
     therapyWeekDisplay: string
     formsProgressDisplay: string
     pendingSessionNotesRequests: number
+    upcomingAppointments: UpcomingAppointmentItem[]
   }
 
   const statsFetch = isAdminUser
@@ -36,6 +46,11 @@
       })
 
   const { data: stats, pending, error, refresh } = statsFetch
+
+  const clientStats = computed(() => {
+    if (isAdminUser) return null
+    return stats.value as ClientStats | null
+  })
 
   async function logout() {
     await authClient.signOut()
@@ -188,16 +203,21 @@
   <main v-else class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
     <ClientDashboardHero
       :pending="pending"
-      :display-name="stats?.displayName"
-      :client-display-name="stats?.clientDisplayName"
-      :status-label="stats?.statusLabel"
-      :clinical-status="stats?.clinicalStatus ?? null"
+      :display-name="clientStats?.displayName"
+      :client-display-name="clientStats?.clientDisplayName"
+      :status-label="clientStats?.statusLabel"
+      :clinical-status="clientStats?.clinicalStatus ?? null"
       description="Your care journey and tasks at a glance."
-      :therapy-week-display="stats?.therapyWeekDisplay ?? '—'"
-      :forms-progress-display="stats?.formsProgressDisplay ?? '—'"
-      :pending-session-notes-requests="stats?.pendingSessionNotesRequests ?? 0"
+      :therapy-week-display="clientStats?.therapyWeekDisplay ?? '—'"
+      :forms-progress-display="clientStats?.formsProgressDisplay ?? '—'"
+      :pending-session-notes-requests="clientStats?.pendingSessionNotesRequests ?? 0"
       :error="error"
       @retry="refresh()"
+    />
+    <ClientUpcomingAppointments
+      v-if="!error"
+      :pending="pending"
+      :appointments="clientStats?.upcomingAppointments ?? []"
     />
     <ClientSessionNotesSection />
   </main>

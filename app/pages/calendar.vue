@@ -5,6 +5,13 @@
   import interactionPlugin from '@fullcalendar/interaction'
   import { authClient } from '~/utils/auth-client'
   import listPlugin from '@fullcalendar/list'
+  import { VIDEO_PROVIDER_LABEL } from '~/utils/video-conference'
+
+  const videoMeetingTypeOptions = [
+    { value: 'GOOGLE_MEET' as const, label: 'Google Meet' },
+    { value: 'ZOOM' as const, label: 'Zoom' },
+    { value: 'OTHER' as const, label: 'Other link' },
+  ]
 
   const isMobile = ref(process.client && window.innerWidth < 768)
   const calendarRef = ref()
@@ -47,11 +54,35 @@
   let touchEndX = 0
   async function loadEvents() {
     try {
-      const data = await $fetch('/api/appointments', {
+      const data = await $fetch<
+        {
+          id: string
+          title: string
+          start: string
+          end: string
+          clientName: string
+          description: string | null
+          status: string
+          videoProvider: string | null
+          videoJoinUrl: string | null
+        }[]
+      >('/api/appointments', {
         credentials: 'include',
       })
 
-      events.value = data
+      events.value = data.map((e) => ({
+        id: e.id,
+        title: e.title,
+        start: e.start,
+        end: e.end,
+        extendedProps: {
+          clientName: e.clientName,
+          description: e.description,
+          status: e.status,
+          videoProvider: e.videoProvider,
+          videoJoinUrl: e.videoJoinUrl,
+        },
+      }))
     } catch (err) {
       console.error('EVENT LOAD FAILED:', err)
       events.value = []
@@ -202,6 +233,9 @@
     date: '',
     startTime: '',
     endTime: '',
+    includeVideo: false,
+    videoProvider: '' as '' | 'GOOGLE_MEET' | 'ZOOM' | 'OTHER',
+    videoJoinUrl: '',
   })
 
   // use a reactive object instead of a ref so FullCalendar sees the callbacks
@@ -285,16 +319,18 @@
     const clientName =
       info.event.extendedProps?.clientName || info.event._def?.extendedProps?.clientName
 
+    const ext = info.event.extendedProps || info.event._def?.extendedProps || {}
     selectedEvent.value = {
-      ...info.event.extendedProps,
+      ...ext,
       clientName: clientName, // Make sure clientName is included
       id: info.event.id,
       title: info.event.title,
       start: info.event.start,
       end: info.event.end,
-      description:
-        info.event.extendedProps?.description || info.event._def?.extendedProps?.description,
-      status: info.event.extendedProps?.status || info.event._def?.extendedProps?.status,
+      description: ext.description,
+      status: ext.status,
+      videoProvider: ext.videoProvider ?? null,
+      videoJoinUrl: ext.videoJoinUrl ?? null,
     }
 
     console.log('selectedEvent after click:', selectedEvent.value)
@@ -310,6 +346,13 @@
     editForm.date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     editForm.startTime = selectedEvent.value.start.toTimeString().slice(0, 5)
     editForm.endTime = selectedEvent.value.end.toTimeString().slice(0, 5)
+    editForm.includeVideo = Boolean(
+      selectedEvent.value.videoJoinUrl || selectedEvent.value.videoProvider
+    )
+    editForm.videoJoinUrl = selectedEvent.value.videoJoinUrl || ''
+    editForm.videoProvider = editForm.includeVideo
+      ? ((selectedEvent.value.videoProvider as typeof editForm.videoProvider) || 'GOOGLE_MEET')
+      : ''
   }
 
   function cancelEdit() {
@@ -317,6 +360,13 @@
   }
 
   async function saveEdit() {
+    if (editForm.includeVideo && !editForm.videoJoinUrl?.trim()) {
+      toast.add({
+        title: 'Add a video link or uncheck Video',
+        color: 'warning',
+      })
+      return
+    }
     try {
       await $fetch(`/api/appointments/${selectedEvent.value.id}`, {
         method: 'PUT',
@@ -327,6 +377,8 @@
           date: editForm.date,
           startTime: editForm.startTime,
           endTime: editForm.endTime,
+          videoProvider: editForm.includeVideo ? editForm.videoProvider || 'GOOGLE_MEET' : null,
+          videoJoinUrl: editForm.includeVideo ? editForm.videoJoinUrl.trim() || null : null,
         },
       })
 
@@ -384,7 +436,34 @@
     date: '',
     startTime: '',
     endTime: '',
+    includeVideo: false,
+    videoProvider: '' as '' | 'GOOGLE_MEET' | 'ZOOM' | 'OTHER',
+    videoJoinUrl: '',
   })
+
+  watch(
+    () => form.includeVideo,
+    (on) => {
+      if (!on) {
+        form.videoProvider = ''
+        form.videoJoinUrl = ''
+      } else if (!form.videoProvider) {
+        form.videoProvider = 'GOOGLE_MEET'
+      }
+    }
+  )
+
+  watch(
+    () => editForm.includeVideo,
+    (on) => {
+      if (!on) {
+        editForm.videoProvider = ''
+        editForm.videoJoinUrl = ''
+      } else if (!editForm.videoProvider) {
+        editForm.videoProvider = 'GOOGLE_MEET'
+      }
+    }
+  )
 
   const clientOptions = computed(() =>
     clients.value
@@ -408,6 +487,9 @@
     form.date = ''
     form.startTime = ''
     form.endTime = ''
+    form.includeVideo = false
+    form.videoProvider = ''
+    form.videoJoinUrl = ''
     isCreateModalOpen.value = true
   }
 
@@ -416,6 +498,13 @@
   }
 
   async function createSession() {
+    if (form.includeVideo && !form.videoJoinUrl?.trim()) {
+      toast.add({
+        title: 'Add a video link or uncheck Video',
+        color: 'warning',
+      })
+      return
+    }
     console.log('sending appointment', { ...form })
     try {
       await $fetch('/api/appointments', {
@@ -427,6 +516,8 @@
           date: form.date,
           startTime: form.startTime,
           endTime: form.endTime,
+          videoProvider: form.includeVideo ? form.videoProvider || 'GOOGLE_MEET' : undefined,
+          videoJoinUrl: form.includeVideo ? form.videoJoinUrl.trim() : undefined,
         },
       })
 
@@ -538,6 +629,49 @@
           <UInput v-model="form.endTime" type="time" />
         </div>
 
+        <div class="flex flex-col gap-3">
+          <label class="flex cursor-pointer items-center gap-3">
+            <UCheckbox v-model="form.includeVideo" />
+            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">Video</span>
+          </label>
+
+          <div
+            v-if="form.includeVideo"
+            class="space-y-3 rounded-lg border border-gray-200 bg-gray-50/90 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/60"
+          >
+            <p class="text-xs font-medium text-gray-600 dark:text-gray-400">Meeting type</p>
+            <div class="flex flex-wrap gap-4">
+              <label
+                v-for="opt in videoMeetingTypeOptions"
+                :key="opt.value"
+                class="flex cursor-pointer items-center gap-2 text-sm text-gray-800 dark:text-gray-200"
+              >
+                <input
+                  v-model="form.videoProvider"
+                  type="radio"
+                  name="create-video-provider"
+                  :value="opt.value"
+                  class="border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600"
+                />
+                {{ opt.label }}
+              </label>
+            </div>
+            <div>
+              <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400" for="create-video-url">
+                Join link
+              </label>
+              <UInput
+                id="create-video-url"
+                v-model="form.videoJoinUrl"
+                placeholder="https://meet.google.com/..."
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Paste a secure https link so clients can join from the dashboard and calendar.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div class="flex justify-end gap-3 pt-2">
           <UButton variant="outline" @click="closeCreateModal"> Cancel </UButton>
 
@@ -573,6 +707,33 @@
           </p>
 
           <p><strong>Status:</strong> {{ selectedEvent?.status }}</p>
+
+          <div v-if="selectedEvent?.videoJoinUrl && selectedEvent?.videoProvider === 'GOOGLE_MEET'" class="mt-3">
+            <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Video</p>
+            <UButton
+              :to="selectedEvent.videoJoinUrl"
+              external
+              target="_blank"
+              rel="noopener noreferrer"
+              color="primary"
+              variant="soft"
+              icon="i-heroicons-video-camera-20-solid"
+              label="Join Google Meet"
+            />
+          </div>
+          <div v-else-if="selectedEvent?.videoJoinUrl && selectedEvent?.videoProvider" class="mt-3">
+            <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Video</p>
+            <UButton
+              :to="selectedEvent.videoJoinUrl"
+              external
+              target="_blank"
+              rel="noopener noreferrer"
+              color="primary"
+              variant="soft"
+              icon="i-heroicons-video-camera-20-solid"
+              :label="`Join ${VIDEO_PROVIDER_LABEL[selectedEvent.videoProvider] ?? 'session'}`"
+            />
+          </div>
         </div>
 
         <div v-else class="flex flex-col gap-4">
@@ -600,6 +761,46 @@
             <div>
               <label class="mb-2 block text-sm font-medium">End Time</label>
               <UInput v-model="editForm.endTime" type="time" />
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <label class="flex cursor-pointer items-center gap-3">
+              <UCheckbox v-model="editForm.includeVideo" />
+              <span class="text-sm font-medium text-gray-900 dark:text-gray-100">Video</span>
+            </label>
+
+            <div
+              v-if="editForm.includeVideo"
+              class="space-y-3 rounded-lg border border-gray-200 bg-gray-50/90 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/60"
+            >
+              <p class="text-xs font-medium text-gray-600 dark:text-gray-400">Meeting type</p>
+              <div class="flex flex-wrap gap-4">
+                <label
+                  v-for="opt in videoMeetingTypeOptions"
+                  :key="opt.value"
+                  class="flex cursor-pointer items-center gap-2 text-sm text-gray-800 dark:text-gray-200"
+                >
+                  <input
+                    v-model="editForm.videoProvider"
+                    type="radio"
+                    name="edit-video-provider"
+                    :value="opt.value"
+                    class="border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600"
+                  />
+                  {{ opt.label }}
+                </label>
+              </div>
+              <div>
+                <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400" for="edit-video-url">
+                  Join link
+                </label>
+                <UInput
+                  id="edit-video-url"
+                  v-model="editForm.videoJoinUrl"
+                  placeholder="https://meet.google.com/..."
+                />
+              </div>
             </div>
           </div>
         </div>
