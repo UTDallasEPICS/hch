@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import type { TableColumn, TableRow, TabsItem } from '@nuxt/ui'
+  import type { TableColumn, TableRow } from '@nuxt/ui'
   import { capitalizeName } from '~/utils/name'
 
   definePageMeta({ middleware: 'clients-admin' })
@@ -47,49 +47,16 @@
     }
   )
 
-  function tabCountBadge(count: number) {
-    return {
-      label: String(count),
-      variant: 'subtle' as const,
-      color: 'neutral' as const,
-    }
-  }
-
-  const tabItems = computed<TabsItem[]>(() => {
+  const statusTabs = computed(() => {
     const c = clientCounts.value
     const n = (key: keyof ClientTabCounts) => c?.[key] ?? 0
     return [
-      {
-        label: 'All',
-        value: ALL_STATUS,
-        icon: 'i-heroicons-squares-2x2-20-solid',
-        badge: tabCountBadge(n('__all__')),
-      },
-      {
-        label: 'Prospective',
-        value: 'Prospective',
-        icon: 'i-heroicons-clock-20-solid',
-        badge: tabCountBadge(n('Prospective')),
-      },
-      {
-        label: 'Waitlist',
-        value: 'Waitlist',
-        icon: 'i-heroicons-queue-list-20-solid',
-        badge: tabCountBadge(n('Waitlist')),
-      },
-      {
-        label: 'Active',
-        value: 'Active',
-        icon: 'i-heroicons-check-circle-20-solid',
-        badge: tabCountBadge(n('Active')),
-      },
-      {
-        label: 'Archived',
-        value: 'Archived',
-        icon: 'i-heroicons-archive-box-20-solid',
-        badge: tabCountBadge(n('Archived')),
-      },
-    ]
+      { value: ALL_STATUS, label: 'All', count: n('__all__') },
+      { value: 'Prospective', label: 'Prospective', count: n('Prospective') },
+      { value: 'Waitlist', label: 'Waitlist', count: n('Waitlist') },
+      { value: 'Active', label: 'Active', count: n('Active') },
+      { value: 'Archived', label: 'Archived', count: n('Archived') },
+    ] as const
   })
 
   const queryParams = computed(() => {
@@ -168,6 +135,13 @@
     }
     return icons[status]
   }
+
+  /** Muted warning text — easier on dark UIs than default amber-400 */
+  const WARNING_TEXT_MUTED = 'text-amber-700 dark:text-amber-500/75'
+
+  /** Prospective badge: softer than UBadge `warning` on dark backgrounds */
+  const PROSPECTIVE_BADGE_CLASS =
+    '!bg-amber-500/10 !text-amber-900 !ring-1 !ring-inset !ring-amber-600/15 dark:!bg-amber-950/40 dark:!text-amber-400/85 dark:!ring-amber-500/25 dark:[&_svg]:text-amber-400/80'
 
   function statusHint(c: Client): string {
     if (c.status === 'Prospective' && !c.allFormsComplete) {
@@ -340,37 +314,31 @@
         >
           <UIcon name="i-heroicons-user-group-20-solid" class="h-5 w-5" />
         </div>
-        <div>
-          <h2 class="text-base font-semibold text-gray-900 dark:text-white">Client list</h2>
-          <p v-if="!error" class="text-muted mt-0.5 text-sm">
-            <template v-if="pending">Loading…</template>
-            <template v-else>
-              {{ clients?.length ?? 0 }}
-              {{ (clients?.length ?? 0) === 1 ? 'client' : 'clients' }}
-              <span v-if="statusFilter !== ALL_STATUS"> in this view </span>
-            </template>
-          </p>
-        </div>
+        <h2 class="text-base font-semibold text-gray-900 dark:text-white">Client list</h2>
       </div>
 
-      <div
-        class="rounded-xl border border-gray-200/80 bg-gray-50/90 p-1.5 dark:border-gray-700/80 dark:bg-gray-950/40"
+      <nav
+        class="mb-4 flex flex-wrap items-center justify-start gap-1"
+        aria-label="Filter clients by status"
+        role="tablist"
       >
-        <UTabs
-          v-model="statusFilter"
-          :items="tabItems"
-          :content="false"
-          variant="pill"
-          color="neutral"
-          size="sm"
-          class="w-full min-w-0"
-          :ui="{
-            list: 'flex-wrap gap-1 sm:flex-nowrap sm:overflow-x-auto sm:pb-px sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:hidden',
-            trailingBadge: 'tabular-nums font-medium',
-            leadingIcon: 'shrink-0',
-          }"
-        />
-      </div>
+        <button
+          v-for="tab in statusTabs"
+          :key="tab.value"
+          type="button"
+          role="tab"
+          :aria-selected="statusFilter === tab.value"
+          class="rounded-md px-3 py-1.5 text-sm tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/50 dark:focus-visible:ring-gray-500/50"
+          :class="
+            statusFilter === tab.value
+              ? 'bg-gray-100 font-semibold text-gray-950 dark:bg-gray-800 dark:text-white'
+              : 'bg-transparent font-medium text-gray-500 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-400'
+          "
+          @click="statusFilter = tab.value"
+        >
+          {{ tab.label }} ({{ tab.count }})
+        </button>
+      </nav>
 
       <UAlert
         v-if="error"
@@ -399,19 +367,19 @@
         <template #status-cell="{ row }">
           <div class="flex flex-col gap-1.5">
             <UBadge
-              :color="statusColor(row.original.status)"
+              :color="row.original.status === 'Prospective' ? 'neutral' : statusColor(row.original.status)"
               :variant="statusVariant(row.original.status)"
               size="md"
               :icon="statusIcon(row.original.status)"
               leading
-              class="inline-flex w-fit font-medium"
+              :class="[
+                'inline-flex w-fit font-medium',
+                row.original.status === 'Prospective' ? PROSPECTIVE_BADGE_CLASS : '',
+              ]"
             >
               {{ statusLabel(row.original.status) }}
             </UBadge>
-            <span
-              v-if="statusHint(row.original)"
-              class="text-sm text-amber-600 dark:text-amber-400"
-            >
+            <span v-if="statusHint(row.original)" :class="['text-sm', WARNING_TEXT_MUTED]">
               {{ statusHint(row.original) }}
             </span>
           </div>
@@ -442,7 +410,7 @@
               'text-base',
               row.original.allFormsComplete
                 ? 'text-green-600 dark:text-green-400'
-                : 'text-amber-600 dark:text-amber-400',
+                : WARNING_TEXT_MUTED,
             ]"
           >
             {{ formatIncompleteForms(row.original) }}
