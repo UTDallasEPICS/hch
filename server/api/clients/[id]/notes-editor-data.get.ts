@@ -1,7 +1,6 @@
 import { requireAdmin } from '../../../utils/guard'
-import { createError, defineEventHandler, getHeaders, getRouterParam } from 'h3'
+import { createError, defineEventHandler, getRouterParam } from 'h3'
 import { prisma } from '../../../utils/prisma'
-import { isAdmin } from '../../../utils/is-admin'
 import { getIncompleteForms, FORM_LABELS } from '../../../utils/client-forms'
 import { formatStoredUserNameForDisplay, parseName } from '../../../utils/name'
 
@@ -39,16 +38,17 @@ export default defineEventHandler(async (event) => {
     orderBy: { createdAt: 'desc' },
   })
 
-  const incomplete = await getIncompleteForms(prisma, clientUserId)
+  const incomplete = await getIncompleteForms(prisma, clientUserId, clientRow.status)
   const forms = FORM_ORDER.map((key) => ({
     label: FORM_LABELS[key],
     status: incomplete.includes(key) ? ('pending' as const) : ('complete' as const),
   }))
 
-  const { fname, lname } = parseName(dbUser.name)
+  const storedName = dbUser.name ?? ''
+  const { fname, lname } = parseName(storedName)
   const displayName =
-    formatStoredUserNameForDisplay(lname ? `${fname} ${lname}` : fname || dbUser.name || '') ||
-    formatStoredUserNameForDisplay(dbUser.name)
+    formatStoredUserNameForDisplay(lname ? `${fname} ${lname}` : fname || storedName || '') ||
+    formatStoredUserNameForDisplay(storedName)
 
   return {
     client: { id: clientUserId, name: displayName },
