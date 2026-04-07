@@ -1,4 +1,5 @@
 <script setup lang="ts">
+  import type { TableColumn, TableRow, TabsItem } from '@nuxt/ui'
   import { capitalizeName } from '~/utils/name'
 
   definePageMeta({ middleware: 'clients-admin' })
@@ -31,7 +32,7 @@
   const ALL_STATUS = '__all__'
   const statusFilter = ref<string>(ALL_STATUS)
 
-  const statusOptions = [
+  const tabItems: TabsItem[] = [
     { label: 'All', value: ALL_STATUS },
     { label: 'Prospective', value: 'Prospective' },
     { label: 'Waitlist', value: 'Waitlist' },
@@ -166,6 +167,35 @@
     clientDetailModalOpen.value = true
   }
 
+  function onTableRowSelect(_e: Event, row: TableRow<Client>) {
+    openClientDetail(row.original)
+  }
+
+  const columns = computed<TableColumn<Client>[]>(() => {
+    const cols: TableColumn<Client>[] = [
+      { accessorKey: 'status', header: 'Status' },
+      { id: 'name', header: 'Name' },
+      { accessorKey: 'email', header: 'Email' },
+    ]
+    if (showFormsRemainingColumn.value) {
+      cols.push({ id: 'formsRemaining', header: 'Forms remaining' })
+    }
+    if (showWeekNoColumn.value) {
+      cols.push({ id: 'weekNo', header: 'Week no' })
+    }
+    cols.push({
+      id: 'actions',
+      header: 'Actions',
+      meta: {
+        class: {
+          th: 'text-right',
+          td: 'text-right',
+        },
+      },
+    })
+    return cols
+  })
+
   function openConfirmModal(client: Client, nextStatus: ClientStatus) {
     pendingClient.value = client
     pendingNextStatus.value = nextStatus
@@ -222,7 +252,7 @@
           Clients
         </h1>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Filterable List of Clients. Manage Status and Therapy Progress.
+          Browse clients by status. Manage status and therapy progress.
         </p>
       </div>
       <NuxtLink
@@ -239,7 +269,7 @@
     <div
       class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
     >
-      <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex items-center gap-2">
           <UIcon
             name="i-heroicons-user-group-20-solid"
@@ -247,166 +277,109 @@
           />
           <h2 class="text-base font-semibold text-gray-900 dark:text-white">Client List</h2>
         </div>
-        <div class="flex items-center gap-3">
-          <USelect
-            v-model="statusFilter"
-            :items="statusOptions"
-            value-key="value"
-            placeholder="Filter by Status"
-            class="min-w-[180px]"
-          />
-          <UBadge variant="subtle" color="primary" size="md">
-            {{ clients?.length ?? 0 }} clients
-          </UBadge>
-        </div>
+        <UBadge variant="subtle" color="primary" size="md">
+          {{ clients?.length ?? 0 }} clients
+        </UBadge>
       </div>
 
-      <div v-if="pending" class="space-y-4">
-        <div
-          v-for="i in 5"
-          :key="i"
-          class="flex items-center gap-4 border-b border-gray-200 py-4 dark:border-gray-800"
+      <UTabs
+        v-model="statusFilter"
+        :items="tabItems"
+        :content="false"
+        variant="pill"
+        color="primary"
+        class="mb-4 w-full min-w-0"
+        :ui="{ list: 'flex-wrap gap-1' }"
+      />
+
+      <UAlert
+        v-if="error"
+        icon="i-heroicons-exclamation-triangle-20-solid"
+        color="error"
+        variant="subtle"
+        title="Error loading clients"
+        :description="error.message"
+      />
+
+      <div v-else class="overflow-x-auto">
+        <UTable
+          :data="clients ?? []"
+          :columns="columns"
+          :loading="pending"
+          loading-color="primary"
+          :get-row-id="(row: Client) => row.id"
+          empty="No clients found."
+          class="w-full min-w-[500px]"
+          @select="onTableRowSelect"
         >
-          <USkeleton class="h-10 w-10 rounded-full" />
-          <div class="flex-1 space-y-2">
-            <USkeleton class="h-4 w-48" />
-            <USkeleton class="h-3 w-32" />
+        <template #status-cell="{ row }">
+          <div class="flex flex-col gap-1.5">
+            <UBadge
+              :color="statusColor(row.original.status)"
+              :variant="statusVariant(row.original.status)"
+              size="md"
+              :icon="statusIcon(row.original.status)"
+              leading
+              class="inline-flex w-fit font-medium"
+            >
+              {{ statusLabel(row.original.status) }}
+            </UBadge>
+            <span
+              v-if="statusHint(row.original)"
+              class="text-sm text-amber-600 dark:text-amber-400"
+            >
+              {{ statusHint(row.original) }}
+            </span>
           </div>
-        </div>
-      </div>
-
-      <div v-else-if="error">
-        <UAlert
-          icon="i-heroicons-exclamation-triangle-20-solid"
-          color="error"
-          variant="subtle"
-          title="Error loading clients"
-          :description="error.message"
-        />
-      </div>
-
-      <div v-else>
-        <div class="overflow-x-auto">
-          <table class="w-full min-w-[500px]">
-            <thead>
-              <tr class="border-b border-gray-200 dark:border-gray-800">
-                <th
-                  class="pr-4 pb-3 text-left text-sm font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
-                >
-                  Status
-                </th>
-                <th
-                  class="pr-4 pb-3 text-left text-sm font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
-                >
-                  Name
-                </th>
-                <th
-                  class="pr-4 pb-3 text-left text-sm font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
-                >
-                  Email
-                </th>
-                <th
-                  v-if="showFormsRemainingColumn"
-                  class="pr-4 pb-3 text-left text-sm font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
-                >
-                  Forms remaining
-                </th>
-                <th
-                  v-if="showWeekNoColumn"
-                  class="pr-4 pb-3 text-left text-sm font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
-                >
-                  Week no
-                </th>
-                <th
-                  class="w-0 pr-4 pb-3 text-right text-sm font-medium tracking-wider text-gray-500 uppercase dark:text-gray-400"
-                >
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-              <tr
-                v-for="client in clients"
-                :key="client.id"
-                class="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                @click="openClientDetail(client)"
-              >
-                <td class="py-4 pr-4">
-                  <div class="flex flex-col gap-1.5">
-                    <UBadge
-                      :color="statusColor(client.status)"
-                      :variant="statusVariant(client.status)"
-                      size="md"
-                      :icon="statusIcon(client.status)"
-                      leading
-                      class="inline-flex w-fit font-medium"
-                    >
-                      {{ statusLabel(client.status) }}
-                    </UBadge>
-                    <span
-                      v-if="statusHint(client)"
-                      class="text-sm text-amber-600 dark:text-amber-400"
-                    >
-                      {{ statusHint(client) }}
-                    </span>
-                  </div>
-                </td>
-                <td class="py-4 pr-4 font-medium text-gray-900 dark:text-white">
-                  {{ displayName(client) }}
-                </td>
-                <td class="py-4 pr-4 text-base text-gray-600 dark:text-gray-400">
-                  {{ client.email }}
-                </td>
-                <td
-                  v-if="showFormsRemainingColumn"
-                  :class="[
-                    'py-4 pr-4 text-base',
-                    client.allFormsComplete
-                      ? 'text-green-600 dark:text-green-400'
-                      : 'text-amber-600 dark:text-amber-400',
-                  ]"
-                >
-                  {{ formatIncompleteForms(client) }}
-                </td>
-                <td
-                  v-if="showWeekNoColumn"
-                  class="py-4 pr-4 text-base text-gray-600 dark:text-gray-400"
-                >
-                  {{
-                    client.status === 'Active' && client.therapyWeek !== null
-                      ? `${client.therapyWeek} / 26`
-                      : client.status === 'Active'
-                        ? '—'
-                        : ''
-                  }}
-                </td>
-                <td class="py-4 pr-4 text-right" @click.stop>
-                  <div v-if="updatingId !== client.id" class="flex flex-wrap justify-end gap-1.5">
-                    <UButton
-                      v-for="t in getAvailableTransitions(client)"
-                      :key="`${t.from}-${t.to}`"
-                      size="xs"
-                      variant="outline"
-                      color="primary"
-                      :label="t.label"
-                      @click="openConfirmModal(client, t.to)"
-                    />
-                  </div>
-                  <div v-else class="flex justify-end">
-                    <UIcon
-                      name="i-heroicons-arrow-path"
-                      class="h-5 w-5 animate-spin text-gray-400"
-                    />
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div v-if="!clients?.length" class="py-12 text-center text-gray-500 dark:text-gray-400">
-          No clients found.
-        </div>
+        </template>
+        <template #name-cell="{ row }">
+          <span class="font-medium text-gray-900 dark:text-white">
+            {{ displayName(row.original) }}
+          </span>
+        </template>
+        <template #email-cell="{ row }">
+          <span class="text-base text-gray-600 dark:text-gray-400">{{ row.original.email }}</span>
+        </template>
+        <template #formsRemaining-cell="{ row }">
+          <span
+            :class="[
+              'text-base',
+              row.original.allFormsComplete
+                ? 'text-green-600 dark:text-green-400'
+                : 'text-amber-600 dark:text-amber-400',
+            ]"
+          >
+            {{ formatIncompleteForms(row.original) }}
+          </span>
+        </template>
+        <template #weekNo-cell="{ row }">
+          <span class="text-base text-gray-600 dark:text-gray-400">
+            {{
+              row.original.status === 'Active' && row.original.therapyWeek !== null
+                ? `${row.original.therapyWeek} / 26`
+                : row.original.status === 'Active'
+                  ? '—'
+                  : ''
+            }}
+          </span>
+        </template>
+        <template #actions-cell="{ row }">
+          <div v-if="updatingId !== row.original.id" class="flex flex-wrap justify-end gap-1.5">
+            <UButton
+              v-for="t in getAvailableTransitions(row.original)"
+              :key="`${t.from}-${t.to}`"
+              size="xs"
+              variant="outline"
+              color="primary"
+              :label="t.label"
+              @click="openConfirmModal(row.original, t.to)"
+            />
+          </div>
+          <div v-else class="flex justify-end">
+            <UIcon name="i-heroicons-arrow-path" class="h-5 w-5 animate-spin text-gray-400" />
+          </div>
+        </template>
+        </UTable>
       </div>
     </div>
 
