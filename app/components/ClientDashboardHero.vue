@@ -137,6 +137,22 @@
           </p>
         </div>
       </div>
+
+      <div class="mt-6">
+        <UButton
+          to="/taskPage"
+          color="primary"
+          variant="solid"
+          size="lg"
+          block
+          class="sm:inline-flex sm:w-auto"
+          icon="i-heroicons-clipboard-document-list"
+          label="View and complete your forms"
+        />
+        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          Same forms as in email reminders from your team—open them here anytime after you sign in.
+        </p>
+      </div>
     </template>
   </div>
 </template>

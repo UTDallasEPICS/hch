@@ -47,6 +47,7 @@
   )
 
   const route = useRoute()
+  const router = useRouter()
 
   const clientPickerSelectItems = computed(() => {
     const items = props.clientPickerOptions.map((c) => ({ label: c.label, value: c.id }))
@@ -60,17 +61,19 @@
     get: () => props.client.id,
     set: (id: string) => {
       if (!id || id === props.client.id) return
-      if (props.clientPickerMode === 'notes-test') {
-        void navigateTo({
-          path: '/notes-test',
-          query: { ...route.query, client: id },
-        })
-      } else {
-        void navigateTo({
-          path: `/clients/${id}/notes-editor`,
-          query: { ...route.query },
-        })
-      }
+      // Full page load so editor state / fetches always match the selected client (SPA-only
+      // navigate can leave stale UI when only the query changes on the same path).
+      const resolved =
+        props.clientPickerMode === 'notes-test'
+          ? router.resolve({
+              path: '/notes-test',
+              query: { ...route.query, client: id },
+            })
+          : router.resolve({
+              path: `/clients/${id}/notes-editor`,
+              query: { ...route.query },
+            })
+      window.location.assign(resolved.href)
     },
   })
 
