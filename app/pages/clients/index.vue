@@ -47,15 +47,48 @@
     }
   )
 
+  function tabCountBadge(count: number) {
+    return {
+      label: String(count),
+      variant: 'subtle' as const,
+      color: 'neutral' as const,
+    }
+  }
+
   const tabItems = computed<TabsItem[]>(() => {
     const c = clientCounts.value
     const n = (key: keyof ClientTabCounts) => c?.[key] ?? 0
     return [
-      { label: 'All', value: ALL_STATUS, badge: n('__all__') },
-      { label: 'Prospective', value: 'Prospective', badge: n('Prospective') },
-      { label: 'Waitlist', value: 'Waitlist', badge: n('Waitlist') },
-      { label: 'Active', value: 'Active', badge: n('Active') },
-      { label: 'Archived', value: 'Archived', badge: n('Archived') },
+      {
+        label: 'All',
+        value: ALL_STATUS,
+        icon: 'i-heroicons-squares-2x2-20-solid',
+        badge: tabCountBadge(n('__all__')),
+      },
+      {
+        label: 'Prospective',
+        value: 'Prospective',
+        icon: 'i-heroicons-clock-20-solid',
+        badge: tabCountBadge(n('Prospective')),
+      },
+      {
+        label: 'Waitlist',
+        value: 'Waitlist',
+        icon: 'i-heroicons-queue-list-20-solid',
+        badge: tabCountBadge(n('Waitlist')),
+      },
+      {
+        label: 'Active',
+        value: 'Active',
+        icon: 'i-heroicons-check-circle-20-solid',
+        badge: tabCountBadge(n('Active')),
+      },
+      {
+        label: 'Archived',
+        value: 'Archived',
+        icon: 'i-heroicons-archive-box-20-solid',
+        badge: tabCountBadge(n('Archived')),
+      },
     ]
   })
 
@@ -90,7 +123,16 @@
 
   function displayName(c: Client) {
     const raw = c.lname ? `${c.fname} ${c.lname}` : c.fname || c.name || ''
-    return capitalizeName(raw)
+    const trimmed = raw.trim()
+    if (!trimmed) {
+      return c.status === 'Prospective' ? 'New inquiry' : 'Unknown name'
+    }
+    return capitalizeName(trimmed)
+  }
+
+  function isPlaceholderDisplayName(c: Client) {
+    const raw = c.lname ? `${c.fname} ${c.lname}` : c.fname || c.name || ''
+    return raw.trim().length === 0
   }
 
   function statusLabel(status: ClientStatus): string {
@@ -268,7 +310,7 @@
 </script>
 
 <template>
-  <main class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+  <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
     <div class="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
       <div>
         <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
@@ -290,30 +332,45 @@
     </div>
 
     <div
-      class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+      class="rounded-xl border border-gray-200/90 bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:border-gray-800 dark:bg-gray-900 dark:ring-white/10"
     >
-      <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div class="flex items-center gap-2">
-          <UIcon
-            name="i-heroicons-user-group-20-solid"
-            class="h-5 w-5 text-gray-500 dark:text-gray-400"
-          />
-          <h2 class="text-base font-semibold text-gray-900 dark:text-white">Client List</h2>
+      <div class="mb-5 flex items-center gap-2.5">
+        <div
+          class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-500/10 text-primary-600 dark:bg-primary-400/10 dark:text-primary-400"
+        >
+          <UIcon name="i-heroicons-user-group-20-solid" class="h-5 w-5" />
         </div>
-        <UBadge variant="subtle" color="primary" size="md">
-          {{ clients?.length ?? 0 }} clients
-        </UBadge>
+        <div>
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">Client list</h2>
+          <p v-if="!error" class="text-muted mt-0.5 text-sm">
+            <template v-if="pending">Loading…</template>
+            <template v-else>
+              {{ clients?.length ?? 0 }}
+              {{ (clients?.length ?? 0) === 1 ? 'client' : 'clients' }}
+              <span v-if="statusFilter !== ALL_STATUS"> in this view </span>
+            </template>
+          </p>
+        </div>
       </div>
 
-      <UTabs
-        v-model="statusFilter"
-        :items="tabItems"
-        :content="false"
-        variant="pill"
-        color="primary"
-        class="mb-4 w-full min-w-0"
-        :ui="{ list: 'flex-wrap gap-1' }"
-      />
+      <div
+        class="rounded-xl border border-gray-200/80 bg-gray-50/90 p-1.5 dark:border-gray-700/80 dark:bg-gray-950/40"
+      >
+        <UTabs
+          v-model="statusFilter"
+          :items="tabItems"
+          :content="false"
+          variant="pill"
+          color="neutral"
+          size="sm"
+          class="w-full min-w-0"
+          :ui="{
+            list: 'flex-wrap gap-1 sm:flex-nowrap sm:overflow-x-auto sm:pb-px sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:hidden',
+            trailingBadge: 'tabular-nums font-medium',
+            leadingIcon: 'shrink-0',
+          }"
+        />
+      </div>
 
       <UAlert
         v-if="error"
@@ -324,7 +381,7 @@
         :description="error.message"
       />
 
-      <div v-else class="overflow-x-auto">
+      <div v-else class="mt-6 overflow-x-auto rounded-lg border border-gray-200/80 dark:border-gray-800">
         <UTable
           :data="clients ?? []"
           :columns="columns"
@@ -333,6 +390,10 @@
           :get-row-id="(row: Client) => row.id"
           empty="No clients found."
           class="w-full min-w-[500px]"
+          :ui="{
+            thead: 'bg-gray-50/95 dark:bg-gray-900/95',
+            th: 'text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400',
+          }"
           @select="onTableRowSelect"
         >
         <template #status-cell="{ row }">
@@ -356,12 +417,24 @@
           </div>
         </template>
         <template #name-cell="{ row }">
-          <span class="font-medium text-gray-900 dark:text-white">
+          <span
+            :class="[
+              'font-medium',
+              isPlaceholderDisplayName(row.original)
+                ? 'text-muted italic'
+                : 'text-gray-900 dark:text-white',
+            ]"
+          >
             {{ displayName(row.original) }}
           </span>
         </template>
         <template #email-cell="{ row }">
-          <span class="text-base text-gray-600 dark:text-gray-400">{{ row.original.email }}</span>
+          <span
+            class="text-muted block max-w-[14rem] truncate text-base sm:max-w-xs"
+            :title="row.original.email"
+          >
+            {{ row.original.email }}
+          </span>
         </template>
         <template #formsRemaining-cell="{ row }">
           <span
