@@ -3,7 +3,7 @@ import { createError, defineEventHandler, getHeaders, getRouterParam, readBody }
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
 import { sendAppEmail, getAdminNotificationEmails } from '../../../utils/mail'
-import { formatStoredUserNameForDisplay } from '../../../utils/name'
+import { formatStoredUserNameInitials } from '../../../utils/name'
 import { getLatestDeclarationTemplateId } from '../../../utils/declaration-templates'
 
 const bodySchema = z.object({
@@ -64,12 +64,15 @@ export default defineEventHandler(async (event) => {
   })
 
   const admins = getAdminNotificationEmails()
-  const clientDisplayName = formatStoredUserNameForDisplay(client.user.name)
+  const clientInitials = formatStoredUserNameInitials(client.user.name)
   const kindLabel = body.data.requestKind === 'FULL' ? 'full session notes' : 'a summary of session notes'
+  const initialsLine = clientInitials
+    ? `<li><strong>Client initials:</strong> ${escapeHtml(clientInitials)}</li>`
+    : ''
   const html = `
     <p>A client submitted a request to view ${kindLabel}.</p>
     <ul>
-      <li><strong>Client:</strong> ${escapeHtml(clientDisplayName)} (${escapeHtml(client.user.email)})</li>
+      ${initialsLine}
       <li><strong>Request ID:</strong> ${escapeHtml(created.id)}</li>
       <li><strong>Submitted:</strong> ${created.createdAt.toISOString()}</li>
     </ul>
@@ -78,7 +81,7 @@ export default defineEventHandler(async (event) => {
   if (admins.length) {
     await sendAppEmail({
       to: admins,
-      subject: `[HCH] Session notes request — ${clientDisplayName}`,
+      subject: '[HCH] New records request update',
       html,
     })
   }

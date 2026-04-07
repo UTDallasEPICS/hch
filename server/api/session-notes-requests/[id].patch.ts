@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { prisma } from '../../utils/prisma'
 import { isAdmin } from '../../utils/is-admin'
 import { sendAppEmail } from '../../utils/mail'
-import { formatStoredUserNameForDisplay } from '../../utils/name'
+import { formatStoredUserNameInitials } from '../../utils/name'
 
 const bodySchema = z
   .object({
@@ -56,7 +56,11 @@ export default defineEventHandler(async (event) => {
 
   const now = new Date()
 
-  const clientDisplayName = formatStoredUserNameForDisplay(req.client.user.name)
+  const clientInitials = formatStoredUserNameInitials(req.client.user.name)
+  const greeting =
+    clientInitials.length > 0
+      ? `<p>Hello ${escapeHtml(clientInitials)},</p>`
+      : '<p>Hello,</p>'
 
   if (parsed.data.action === 'reject') {
     const reason = String(parsed.data.rejectionReason ?? '').trim()
@@ -73,9 +77,9 @@ export default defineEventHandler(async (event) => {
 
     await sendAppEmail({
       to: req.client.user.email,
-      subject: '[HCH] Session notes request — decision',
+      subject: '[HCH] New records request update',
       html: `
-        <p>Hello ${escapeHtml(clientDisplayName)},</p>
+        ${greeting}
         <p>Your request to access session notes was <strong>not approved</strong> at this time.</p>
         <p><strong>Reason:</strong></p>
         <p>${escapeHtml(reason).replace(/\n/g, '<br/>')}</p>
@@ -116,9 +120,9 @@ export default defineEventHandler(async (event) => {
 
   await sendAppEmail({
     to: req.client.user.email,
-    subject: '[HCH] Session notes request — approved',
+    subject: '[HCH] New records request update',
     html: `
-      <p>Hello ${escapeHtml(clientDisplayName)},</p>
+      ${greeting}
       <p>Your request to view ${accessDesc} has been <strong>approved</strong>.</p>
       <p>Sign in to the client portal and use <strong>View session notes</strong> on your dashboard to read them.</p>
     `,
