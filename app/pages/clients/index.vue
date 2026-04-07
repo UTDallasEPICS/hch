@@ -32,13 +32,32 @@
   const ALL_STATUS = '__all__'
   const statusFilter = ref<string>(ALL_STATUS)
 
-  const tabItems: TabsItem[] = [
-    { label: 'All', value: ALL_STATUS },
-    { label: 'Prospective', value: 'Prospective' },
-    { label: 'Waitlist', value: 'Waitlist' },
-    { label: 'Active', value: 'Active' },
-    { label: 'Archived', value: 'Archived' },
-  ]
+  type ClientTabCounts = {
+    __all__: number
+    Prospective: number
+    Waitlist: number
+    Active: number
+    Archived: number
+  }
+
+  const { data: clientCounts, refresh: refreshCounts } = await useFetch<ClientTabCounts>(
+    '/api/clients/counts',
+    {
+      getCachedData: () => undefined,
+    }
+  )
+
+  const tabItems = computed<TabsItem[]>(() => {
+    const c = clientCounts.value
+    const n = (key: keyof ClientTabCounts) => c?.[key] ?? 0
+    return [
+      { label: 'All', value: ALL_STATUS, badge: n('__all__') },
+      { label: 'Prospective', value: 'Prospective', badge: n('Prospective') },
+      { label: 'Waitlist', value: 'Waitlist', badge: n('Waitlist') },
+      { label: 'Active', value: 'Active', badge: n('Active') },
+      { label: 'Archived', value: 'Archived', badge: n('Archived') },
+    ]
+  })
 
   const queryParams = computed(() => {
     const params: Record<string, string> = {}
@@ -50,7 +69,7 @@
     data: clients,
     pending,
     error,
-    refresh,
+    refresh: refreshClients,
   } = await useFetch<Client[]>('/api/clients', {
     query: queryParams,
     watch: [queryParams],
@@ -64,6 +83,10 @@
     }
   )
   const pendingNoteRequestCount = computed(() => pendingNoteRequests.value?.length ?? 0)
+
+  async function refreshClientsAndCounts() {
+    await Promise.all([refreshClients(), refreshCounts()])
+  }
 
   function displayName(c: Client) {
     const raw = c.lname ? `${c.fname} ${c.lname}` : c.fname || c.name || ''
@@ -230,7 +253,7 @@
         description: `Client moved to ${statusLabel(newStatus)}`,
         color: 'success',
       })
-      await refresh()
+      await refreshClientsAndCounts()
     } catch (error: any) {
       const msg = error?.data?.statusMessage || error?.statusMessage || 'Failed to update status'
       toast.add({
@@ -408,7 +431,7 @@
       :client-id="selectedClientId"
       :open="clientDetailModalOpen"
       @close="clientDetailModalOpen = false"
-      @refreshed="refresh()"
+      @refreshed="refreshClientsAndCounts()"
     />
   </main>
 </template>
