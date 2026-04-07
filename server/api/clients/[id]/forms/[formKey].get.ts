@@ -147,15 +147,21 @@ export default defineEventHandler(async (event) => {
       'Did a household member go to prison?',
     ]
 
-    const q = aceForm?.questions
+    let q = aceForm?.questions ?? null
+    if (!q && aceForm) {
+      q = await prisma.aceQuestion.findFirst({
+        where: { userId: clientUserId },
+      })
+    }
     if (!q) {
       return {
         formKey: 'ace',
         formName: 'ACE',
         questions: [],
-        submitted: false,
-        score: null,
-        severity: null,
+        submitted: aceForm?.status === 'COMPLETE',
+        score: aceForm?.totalScore ?? null,
+        severity: aceForm?.severity ?? null,
+        completedAt: aceForm?.submittedAt,
       }
     }
 
@@ -183,15 +189,20 @@ export default defineEventHandler(async (event) => {
       orderBy: { id: 'desc' },
       include: { questions: true },
     })
-    const q = gadForm?.questions
+    let q = gadForm?.questions ?? null
+    if (!q && gadForm) {
+      q =
+        (await prisma.gadQuestion.findFirst({ where: { formId: gadForm.id } })) ??
+        (await prisma.gadQuestion.findFirst({ where: { userId: clientUserId } }))
+    }
     if (!q) {
       return {
         formKey: 'gad',
         formName: 'GAD-7',
         questions: [],
-        submitted: false,
-        score: null,
-        severity: null,
+        submitted: gadForm?.status === 'COMPLETE',
+        score: gadForm?.totalScore ?? null,
+        severity: gadForm?.severity ?? null,
       }
     }
     const answers = [q.g01, q.g02, q.g03, q.g04, q.g05, q.g06, q.g07, q.g08]
@@ -215,9 +226,18 @@ export default defineEventHandler(async (event) => {
       orderBy: { id: 'desc' },
       include: { questions: true },
     })
-    const q = phqForm?.questions
+    let q = phqForm?.questions ?? null
+    if (!q && phqForm) {
+      q = await prisma.phqQuestion.findFirst({ where: { formId: phqForm.id } })
+    }
     if (!q) {
-      return { formKey: 'phq', formName: 'PHQ-9', questions: [], submitted: false, score: null }
+      return {
+        formKey: 'phq',
+        formName: 'PHQ-9',
+        questions: [],
+        submitted: phqForm?.status === 'COMPLETE',
+        score: phqForm?.totalScore ?? null,
+      }
     }
     const answers = [q.q1, q.q2, q.q3, q.q4, q.q5, q.q6, q.q7, q.q8, q.q9, q.q10]
     const questions = PHQ_LABELS.slice(0, answers.length).map((label, i) => ({
@@ -239,15 +259,20 @@ export default defineEventHandler(async (event) => {
       orderBy: { id: 'desc' },
       include: { questions: true },
     })
-    const q = pclForm?.questions
+    let q = pclForm?.questions ?? null
+    if (!q && pclForm) {
+      q =
+        (await prisma.pclQuestion.findFirst({ where: { formId: pclForm.id } })) ??
+        (await prisma.pclQuestion.findFirst({ where: { userId: clientUserId } }))
+    }
     if (!q) {
       return {
         formKey: 'pcl',
         formName: 'PCL-5',
         questions: [],
-        submitted: false,
-        score: null,
-        severity: null,
+        submitted: pclForm?.status === 'COMPLETE',
+        score: pclForm?.totalScore ?? null,
+        severity: pclForm?.severity ?? null,
       }
     }
     const questions: { label: string; answer: string }[] = []
