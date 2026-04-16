@@ -42,11 +42,18 @@ export default defineEventHandler(async (event) => {
 
     const start = new Date(`${date}T${startTime}`)
     const end = new Date(`${date}T${endTime}`)
+    const now = new Date()
 
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
       throw createError({
         statusCode: 400,
         statusMessage: 'Invalid date/time range',
+      })
+    }
+    if (start < now) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Cannot create events in the past',
       })
     }
 
@@ -101,6 +108,23 @@ export default defineEventHandler(async (event) => {
         ...(normalizedJoin != null && { videoJoinUrl: normalizedJoin }),
       },
     })
+
+    const clientRow = await prisma.client.findUnique({
+      where: { userId: clientId },
+      select: { id: true },
+    })
+    if (clientRow) {
+      await prisma.sessionNote.create({
+        data: {
+          clientId: clientRow.id,
+          appointmentId: appointment.id,
+          sessionName,
+          sessionNumber,
+          content: '',
+          attended: true,
+        },
+      })
+    }
 
     return {
       success: true,

@@ -17,6 +17,8 @@ model SessionNote {
   appointmentId String?
   content   String
   attended  Boolean           @default(true)
+  /// Admin digital signature (PNG data URL) captured when the note is saved.
+  signatureData String?
   createdAt DateTime          @default(now())
   client    Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
   appointment Appointment?    @relation("AppointmentSessionNotes", fields: [appointmentId], references: [id], onDelete: SetNull)

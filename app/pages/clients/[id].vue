@@ -1,4 +1,6 @@
 <script setup lang="ts">
+  import type { ChangeJustificationPayload } from '~/components/ChangeWithJustificationModal.vue'
+
   type ClientStatus = 'Prospective' | 'Waitlist' | 'Active' | 'Archived'
 
   type Task = {
@@ -135,14 +137,44 @@
   const newNoteContent = ref('')
   const selectedAppointmentId = ref('')
   const addingNote = ref(false)
+  const addNoteJustificationOpen = ref(false)
 
-  async function addNote() {
-    if (!clientId.value || !newNoteContent.value.trim() || addingNote.value || !selectedAppointmentId.value) return
+  function openAddNoteJustification() {
+    if (!clientId.value || !newNoteContent.value.trim() || !selectedAppointmentId.value) return
+    addNoteJustificationOpen.value = true
+  }
+
+  const isUpdatingClientPageSessionNote = computed(() =>
+    (profile.value?.sessionNotes ?? []).some(
+      (n: SessionNote) => n.appointmentId === selectedAppointmentId.value
+    )
+  )
+
+  async function addNoteWithSignature(payload: ChangeJustificationPayload) {
+    if (!clientId.value || !newNoteContent.value.trim() || addingNote.value || !selectedAppointmentId.value)
+      return
+
+    const updating = isUpdatingClientPageSessionNote.value
+    if (updating && !payload.reasoning?.trim()) {
+      toast.add({
+        title: 'Reason required',
+        description: 'Enter why you are updating this session note.',
+        color: 'error',
+      })
+      return
+    }
+
+    addNoteJustificationOpen.value = false
     try {
       addingNote.value = true
       await $fetch(`/api/clients/${clientId.value}/notes`, {
         method: 'POST',
-        body: { content: newNoteContent.value.trim(), appointmentId: selectedAppointmentId.value },
+        body: {
+          content: newNoteContent.value.trim(),
+          appointmentId: selectedAppointmentId.value,
+          signatureData: payload.signatureData,
+          ...(updating && payload.reasoning?.trim() ? { reason: payload.reasoning.trim() } : {}),
+        },
       })
       newNoteContent.value = ''
       toast.add({ title: 'Note added', color: 'success' })
@@ -536,13 +568,20 @@
           Session Notes
         </h2>
         <div class="mb-4 flex gap-2">
-          <USelect
-            v-model="selectedAppointmentId"
-            :items="activeAppointmentOptions"
-            value-key="value"
-            placeholder="Select session"
-            class="w-72"
-          />
+          <div class="w-72">
+            <select
+              v-model="selectedAppointmentId"
+              class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            >
+              <option value="" disabled>Select session</option>
+              <option v-for="opt in activeAppointmentOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+            <p v-if="activeAppointmentOptions.length === 0" class="mt-1 text-xs text-gray-500">
+              No sessions available yet for this client.
+            </p>
+          </div>
           <UTextarea
             v-model="newNoteContent"
             placeholder="Add a session note..."
@@ -554,7 +593,7 @@
             color="primary"
             :loading="addingNote"
             :disabled="!newNoteContent.trim() || !selectedAppointmentId"
-            @click="addNote"
+            @click="openAddNoteJustification"
           />
         </div>
         <div v-if="profile.sessionNotes?.length" class="space-y-3">
@@ -619,4 +658,20 @@
       </section>
     </div>
   </main>
+
+  <ChangeWithJustificationModal
+    :open="addNoteJustificationOpen"
+    title="Sign to add session note"
+    :description="
+      isUpdatingClientPageSessionNote
+        ? 'This session already has a note. Enter why you are changing it, then sign.'
+        : 'A digital signature is required to save this note to the clinical record.'
+    "
+    :submit-label="isUpdatingClientPageSessionNote ? 'Sign & update note' : 'Sign & add note'"
+    :loading="addingNote"
+    :signature-only="!isUpdatingClientPageSessionNote"
+    :requires-edit-reason="isUpdatingClientPageSessionNote"
+    @close="addNoteJustificationOpen = false"
+    @submit="addNoteWithSignature"
+  />
 </template>

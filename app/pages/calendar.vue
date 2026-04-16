@@ -240,6 +240,30 @@
     videoProvider: '' as '' | 'GOOGLE_MEET' | 'ZOOM' | 'OTHER',
     videoJoinUrl: '',
   })
+  const createTimeRangeError = ref('')
+  const editTimeRangeError = ref('')
+
+  function getTimeRangeError(
+    date: string,
+    startTime: string,
+    endTime: string,
+    options?: { allowPastStart?: boolean }
+  ): string {
+    if (!date || !startTime || !endTime) return 'Please choose date, start time, and end time.'
+    const start = new Date(`${date}T${startTime}`)
+    const end = new Date(`${date}T${endTime}`)
+    const now = new Date()
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return 'Please enter a valid date and time.'
+    }
+    if (!options?.allowPastStart && start < now) {
+      return 'Cannot create events in the past.'
+    }
+    if (end <= start) {
+      return 'End time must be after start time on the selected date.'
+    }
+    return ''
+  }
 
   // use a reactive object instead of a ref so FullCalendar sees the callbacks
   const calendarOptions = reactive({
@@ -357,16 +381,29 @@
     editForm.videoProvider = editForm.includeVideo
       ? (selectedEvent.value.videoProvider as typeof editForm.videoProvider) || 'GOOGLE_MEET'
       : ''
+    editTimeRangeError.value = ''
   }
 
   function cancelEdit() {
     isEditMode.value = false
+    editTimeRangeError.value = ''
   }
 
   async function saveEdit() {
     if (editForm.includeVideo && !editForm.videoJoinUrl?.trim()) {
       toast.add({
         title: 'Add a video link or uncheck Video',
+        color: 'warning',
+      })
+      return
+    }
+    editTimeRangeError.value = getTimeRangeError(editForm.date, editForm.startTime, editForm.endTime, {
+      allowPastStart: true,
+    })
+    if (editTimeRangeError.value) {
+      toast.add({
+        title: 'Invalid date/time range',
+        description: editTimeRangeError.value,
         color: 'warning',
       })
       return
@@ -396,9 +433,14 @@
       await loadEvents()
     } catch (error) {
       console.error(error)
+      const message =
+        (error as { data?: { statusMessage?: string }; statusMessage?: string })?.data
+          ?.statusMessage ||
+        (error as { statusMessage?: string })?.statusMessage ||
+        'Failed to update session'
 
       toast.add({
-        title: 'Failed to update session',
+        title: message,
         color: 'error',
       })
     }
@@ -491,17 +533,28 @@
     form.includeVideo = false
     form.videoProvider = ''
     form.videoJoinUrl = ''
+    createTimeRangeError.value = ''
     isCreateModalOpen.value = true
   }
 
   function closeCreateModal() {
     isCreateModalOpen.value = false
+    createTimeRangeError.value = ''
   }
 
   async function createSession() {
     if (form.includeVideo && !form.videoJoinUrl?.trim()) {
       toast.add({
         title: 'Add a video link or uncheck Video',
+        color: 'warning',
+      })
+      return
+    }
+    createTimeRangeError.value = getTimeRangeError(form.date, form.startTime, form.endTime)
+    if (!form.clientId || createTimeRangeError.value) {
+      toast.add({
+        title: 'Invalid session details',
+        description: !form.clientId ? 'Please select a client.' : createTimeRangeError.value,
         color: 'warning',
       })
       return
@@ -531,13 +584,34 @@
       await loadEvents()
     } catch (error) {
       console.error(error)
+      const message =
+        (error as { data?: { statusMessage?: string }; statusMessage?: string })?.data
+          ?.statusMessage ||
+        (error as { statusMessage?: string })?.statusMessage ||
+        'Failed to create session'
 
       toast.add({
-        title: 'Failed to create session',
+        title: message,
         color: 'error',
       })
     }
   }
+
+  watch(
+    () => [form.date, form.startTime, form.endTime] as const,
+    ([date, startTime, endTime]) => {
+      if (!isCreateModalOpen.value) return
+      createTimeRangeError.value = getTimeRangeError(date, startTime, endTime)
+    }
+  )
+
+  watch(
+    () => [editForm.date, editForm.startTime, editForm.endTime] as const,
+    ([date, startTime, endTime]) => {
+      if (!isEditMode.value) return
+      editTimeRangeError.value = getTimeRangeError(date, startTime, endTime, { allowPastStart: true })
+    }
+  )
 </script>
 
 <template>
@@ -626,6 +700,9 @@
 
           <UInput v-model="form.endTime" type="time" />
         </div>
+        <p v-if="createTimeRangeError" class="text-sm text-red-500">
+          {{ createTimeRangeError }}
+        </p>
 
         <div class="flex flex-col gap-3">
           <label class="flex cursor-pointer items-center gap-3">
@@ -676,7 +753,13 @@
         <div class="flex justify-end gap-3 pt-2">
           <UButton variant="outline" @click="closeCreateModal"> Cancel </UButton>
 
-          <UButton color="primary" @click="createSession"> Create </UButton>
+          <UButton
+            color="primary"
+            :disabled="!form.clientId || !!createTimeRangeError"
+            @click="createSession"
+          >
+            Create
+          </UButton>
         </div>
       </div>
     </template>
@@ -767,6 +850,9 @@
               <UInput v-model="editForm.endTime" type="time" />
             </div>
           </div>
+          <p v-if="editTimeRangeError" class="text-sm text-red-500">
+            {{ editTimeRangeError }}
+          </p>
 
           <div class="flex flex-col gap-3">
             <label class="flex cursor-pointer items-center gap-3">
@@ -847,7 +933,9 @@
 
           <UButton v-if="isEditMode" variant="outline" @click="cancelEdit"> Cancel </UButton>
 
-          <UButton v-if="isEditMode" color="primary" @click="saveEdit"> Save </UButton>
+          <UButton v-if="isEditMode" color="primary" :disabled="!!editTimeRangeError" @click="saveEdit">
+            Save
+          </UButton>
         </div>
       </div>
     </template>

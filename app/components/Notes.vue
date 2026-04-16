@@ -1,5 +1,6 @@
 <script setup lang="ts">
   import NotesToolbar from '~/components/NotesToolbar.vue'
+  import type { ChangeJustificationPayload } from '~/components/ChangeWithJustificationModal.vue'
   import { useDebounceFn } from '@vueuse/core'
   import { marked } from 'marked'
   import DOMPurify from 'dompurify'
@@ -12,6 +13,7 @@
     sessionName: string
     sessionNumber: number
     appointmentId: string | null
+    appointmentStartTime: string | null
   }
 
   type SelectedNote =
@@ -219,9 +221,7 @@
   const pendingMeta = ref<Map<number, { reason: string; signature: string }>>(new Map())
   const pendingSessionEdits = ref<Map<string, string>>(new Map())
   const pendingSessionMeta = ref<Map<string, { reason: string; signature: string }>>(new Map())
-  const showEditModal = ref(false)
-  const editReason = ref('')
-  const signature = ref('')
+  const showEditJustificationModal = ref(false)
   const selectedForm = ref<string | null>(null)
   const selectedAppointmentId = ref<string>('')
   const sidebarTab = ref<'notes' | 'forms'>('notes')
@@ -253,6 +253,43 @@
         value: a.id,
       }))
   )
+  const appointmentsById = computed(() => {
+    const map = new Map<string, { id: string; startTime: string }>()
+    for (const a of props.appointments) {
+      map.set(a.id, { id: a.id, startTime: a.startTime })
+    }
+    return map
+  })
+  function canEditOnOrAfterSessionDay(sessionStartIso: string | null | undefined) {
+    if (!sessionStartIso) return true
+    const sessionDay = new Date(sessionStartIso)
+    sessionDay.setHours(0, 0, 0, 0)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return today >= sessionDay
+  }
+  const selectedAppointment = computed(() =>
+    props.appointments.find((a) => a.id === selectedAppointmentId.value) ?? null
+  )
+
+  /** True when saving would update an existing DB row for the selected session (not first save). */
+  const isUpdatingSelectedSessionNote = computed(() =>
+    localSessionNotes.value.some((n) => n.appointmentId === selectedAppointmentId.value)
+  )
+
+  const canEditCurrentNote = computed(
+    () =>
+      Boolean(selectedAppointment.value) &&
+      canEditOnOrAfterSessionDay(selectedAppointment.value?.startTime ?? null)
+  )
+  const currentNoteLockMessage = computed(() => {
+    if (!selectedAppointment.value) return 'Select a session to start or edit notes.'
+    if (canEditCurrentNote.value) return ''
+    const when = selectedAppointment.value?.startTime
+      ? new Date(selectedAppointment.value.startTime).toLocaleDateString('en-US')
+      : 'the session day'
+    return `Notes are locked until ${when}. You can edit on the session day or after.`
+  })
   watch(
     appointmentOptions,
     (opts) => {
@@ -389,42 +426,40 @@
       editingNoteId.value = sd.id
       editingSessionNoteId.value = null
     } else {
+      const sessionRow = localSessionNotes.value.find((n) => n.id === sd.id)
+      const canEdit =
+        canEditOnOrAfterSessionDay(sessionRow?.appointmentStartTime) ||
+        canEditOnOrAfterSessionDay(
+          sessionRow?.appointmentId ? appointmentsById.value.get(sessionRow.appointmentId)?.startTime : null
+        )
+      if (!canEdit) {
+        alert('This note is locked until the session day. You can edit on or after that date.')
+        return
+      }
       editingSessionNoteId.value = sd.id
       editingNoteId.value = null
     }
     editingDate.value = sd.date
     isEditingPreviousPanel.value = false
-    const meta =
-      sd.source === 'editor' ? pendingMeta.value.get(sd.id) : pendingSessionMeta.value.get(sd.id)
-    editReason.value = meta?.reason ?? ''
-    signature.value = meta?.signature ?? ''
-    showEditModal.value = true
+    showEditJustificationModal.value = true
   }
 
-  function confirmEdit() {
+  function onEditNoteJustified(payload: ChangeJustificationPayload) {
     const sd = selectedNoteData.value
-    if (!sd) return
+    if (!sd || !payload.reasoning?.trim() || !payload.signatureData) return
 
-    if (!editReason.value.trim() || !signature.value.trim()) {
-      alert('Please provide reason and signature')
-      return
-    }
+    const reason = payload.reasoning.trim()
+    const signatureData = payload.signatureData
 
     if (sd.source === 'session') {
-      pendingSessionMeta.value.set(sd.id, {
-        reason: editReason.value,
-        signature: signature.value,
-      })
+      pendingSessionMeta.value.set(sd.id, { reason, signature: signatureData })
       if (!pendingSessionEdits.value.has(sd.id)) {
         pendingSessionEdits.value.set(sd.id, sd.content)
       }
       editingSessionNoteId.value = sd.id
       editingNoteId.value = null
     } else {
-      pendingMeta.value.set(sd.id, {
-        reason: editReason.value,
-        signature: signature.value,
-      })
+      pendingMeta.value.set(sd.id, { reason, signature: signatureData })
       if (!pendingEdits.value.has(sd.id)) {
         pendingEdits.value.set(sd.id, sd.content)
       }
@@ -433,7 +468,7 @@
     }
 
     isEditingPreviousPanel.value = true
-    showEditModal.value = false
+    showEditJustificationModal.value = false
   }
 
   const isSavingPrevious = ref(false)
@@ -473,9 +508,11 @@
     showSubmitModal.value = false
     if (isEditingPreviousPanel.value) {
       await submitPreviousEdit()
-      return
     }
-    await confirmSaveNote()
+  }
+
+  async function onSaveSessionNoteSigned(payload: ChangeJustificationPayload) {
+    await confirmSaveNote(payload.signatureData, payload.reasoning)
   }
 
   async function submitPreviousEdit() {
@@ -489,15 +526,17 @@
         return
       }
 
+      const sig = meta.signature
+      const patchBody =
+        sig.startsWith('data:image/png;base64,')
+          ? { content: draft, reason: meta.reason, signatureData: sig }
+          : { content: draft, reason: meta.reason, signature: sig }
+
       isSavingPrevious.value = true
       try {
         await $fetch(`/api/clients/${props.client.id}/session-notes/${sid}`, {
           method: 'PATCH',
-          body: {
-            content: draft,
-            reason: meta.reason,
-            signature: meta.signature,
-          },
+          body: patchBody,
         })
 
         const idx = localSessionNotes.value.findIndex((n) => n.id === sid)
@@ -520,8 +559,6 @@
           selectedNoteEdits.value = []
         }
 
-        editReason.value = ''
-        signature.value = ''
         previousLastSaved.value = new Date()
         previousSaveStatus.value = 'saved'
       } catch (err) {
@@ -545,15 +582,17 @@
       return
     }
 
+    const sig = meta.signature
+    const patchBody =
+      sig.startsWith('data:image/png;base64,')
+        ? { content: draft, reason: meta.reason, signatureData: sig }
+        : { content: draft, reason: meta.reason, signature: sig }
+
     isSavingPrevious.value = true
     try {
       await $fetch(`/api/clients/${props.client.id}/session-notes/${editingNoteId.value}`, {
         method: 'PATCH',
-        body: {
-          content: draft,
-          reason: meta.reason,
-          signature: meta.signature,
-        },
+        body: patchBody,
       })
 
       const noteIndex = localPreviousNotes.value.findIndex((n) => n.id === editingNoteId.value)
@@ -572,8 +611,6 @@
       pendingMeta.value.delete(editingNoteId.value)
       isEditingPreviousPanel.value = false
       editingNoteId.value = null
-      editReason.value = ''
-      signature.value = ''
       previousLastSaved.value = new Date()
       previousSaveStatus.value = 'saved'
     } catch (err) {
@@ -586,22 +623,28 @@
   }
 
   async function saveNote() {
-    console.log('Manual save clicked')
     if (!noteContent.value.trim()) return
     showSaveModal.value = true
   }
 
-  async function confirmSaveNote() {
-    console.log('confirmSaveNote called - Debug log added')
-    console.log('noteContent:', noteContent.value)
-    console.log('client:', props.client)
-    showSaveModal.value = false
+  async function confirmSaveNote(signatureData: string, editReason?: string) {
     saveStatus.value = 'saving'
     if (!selectedAppointmentId.value) {
       alert('Please select a session before saving this note.')
       saveStatus.value = 'idle'
       return
     }
+
+    const updating = localSessionNotes.value.some(
+      (n) => n.appointmentId === selectedAppointmentId.value
+    )
+    if (updating && !editReason?.trim()) {
+      alert('A reason is required to update an existing note for this session.')
+      saveStatus.value = 'idle'
+      return
+    }
+
+    showSaveModal.value = false
 
     try {
       const savedContent = noteContent.value
@@ -612,6 +655,8 @@
           content: savedContent,
           attended: !isAbsent.value,
           appointmentId: selectedAppointmentId.value,
+          signatureData,
+          ...(updating && editReason?.trim() ? { reason: editReason.trim() } : {}),
         },
       })) as {
         id: string
@@ -621,20 +666,22 @@
         appointmentId: string | null
       }
 
-      console.log('New note created:', response)
-
       // Clear local draft
       localStorage.removeItem(`note_draft_${props.client.id}`)
 
-      // Add to session notes list (this is what moves it to sidebar)
-      localSessionNotes.value.unshift({
+      // Upsert in sidebar list (existing blank note becomes filled).
+      const existingIdx = localSessionNotes.value.findIndex((n) => n.id === response.id)
+      const row = {
         id: response.id,
         createdAt: response.createdAt,
         content: savedContent,
         sessionName: response.sessionName,
         sessionNumber: response.sessionNumber,
         appointmentId: response.appointmentId,
-      })
+        appointmentStartTime: selectedAppointment.value?.startTime ?? null,
+      }
+      if (existingIdx === -1) localSessionNotes.value.unshift(row)
+      else localSessionNotes.value[existingIdx] = row
 
       // Clear editor → fresh current note
       noteContent.value = ''
@@ -651,8 +698,6 @@
     editingNoteId.value = null
     editingSessionNoteId.value = null
     editingDate.value = ''
-    editReason.value = ''
-    signature.value = ''
   }
 
   //Auto-save and status tracking
@@ -1040,13 +1085,18 @@
                     <label class="mb-1 block text-xs font-semibold tracking-wide text-gray-500 uppercase">
                       Session
                     </label>
-                    <USelect
+                    <select
                       v-model="selectedAppointmentId"
-                      :items="appointmentOptions"
-                      value-key="value"
-                      placeholder="Select a session"
-                      size="sm"
-                    />
+                      class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                    >
+                      <option value="" disabled>Select a session</option>
+                      <option v-for="opt in appointmentOptions" :key="opt.value" :value="opt.value">
+                        {{ opt.label }}
+                      </option>
+                    </select>
+                    <p v-if="appointmentOptions.length === 0" class="mt-1 text-xs text-gray-500">
+                      No sessions available yet for this client.
+                    </p>
                   </div>
                   <span class="text-primary-500 text-xs font-semibold uppercase">Current</span>
                   <!-- {{ isEditingPrevious ? `Editing note from ${editingDate}` : currentNote.date }} -->
@@ -1058,9 +1108,16 @@
               </div>
 
               <NotesToolbar
+                v-if="canEditCurrentNote"
                 v-model="noteContent"
                 class="flex-1 overflow-hidden rounded-xl border bg-white dark:bg-gray-900"
               />
+              <div
+                v-else
+                class="flex min-h-[280px] items-center justify-center rounded-xl border border-amber-300 bg-amber-50/70 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300"
+              >
+                {{ currentNoteLockMessage }}
+              </div>
 
               <!-- Save button – show only when there's content or in edit mode -->
               <div class="mt-4 flex justify-end gap-2">
@@ -1080,7 +1137,7 @@
                   color="primary"
                   label="Save Note"
                   size="md"
-                  :disabled="!isEditingPreviousPanel && !selectedAppointmentId"
+                  :disabled="!isEditingPreviousPanel && (!selectedAppointmentId || !canEditCurrentNote)"
                   @click="showSaveModal = true"
                   class="w-auto"
                 />
@@ -1227,35 +1284,22 @@
     </div>
   </div>
 
-  <!-- Save Note Modal -->
-  <Teleport to="body" v-if="showSaveModal">
-    <div
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-      @click.self="showSaveModal = false"
-    >
-      <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
-        <h2 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Save Note</h2>
-        <p class="mb-6 text-sm text-gray-500 dark:text-gray-400">
-          Are you sure you want to save this note?
-        </p>
-        <div class="flex justify-end gap-3">
-          <button
-            type="button"
-            @click.prevent="showSaveModal = false"
-            class="rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            @click.prevent="submitAndCloseModal"
-            class="bg-primary-500 hover:bg-primary-600 rounded-lg px-4 py-2 text-sm text-white"
-          >
-            Submit
-          </button>
-        </div>
-      </div>
-    </div>
+  <Teleport to="body">
+    <ChangeWithJustificationModal
+      :open="showSaveModal"
+      title="Save session note"
+      :description="
+        isUpdatingSelectedSessionNote
+          ? 'This session already has a note. Enter why you are changing it, then sign.'
+          : 'A digital signature is required to save this note to the clinical record.'
+      "
+      :submit-label="isUpdatingSelectedSessionNote ? 'Sign & update note' : 'Sign & save note'"
+      :loading="saveStatus === 'saving'"
+      :signature-only="!isUpdatingSelectedSessionNote"
+      :requires-edit-reason="isUpdatingSelectedSessionNote"
+      @close="showSaveModal = false"
+      @submit="onSaveSessionNoteSigned"
+    />
   </Teleport>
 
   <!-- Submit Changes Modal -->
@@ -1289,58 +1333,15 @@
     </div>
   </Teleport>
 
-  <!-- Edit Modal -->
-  <Teleport to="body" v-if="showEditModal">
-    <div
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-      @click.self="showEditModal = false"
-    >
-      <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl md:max-w-md dark:bg-gray-900">
-        <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Edit Note</h2>
-
-        <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Reason for editing
-        </label>
-        <textarea
-          v-model="editReason"
-          rows="3"
-          placeholder="Describe why you are editing this note..."
-          class="focus:ring-primary-500 mb-4 w-full resize-none rounded-lg border border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 focus:ring-2 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-        ></textarea>
-
-        <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Signature
-        </label>
-        <input
-          v-model="signature"
-          type="text"
-          placeholder="Sign here..."
-          class="focus:ring-primary-500 w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-gray-900 focus:ring-2 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          style="font-family: 'Brush Script MT', cursive; font-size: 1.25rem"
-        />
-
-        <div class="mt-6 flex justify-end gap-3">
-          <button
-            type="button"
-            @click.prevent="showEditModal = false"
-            class="rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            @click.prevent="
-              () => {
-                showSubmitModal = false
-                submitPreviousEdit()
-              }
-            "
-            class="bg-primary-500 hover:bg-primary-600 rounded-lg px-4 py-2 text-sm text-white"
-          >
-            Submit
-          </button>
-        </div>
-      </div>
-    </div>
+  <Teleport to="body">
+    <ChangeWithJustificationModal
+      :open="showEditJustificationModal"
+      title="Edit session note"
+      description="Document why you are changing this note, then sign. You can edit the text next."
+      submit-label="Continue to editor"
+      requires-edit-reason
+      @close="showEditJustificationModal = false"
+      @submit="onEditNoteJustified"
+    />
   </Teleport>
 </template>

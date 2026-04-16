@@ -361,6 +361,7 @@ export default defineEventHandler(async (event) => {
     sessionName: string
     sessionNumber: number
     appointmentId: string | null
+    appointmentStartTime: string | null
   }[] = []
   if (showRawSessionNotes && resolvedClientRowId) {
     let sessionRows: {
@@ -370,11 +371,17 @@ export default defineEventHandler(async (event) => {
       sessionName: string
       sessionNumber: number
       appointmentId: string | null
+      appointment: { startTime: Date } | null
     }[] = []
     try {
       sessionRows = await prisma.sessionNote.findMany({
         where: { clientId: resolvedClientRowId },
         orderBy: { createdAt: 'desc' },
+        include: {
+          appointment: {
+            select: { startTime: true },
+          },
+        },
       })
     } catch {
       sessionRows = []
@@ -386,6 +393,7 @@ export default defineEventHandler(async (event) => {
       sessionName: s.sessionName,
       sessionNumber: s.sessionNumber,
       appointmentId: s.appointmentId,
+      appointmentStartTime: s.appointment?.startTime?.toISOString() ?? null,
     }))
     sessionNotesPayload = fromSession
   }

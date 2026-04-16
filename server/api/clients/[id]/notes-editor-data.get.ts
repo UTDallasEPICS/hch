@@ -40,6 +40,11 @@ export default defineEventHandler(async (event) => {
   const sessionRows = await prisma.sessionNote.findMany({
     where: { clientId: resolvedClientRowId },
     orderBy: { createdAt: 'desc' },
+    include: {
+      appointment: {
+        select: { startTime: true },
+      },
+    },
   })
   const appointmentRows = await prisma.appointment.findMany({
     where: { clientId: clientUserId },
@@ -93,6 +98,7 @@ export default defineEventHandler(async (event) => {
       sessionName: s.sessionName,
       sessionNumber: s.sessionNumber,
       appointmentId: s.appointmentId,
+      appointmentStartTime: s.appointment?.startTime?.toISOString() ?? null,
       preview: s.content.slice(0, 60) + (s.content.length > 60 ? '...' : ''),
     })),
     appointments: appointmentRows.map((a) => ({
