@@ -106,7 +106,20 @@
   const toast = useToast()
 
   const absencesEditing = ref(false)
+
+  /** Forms with persisted submission history (scores + answer snapshots). */
+  const CLINICAL_FORM_KEYS = new Set(['ace', 'gad', 'phq', 'pcl'])
+  const expandedFormSubTab = ref<'answers' | 'history'>('answers')
+
+  function isClinicalFormKey(key: string) {
+    return CLINICAL_FORM_KEYS.has(key)
+  }
+
   const expandedFormKey = ref<string | null>(null)
+
+  watch(expandedFormKey, () => {
+    expandedFormSubTab.value = 'answers'
+  })
   const formAnswers = ref<{
     formKey: string
     formName: string
@@ -188,6 +201,7 @@
       return
     }
     if (!props.clientId) return
+    expandedFormSubTab.value = 'answers'
     formAnswersLoading.value = true
     expandedFormKey.value = formKey
     try {
@@ -572,38 +586,75 @@
                 v-if="expandedFormKey === task.key"
                 class="border-t border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
               >
-                <div v-if="formAnswersLoading" class="flex justify-center py-4">
-                  <UIcon name="i-heroicons-arrow-path" class="h-6 w-6 animate-spin text-gray-400" />
+                <div
+                  v-if="isClinicalFormKey(task.key)"
+                  class="mb-3 flex gap-1 rounded-lg border border-gray-200 bg-white p-0.5 dark:border-gray-600 dark:bg-gray-900"
+                >
+                  <button
+                    type="button"
+                    class="flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors"
+                    :class="
+                      expandedFormSubTab === 'answers'
+                        ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                        : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                    "
+                    @click="expandedFormSubTab = 'answers'"
+                  >
+                    Answers
+                  </button>
+                  <button
+                    type="button"
+                    class="flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors"
+                    :class="
+                      expandedFormSubTab === 'history'
+                        ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                        : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                    "
+                    @click="expandedFormSubTab = 'history'"
+                  >
+                    History
+                  </button>
                 </div>
-                <div v-else-if="formAnswers" class="space-y-3">
-                  <div
-                    v-if="formAnswers.score != null || formAnswers.severity"
-                    class="mb-3 flex gap-3 text-sm"
-                  >
-                    <span v-if="formAnswers.score != null" class="font-medium">
-                      Score: {{ formAnswers.score }}
-                    </span>
-                    <span v-if="formAnswers.severity" class="text-gray-600 dark:text-gray-400">
-                      {{ formAnswers.severity }}
-                    </span>
+                <template v-if="!isClinicalFormKey(task.key) || expandedFormSubTab === 'answers'">
+                  <div v-if="formAnswersLoading" class="flex justify-center py-4">
+                    <UIcon name="i-heroicons-arrow-path" class="h-6 w-6 animate-spin text-gray-400" />
                   </div>
-                  <div
-                    v-if="formAnswers.questions?.length"
-                    class="max-h-64 space-y-2 overflow-y-auto"
-                  >
+                  <div v-else-if="formAnswers" class="space-y-3">
                     <div
-                      v-for="(q, i) in formAnswers.questions"
-                      :key="i"
-                      class="rounded border border-gray-200 bg-white p-3 text-sm dark:border-gray-700 dark:bg-gray-900"
+                      v-if="formAnswers.score != null || formAnswers.severity"
+                      class="mb-3 flex gap-3 text-sm"
                     >
-                      <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        {{ q.label }}
-                      </p>
-                      <p class="mt-1 text-gray-900 dark:text-gray-100">{{ q.answer || '—' }}</p>
+                      <span v-if="formAnswers.score != null" class="font-medium">
+                        Score: {{ formAnswers.score }}
+                      </span>
+                      <span v-if="formAnswers.severity" class="text-gray-600 dark:text-gray-400">
+                        {{ formAnswers.severity }}
+                      </span>
                     </div>
+                    <div
+                      v-if="formAnswers.questions?.length"
+                      class="max-h-64 space-y-2 overflow-y-auto"
+                    >
+                      <div
+                        v-for="(q, i) in formAnswers.questions"
+                        :key="i"
+                        class="rounded border border-gray-200 bg-white p-3 text-sm dark:border-gray-700 dark:bg-gray-900"
+                      >
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                          {{ q.label }}
+                        </p>
+                        <p class="mt-1 text-gray-900 dark:text-gray-100">{{ q.answer || '—' }}</p>
+                      </div>
+                    </div>
+                    <p v-else class="text-sm text-gray-500">No answers yet.</p>
                   </div>
-                  <p v-else class="text-sm text-gray-500">No answers yet.</p>
-                </div>
+                </template>
+                <ClinicalFormHistoryPanel
+                  v-else-if="clientId && expandedFormSubTab === 'history'"
+                  :client-id="clientId"
+                  :form-key="task.key"
+                  class="max-h-72"
+                />
               </div>
             </div>
           </div>

@@ -12,12 +12,6 @@
     severity?: string | null
   }
 
-  type Metric = {
-    form: string
-    score?: number | null
-    severity?: string | null
-  }
-
   type Permissions = {
     canViewScores: boolean
     canViewNotes: boolean
@@ -167,6 +161,53 @@
     { immediate: true }
   )
 
+  const CLINICAL_FORM_KEYS = new Set(['ace', 'gad', 'phq', 'pcl'])
+  const expandedTaskKey = ref<string | null>(null)
+  const expandedTaskSubTab = ref<'answers' | 'history'>('answers')
+  const taskFormAnswers = ref<{
+    formKey: string
+    formName: string
+    questions: { label: string; answer: string }[]
+    submitted?: boolean
+    score?: number | null
+    severity?: string | null
+  } | null>(null)
+  const taskFormLoading = ref(false)
+
+  function isClinicalTaskKey(key: string) {
+    return CLINICAL_FORM_KEYS.has(key)
+  }
+
+  watch(expandedTaskKey, () => {
+    expandedTaskSubTab.value = 'answers'
+  })
+
+  async function toggleTaskDetail(taskKey: string) {
+    if (expandedTaskKey.value === taskKey) {
+      expandedTaskKey.value = null
+      taskFormAnswers.value = null
+      return
+    }
+    if (!clientId.value) return
+    expandedTaskSubTab.value = 'answers'
+    taskFormLoading.value = true
+    expandedTaskKey.value = taskKey
+    try {
+      taskFormAnswers.value = await $fetch(`/api/clients/${clientId.value}/forms/${taskKey}`)
+    } catch (e: unknown) {
+      toast.add({
+        title: 'Error loading form',
+        description:
+          (e as { data?: { statusMessage?: string } })?.data?.statusMessage ??
+          'Failed to load form answers',
+        color: 'error',
+      })
+      taskFormAnswers.value = null
+    } finally {
+      taskFormLoading.value = false
+    }
+  }
+
   async function saveAbsences() {
     if (!clientId.value || absencesSaving.value) return
     try {
@@ -295,49 +336,102 @@
           <div
             v-for="task in profile.tasks"
             :key="task.key"
-            class="flex items-center justify-between rounded-lg border border-gray-100 px-4 py-3 dark:border-gray-800"
+            class="overflow-hidden rounded-lg border border-gray-100 dark:border-gray-800"
           >
-            <span class="font-medium text-gray-900 dark:text-white">{{ task.name }}</span>
-            <div class="flex items-center gap-3">
-              <span class="text-sm text-gray-600 dark:text-gray-400">
-                {{ task.submitted ? 'Submitted' : `${task.answered}/${task.total}` }}
-                <span v-if="task.submitted && task.severity" class="ml-1">
-                  • {{ task.severity }}
+            <div
+              class="flex cursor-pointer items-center justify-between px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+              role="button"
+              tabindex="0"
+              @click="toggleTaskDetail(task.key)"
+              @keydown.enter.prevent="toggleTaskDetail(task.key)"
+            >
+              <span class="font-medium text-gray-900 dark:text-white">{{ task.name }}</span>
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-gray-600 dark:text-gray-400">
+                  {{ task.submitted ? 'Submitted' : `${task.answered}/${task.total}` }}
+                  <span v-if="task.submitted && task.severity" class="ml-1">
+                    • {{ task.severity }}
+                  </span>
+                  <span v-else-if="task.submitted && task.score != null" class="ml-1">
+                    • Score: {{ task.score }}
+                  </span>
                 </span>
-                <span v-else-if="task.submitted && task.score != null" class="ml-1">
-                  • Score: {{ task.score }}
-                </span>
-              </span>
+                <UIcon
+                  :name="
+                    expandedTaskKey === task.key ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'
+                  "
+                  class="h-4 w-4 text-gray-400"
+                />
+              </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Form metrics (scores) -->
-      <section
-        v-if="profile.metrics?.length"
-        class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-      >
-        <h2
-          class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white"
-        >
-          <UIcon name="i-heroicons-chart-bar" class="h-5 w-5" />
-          Form Metrics (scores)
-        </h2>
-        <div class="flex flex-wrap gap-4">
-          <div
-            v-for="m in profile.metrics"
-            :key="m.form"
-            class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800"
-          >
-            <span class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ m.form }}</span>
-            <div class="mt-1 flex items-baseline gap-2">
-              <span v-if="m.score != null" class="text-lg font-bold text-gray-900 dark:text-white">
-                {{ m.score }}
-              </span>
-              <span v-if="m.severity" class="text-sm text-gray-600 dark:text-gray-400">
-                {{ m.severity }}
-              </span>
+            <div
+              v-if="expandedTaskKey === task.key"
+              class="space-y-3 border-t border-gray-100 bg-gray-50/80 px-4 py-4 dark:border-gray-800 dark:bg-gray-900/40"
+            >
+              <div
+                v-if="isClinicalTaskKey(task.key)"
+                class="flex gap-1 rounded-lg border border-gray-200 bg-white p-0.5 dark:border-gray-700 dark:bg-gray-900"
+              >
+                <button
+                  type="button"
+                  class="flex-1 rounded-md px-3 py-2 text-xs font-medium transition-colors"
+                  :class="
+                    expandedTaskSubTab === 'answers'
+                      ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                      : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                  "
+                  @click.stop="expandedTaskSubTab = 'answers'"
+                >
+                  Answers
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 rounded-md px-3 py-2 text-xs font-medium transition-colors"
+                  :class="
+                    expandedTaskSubTab === 'history'
+                      ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                      : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                  "
+                  @click.stop="expandedTaskSubTab = 'history'"
+                >
+                  History
+                </button>
+              </div>
+              <template v-if="!isClinicalTaskKey(task.key) || expandedTaskSubTab === 'answers'">
+                <div v-if="taskFormLoading" class="flex justify-center py-6">
+                  <UIcon name="i-heroicons-arrow-path" class="h-7 w-7 animate-spin text-gray-400" />
+                </div>
+                <div v-else-if="taskFormAnswers" class="space-y-3">
+                  <div
+                    v-if="taskFormAnswers.score != null || taskFormAnswers.severity"
+                    class="flex flex-wrap gap-2 text-sm"
+                  >
+                    <span v-if="taskFormAnswers.score != null" class="font-semibold text-gray-900 dark:text-white">
+                      Score: {{ taskFormAnswers.score }}
+                    </span>
+                    <span v-if="taskFormAnswers.severity" class="text-gray-600 dark:text-gray-400">
+                      {{ taskFormAnswers.severity }}
+                    </span>
+                  </div>
+                  <div v-if="taskFormAnswers.questions?.length" class="max-h-80 space-y-2 overflow-y-auto">
+                    <div
+                      v-for="(q, i) in taskFormAnswers.questions"
+                      :key="i"
+                      class="rounded-lg border border-gray-200 bg-white p-3 text-sm dark:border-gray-700 dark:bg-gray-900"
+                    >
+                      <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ q.label }}</p>
+                      <p class="mt-1 text-gray-900 dark:text-gray-100">{{ q.answer || '—' }}</p>
+                    </div>
+                  </div>
+                  <p v-else class="text-sm text-gray-500">No answers yet.</p>
+                </div>
+              </template>
+              <ClinicalFormHistoryPanel
+                v-else-if="expandedTaskSubTab === 'history'"
+                :client-id="clientId"
+                :form-key="task.key"
+                class="max-h-96"
+              />
             </div>
           </div>
         </div>

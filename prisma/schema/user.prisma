@@ -36,6 +36,7 @@ model User {
   appointmentsAsAdmin                   Appointment[]                          @relation("AdminAppointments")
   physicianStatementForm                PhysicianStatementForm?
   releaseOfInformationAuthorizationForm ReleaseOfInformationAuthorizationForm?
+  clientFormScoreHistory              ClientFormScoreHistory[]
 
   @@unique([email])
   @@map("user")

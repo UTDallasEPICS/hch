@@ -219,6 +219,23 @@
     'PCL-5': 'pcl',
   }
 
+  watch(sidebarTab, (t) => {
+    if (t !== 'forms') selectedForm.value = null
+  })
+
+  const formPanelSubTab = ref<'answers' | 'history'>('answers')
+
+  const CLINICAL_FORM_KEYS = new Set(['ace', 'gad', 'phq', 'pcl'])
+  const selectedFormKey = computed(() => {
+    const label = selectedForm.value
+    if (!label) return null
+    return FORM_LABEL_TO_KEY[label] ?? null
+  })
+  const showFormHistoryTab = computed(() => {
+    const k = selectedFormKey.value
+    return k != null && CLINICAL_FORM_KEYS.has(k)
+  })
+
   type FormPreviewPayload = {
     formKey: string
     formName: string
@@ -236,6 +253,7 @@
   let formPreviewSeq = 0
 
   watch(selectedForm, async (label) => {
+    formPanelSubTab.value = 'answers'
     if (!label) {
       formPreviewData.value = null
       formPreviewError.value = null
@@ -1019,7 +1037,7 @@
 
           <!-- Form Details -->
           <div
-            v-if="selectedForm"
+            v-if="selectedForm && sidebarTab === 'forms'"
             class="flex w-full max-w-md min-w-0 flex-shrink-0 flex-col border-l border-gray-200 dark:border-gray-800 md:max-h-screen md:w-96"
           >
             <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
@@ -1035,64 +1053,104 @@
                 ×
               </button>
             </div>
+            <div
+              v-if="showFormHistoryTab"
+              class="flex gap-1 border-b border-gray-100 px-3 py-2 dark:border-gray-800"
+            >
+              <button
+                type="button"
+                class="flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors"
+                :class="
+                  formPanelSubTab === 'answers'
+                    ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                    : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                "
+                @click="formPanelSubTab = 'answers'"
+              >
+                Answers
+              </button>
+              <button
+                type="button"
+                class="flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors"
+                :class="
+                  formPanelSubTab === 'history'
+                    ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                    : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                "
+                @click="formPanelSubTab = 'history'"
+              >
+                History
+              </button>
+            </div>
             <div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-              <div v-if="formPreviewPending" class="flex justify-center py-8">
-                <UIcon
-                  name="i-heroicons-arrow-path"
-                  class="h-8 w-8 animate-spin text-primary-500"
+              <template v-if="!showFormHistoryTab || formPanelSubTab === 'answers'">
+                <div v-if="formPreviewPending" class="flex justify-center py-8">
+                  <UIcon
+                    name="i-heroicons-arrow-path"
+                    class="h-8 w-8 animate-spin text-primary-500"
+                  />
+                </div>
+                <UAlert
+                  v-else-if="formPreviewError"
+                  color="error"
+                  variant="subtle"
+                  icon="i-heroicons-exclamation-triangle-20-solid"
+                  :title="formPreviewError"
+                  description="Try again or open the client profile to view form answers."
                 />
-              </div>
-              <UAlert
-                v-else-if="formPreviewError"
-                color="error"
-                variant="subtle"
-                icon="i-heroicons-exclamation-triangle-20-solid"
-                :title="formPreviewError"
-                description="Try again or open the client profile to view form answers."
-              />
-              <div v-else-if="formPreviewData" class="space-y-3">
-                <p
-                  v-if="formPreviewData.submitted != null"
-                  class="text-xs text-gray-500 dark:text-gray-400"
-                >
-                  {{ formPreviewData.submitted ? 'Submitted' : 'Not submitted' }}
-                  <span
-                    v-if="formPreviewData.submittedAt || formPreviewData.completedAt"
-                    class="text-gray-400"
+                <div v-else-if="formPreviewData" class="space-y-3">
+                  <p
+                    v-if="formPreviewData.submitted != null"
+                    class="text-xs text-gray-500 dark:text-gray-400"
                   >
-                    ·
-                    {{
-                      new Date(
-                        formPreviewData.completedAt ?? formPreviewData.submittedAt ?? ''
-                      ).toLocaleString('en-US')
-                    }}
-                  </span>
-                </p>
-                <div
-                  v-if="formPreviewData.score != null || formPreviewData.severity"
-                  class="flex flex-wrap gap-2 text-sm"
-                >
-                  <span v-if="formPreviewData.score != null" class="font-medium text-gray-900 dark:text-white">
-                    Score: {{ formPreviewData.score }}
-                  </span>
-                  <span v-if="formPreviewData.severity" class="text-gray-600 dark:text-gray-400">
-                    {{ formPreviewData.severity }}
-                  </span>
-                </div>
-                <div v-if="formPreviewData.questions?.length" class="space-y-2">
+                    {{ formPreviewData.submitted ? 'Submitted' : 'Not submitted' }}
+                    <span
+                      v-if="formPreviewData.submittedAt || formPreviewData.completedAt"
+                      class="text-gray-400"
+                    >
+                      ·
+                      {{
+                        new Date(
+                          formPreviewData.completedAt ?? formPreviewData.submittedAt ?? ''
+                        ).toLocaleString('en-US')
+                      }}
+                    </span>
+                  </p>
                   <div
-                    v-for="(q, i) in formPreviewData.questions"
-                    :key="i"
-                    class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-800/80"
+                    v-if="formPreviewData.score != null || formPreviewData.severity"
+                    class="flex flex-wrap gap-2 text-sm"
                   >
-                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ q.label }}</p>
-                    <p class="mt-1 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
-                      {{ q.answer || '—' }}
-                    </p>
+                    <span
+                      v-if="formPreviewData.score != null"
+                      class="font-medium text-gray-900 dark:text-white"
+                    >
+                      Score: {{ formPreviewData.score }}
+                    </span>
+                    <span v-if="formPreviewData.severity" class="text-gray-600 dark:text-gray-400">
+                      {{ formPreviewData.severity }}
+                    </span>
                   </div>
+                  <div v-if="formPreviewData.questions?.length" class="space-y-2">
+                    <div
+                      v-for="(q, i) in formPreviewData.questions"
+                      :key="i"
+                      class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-800/80"
+                    >
+                      <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ q.label }}</p>
+                      <p class="mt-1 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+                        {{ q.answer || '—' }}
+                      </p>
+                    </div>
+                  </div>
+                  <p v-else class="text-sm text-gray-500 dark:text-gray-400">No answers yet.</p>
                 </div>
-                <p v-else class="text-sm text-gray-500 dark:text-gray-400">No answers yet.</p>
-              </div>
+              </template>
+              <ClinicalFormHistoryPanel
+                v-else-if="selectedFormKey"
+                :client-id="client.id"
+                :form-key="selectedFormKey"
+                class="max-h-[min(70vh,28rem)]"
+              />
             </div>
           </div>
         </div>
