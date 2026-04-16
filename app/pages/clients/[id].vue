@@ -154,6 +154,16 @@
     }
   }
 
+  // Admin check
+  const { data: adminData } = await useFetch<{ isAdmin: boolean }>('/api/users/me/is-admin', {
+    getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
+    default: () => ({ isAdmin: false }),
+  })
+  const isAdmin = computed(() => adminData.value?.isAdmin ?? false)
+
+  // Client metrics modal
+  const metricsModalOpen = ref(false)
+
   // Absences counter
   const absencesEditing = ref(false)
   const absencesValue = ref(0)
@@ -426,6 +436,43 @@
             @click="addNote"
           />
         </div>
+        <div v-if="isAdmin" class="mb-4">
+          <UButton
+            label="View client metrics"
+            color="neutral"
+            variant="outline"
+            icon="i-heroicons-chart-bar"
+            @click="metricsModalOpen = true"
+          />
+        </div>
+
+        <UModal v-model:open="metricsModalOpen" title="Client Metrics">
+          <template #body>
+            <div v-if="profile.metrics?.length" class="flex flex-wrap gap-4">
+              <div
+                v-for="m in profile.metrics"
+                :key="m.form"
+                class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800"
+              >
+                <span class="text-sm font-medium text-gray-600 dark:text-gray-400">{{
+                  m.form
+                }}</span>
+                <div class="mt-1 flex items-baseline gap-2">
+                  <span
+                    v-if="m.score != null"
+                    class="text-lg font-bold text-gray-900 dark:text-white"
+                  >
+                    {{ m.score }}
+                  </span>
+                  <span v-if="m.severity" class="text-sm text-gray-600 dark:text-gray-400">
+                    {{ m.severity }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <p v-else class="text-sm text-gray-500 dark:text-gray-400">No metrics available.</p>
+          </template>
+        </UModal>
         <div v-if="profile.sessionNotes?.length" class="space-y-3">
           <div
             v-for="note in profile.sessionNotes"
