@@ -21,14 +21,11 @@
     data: profile,
     pending: profilePending,
     refresh: refreshProfile,
-  } = await useFetch(
-    () => `/api/clients/${statusData.value?.userId}/profile`,
-    {
-      key: () => `client-profile-${statusData.value?.userId ?? 'none'}`,
-      watch: [() => statusData.value?.userId],
-      getCachedData: () => undefined,
-    }
-  )
+  } = await useFetch(() => `/api/clients/${statusData.value?.userId}/profile`, {
+    key: () => `client-profile-${statusData.value?.userId ?? 'none'}`,
+    watch: [() => statusData.value?.userId],
+    getCachedData: () => undefined,
+  })
   const { parse: parseMarkdown } = useMarkdown()
   const toast = useToast()
 
@@ -73,6 +70,9 @@
   )
 
   const hasClient = computed(() => Boolean(statusData.value?.hasClient && statusData.value?.userId))
+  const canViewTasks = computed(
+    () => Boolean(statusData.value?.userId) && (isPreWaitlist.value || isWaitlist.value)
+  )
 
   const sessionNotesRequestModalOpen = ref(false)
   const sessionNotesRequestSubmitting = ref(false)
@@ -208,17 +208,25 @@
   }
 
   const tasksFromProfile = computed(
-    () => (profile.value?.tasks ?? []) as {
-      key: string
-      name: string
-      to: string
-      answered: number
-      total: number
-      submitted: boolean
-      score?: number | null
-      severity?: string | null
-    }[]
+    () =>
+      (profile.value?.tasks ?? []) as {
+        key: string
+        name: string
+        to: string
+        answered: number
+        total: number
+        submitted: boolean
+        score?: number | null
+        severity?: string | null
+      }[]
   )
+
+  const visibleTasks = computed(() => {
+    if (isPreWaitlist.value) {
+      return tasksFromProfile.value.filter((task) => isEnrollmentTaskKey(task.key))
+    }
+    return tasksFromProfile.value
+  })
 
   const tasksBadgeColor = computed(() => {
     if (isPreWaitlist.value) return 'warning' as const
@@ -452,7 +460,7 @@
 <template>
   <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
     <!-- All client statuses: same form list as `/api/clients/:id/profile` (matches email reminder links) -->
-    <template v-if="hasClient && tasksFromProfile.length">
+    <template v-if="canViewTasks && visibleTasks.length">
       <div class="mb-8">
         <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
           Tasks to Complete
@@ -471,7 +479,7 @@
         <span>Progress</span>
       </div>
 
-      <template v-for="task in tasksFromProfile" :key="task.key">
+      <template v-for="task in visibleTasks" :key="task.key">
         <div
           v-if="task.key === 'ace' && (isWaitlist || isPreWaitlist)"
           class="mt-8 mb-2 px-1 text-sm font-medium text-black dark:text-white"
@@ -480,9 +488,7 @@
         </div>
         <div
           class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
-          :class="
-            isWaitlist && isEnrollmentTaskKey(task.key) && task.submitted ? 'opacity-60' : ''
-          "
+          :class="isWaitlist && isEnrollmentTaskKey(task.key) && task.submitted ? 'opacity-60' : ''"
         >
           <NuxtLink
             :to="task.to"
@@ -508,7 +514,7 @@
       </template>
     </template>
 
-    <template v-else-if="hasClient && profilePending">
+    <template v-else-if="canViewTasks && profilePending">
       <div class="mb-8 space-y-4 py-4">
         <USkeleton class="h-10 max-w-md" />
         <USkeleton class="h-6 w-full max-w-lg" />
@@ -518,7 +524,7 @@
     </template>
 
     <UAlert
-      v-else-if="hasClient"
+      v-else-if="canViewTasks"
       class="mb-6"
       icon="i-heroicons-exclamation-triangle-20-solid"
       color="warning"
