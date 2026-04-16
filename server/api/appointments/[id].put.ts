@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
     const id = getRouterParam(event, 'id')
     if (!id) throw createError({ statusCode: 400, statusMessage: 'Missing ID' })
     const body = await readBody(event)
-    const { title, description, date, startTime, endTime, videoProvider, videoJoinUrl } = body
+    const { description, date, startTime, endTime, videoProvider, videoJoinUrl } = body
 
     const startTimeDate = new Date(`${date}T${startTime}`)
     const endTimeDate = new Date(`${date}T${endTime}`)
@@ -45,7 +45,6 @@ export default defineEventHandler(async (event) => {
     await prisma.appointment.update({
       where: { id },
       data: {
-        title,
         description,
         startTime: startTimeDate,
         endTime: endTimeDate,

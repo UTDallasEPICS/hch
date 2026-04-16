@@ -12,13 +12,18 @@ enum SessionNotesRequestStatus {
 model SessionNote {
   id        String            @id @default(cuid())
   clientId  String
+  sessionName String
+  sessionNumber Int
+  appointmentId String?
   content   String
   attended  Boolean           @default(true)
   createdAt DateTime          @default(now())
   client    Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  appointment Appointment?    @relation("AppointmentSessionNotes", fields: [appointmentId], references: [id], onDelete: SetNull)
   edits     SessionNoteEdit[]
 
   @@index([clientId])
+  @@index([appointmentId])
   @@map("session_note")
 }
 

@@ -34,7 +34,14 @@
       status: string
       createdAt: string
     }[]
-    sessionNotes: { id: string; content: string; createdAt: string }[]
+    sessionNotes: {
+      id: string
+      content: string
+      createdAt: string
+      sessionName: string
+      sessionNumber: number
+      appointmentId: string | null
+    }[]
   }
 
   const props = defineProps<{
@@ -674,7 +681,12 @@
             >
               <p class="text-sm whitespace-pre-wrap">{{ note.content }}</p>
               <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
-                <p class="text-xs text-gray-500">{{ new Date(note.createdAt).toLocaleString() }}</p>
+                <div>
+                  <p class="text-xs font-semibold text-primary-600 dark:text-primary-400">
+                    {{ note.sessionName }}
+                  </p>
+                  <p class="text-xs text-gray-500">{{ new Date(note.createdAt).toLocaleString() }}</p>
+                </div>
                 <div class="flex flex-wrap items-center gap-3">
                   <NuxtLink
                     :to="`/clients/${clientId}/notes/${note.id}`"

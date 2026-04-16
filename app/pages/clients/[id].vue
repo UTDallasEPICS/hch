@@ -18,7 +18,14 @@
     canViewPlan: boolean
   }
 
-  type SessionNote = { id: string; content: string; createdAt: string }
+  type SessionNote = {
+    id: string
+    content: string
+    createdAt: string
+    sessionName: string
+    sessionNumber: number
+    appointmentId: string | null
+  }
   type ClientPlan = { id: string; content: string; updatedAt: string } | null
 
   const route = useRoute()
@@ -126,15 +133,16 @@
 
   // New session note
   const newNoteContent = ref('')
+  const selectedAppointmentId = ref('')
   const addingNote = ref(false)
 
   async function addNote() {
-    if (!clientId.value || !newNoteContent.value.trim() || addingNote.value) return
+    if (!clientId.value || !newNoteContent.value.trim() || addingNote.value || !selectedAppointmentId.value) return
     try {
       addingNote.value = true
       await $fetch(`/api/clients/${clientId.value}/notes`, {
         method: 'POST',
-        body: { content: newNoteContent.value.trim() },
+        body: { content: newNoteContent.value.trim(), appointmentId: selectedAppointmentId.value },
       })
       newNoteContent.value = ''
       toast.add({ title: 'Note added', color: 'success' })
@@ -147,6 +155,28 @@
       addingNote.value = false
     }
   }
+
+  const activeAppointmentOptions = computed(() =>
+    (profile.value?.appointments ?? [])
+      .filter((a: any) => {
+        const normalized = String(a.status ?? '').toUpperCase()
+        return normalized !== 'CANCELED' && normalized !== 'CANCELLED'
+      })
+      .map((a: any) => ({
+        label: `${a.sessionName} (${new Date(a.startTime).toLocaleDateString()})`,
+        value: a.id,
+      }))
+  )
+
+  watch(
+    activeAppointmentOptions,
+    (opts) => {
+      if (!selectedAppointmentId.value || !opts.some((o) => o.value === selectedAppointmentId.value)) {
+        selectedAppointmentId.value = opts[0]?.value ?? ''
+      }
+    },
+    { immediate: true }
+  )
 
   // Absences counter
   const absencesEditing = ref(false)
@@ -506,6 +536,13 @@
           Session Notes
         </h2>
         <div class="mb-4 flex gap-2">
+          <USelect
+            v-model="selectedAppointmentId"
+            :items="activeAppointmentOptions"
+            value-key="value"
+            placeholder="Select session"
+            class="w-72"
+          />
           <UTextarea
             v-model="newNoteContent"
             placeholder="Add a session note..."
@@ -516,7 +553,7 @@
             label="Add"
             color="primary"
             :loading="addingNote"
-            :disabled="!newNoteContent.trim()"
+            :disabled="!newNoteContent.trim() || !selectedAppointmentId"
             @click="addNote"
           />
         </div>
@@ -528,6 +565,9 @@
           >
             <p class="text-sm whitespace-pre-wrap text-gray-900 dark:text-gray-100">
               {{ note.content }}
+            </p>
+            <p class="mt-2 text-xs font-semibold text-primary-600 dark:text-primary-400">
+              {{ note.sessionName }}
             </p>
             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
               {{ new Date(note.createdAt).toLocaleString() }}

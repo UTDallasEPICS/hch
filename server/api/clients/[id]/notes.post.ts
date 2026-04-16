@@ -11,9 +11,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing client id' })
   }
 
-  const body = await readBody<{ content: string; attended?: boolean }>(event)
+  const body = await readBody<{ content: string; attended?: boolean; appointmentId?: string }>(event)
   if (!body?.content || typeof body.content !== 'string') {
     throw createError({ statusCode: 400, statusMessage: 'Content is required' })
+  }
+  if (!body?.appointmentId || typeof body.appointmentId !== 'string') {
+    throw createError({ statusCode: 400, statusMessage: 'An appointment/session must be selected' })
   }
   const attended = body.attended !== false // default true
 
@@ -33,8 +36,23 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  const appointment = await prisma.appointment.findFirst({
+    where: { id: body.appointmentId, clientId: clientUserId },
+    select: { id: true, sessionName: true, sessionNumber: true },
+  })
+  if (!appointment) {
+    throw createError({ statusCode: 400, statusMessage: 'Selected appointment not found for client' })
+  }
+
   const note = await prisma.sessionNote.create({
-    data: { clientId: client.id, content: body.content.trim(), attended },
+    data: {
+      clientId: client.id,
+      content: body.content.trim(),
+      attended,
+      appointmentId: appointment.id,
+      sessionName: appointment.sessionName,
+      sessionNumber: appointment.sessionNumber,
+    },
   })
 
   return note

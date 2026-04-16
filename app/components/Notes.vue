@@ -5,7 +5,14 @@
   import DOMPurify from 'dompurify'
   import { useWindowSize } from '@vueuse/core'
 
-  type SessionNoteRow = { id: string; content: string; createdAt: string }
+  type SessionNoteRow = {
+    id: string
+    content: string
+    createdAt: string
+    sessionName: string
+    sessionNumber: number
+    appointmentId: string | null
+  }
 
   type SelectedNote =
     | { source: 'editor'; id: number; date: string; content: string; preview: string }
@@ -30,6 +37,13 @@
         status: 'complete' | 'pending'
       }[]
       sessionNotes?: SessionNoteRow[]
+      appointments?: {
+        id: string
+        sessionName: string
+        sessionNumber: number
+        startTime: string
+        status: string
+      }[]
       initialFocusNoteId?: string | null
       backHref?: string
       /** When set (e.g. admin notes editor), header shows a client switcher; notes/forms use `client.id`. */
@@ -43,6 +57,7 @@
       backHref: '/taskPage',
       clientPickerOptions: () => [],
       clientPickerMode: 'notes-editor',
+      appointments: () => [],
     }
   )
 
@@ -208,6 +223,7 @@
   const editReason = ref('')
   const signature = ref('')
   const selectedForm = ref<string | null>(null)
+  const selectedAppointmentId = ref<string>('')
   const sidebarTab = ref<'notes' | 'forms'>('notes')
 
   /** Display labels from notes-editor-data `FORM_LABELS` — must stay in sync with that API. */
@@ -226,6 +242,26 @@
   const formPanelSubTab = ref<'answers' | 'history'>('answers')
 
   const CLINICAL_FORM_KEYS = new Set(['ace', 'gad', 'phq', 'pcl'])
+  const appointmentOptions = computed(() =>
+    props.appointments
+      .filter((a) => {
+        const normalized = String(a.status ?? '').toUpperCase()
+        return normalized !== 'CANCELED' && normalized !== 'CANCELLED'
+      })
+      .map((a) => ({
+        label: `${a.sessionName} (${new Date(a.startTime).toLocaleDateString('en-US')})`,
+        value: a.id,
+      }))
+  )
+  watch(
+    appointmentOptions,
+    (opts) => {
+      if (!selectedAppointmentId.value || !opts.some((o) => o.value === selectedAppointmentId.value)) {
+        selectedAppointmentId.value = opts[0]?.value ?? ''
+      }
+    },
+    { immediate: true }
+  )
   const selectedFormKey = computed(() => {
     const label = selectedForm.value
     if (!label) return null
@@ -435,7 +471,11 @@
 
   async function submitAndCloseModal() {
     showSubmitModal.value = false
-    await submitPreviousEdit()
+    if (isEditingPreviousPanel.value) {
+      await submitPreviousEdit()
+      return
+    }
+    await confirmSaveNote()
   }
 
   async function submitPreviousEdit() {
@@ -557,6 +597,11 @@
     console.log('client:', props.client)
     showSaveModal.value = false
     saveStatus.value = 'saving'
+    if (!selectedAppointmentId.value) {
+      alert('Please select a session before saving this note.')
+      saveStatus.value = 'idle'
+      return
+    }
 
     try {
       const savedContent = noteContent.value
@@ -566,8 +611,15 @@
         body: {
           content: savedContent,
           attended: !isAbsent.value,
+          appointmentId: selectedAppointmentId.value,
         },
-      })) as { id: string; createdAt: string }
+      })) as {
+        id: string
+        createdAt: string
+        sessionName: string
+        sessionNumber: number
+        appointmentId: string | null
+      }
 
       console.log('New note created:', response)
 
@@ -579,6 +631,9 @@
         id: response.id,
         createdAt: response.createdAt,
         content: savedContent,
+        sessionName: response.sessionName,
+        sessionNumber: response.sessionNumber,
+        appointmentId: response.appointmentId,
       })
 
       // Clear editor → fresh current note
@@ -832,7 +887,7 @@
                 >
                   <div class="flex items-center justify-between gap-1">
                     <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {{ new Date(sn.createdAt).toLocaleDateString('en-US') }}
+                      {{ sn.sessionName }}
                     </p>
                     <span v-if="hasPendingSessionEdit(sn.id)" title="Unsaved edit">
                       <svg
@@ -855,6 +910,7 @@
                     </span>
                   </div>
                   <p class="mt-0.5 truncate text-xs text-gray-400">
+                    {{ new Date(sn.createdAt).toLocaleDateString('en-US') }} ·
                     {{ sn.content.slice(0, 60) }}{{ sn.content.length > 60 ? '...' : '' }}
                   </p>
                 </div>
@@ -980,6 +1036,18 @@
               <div class="mb-4 flex items-center justify-between">
                 <div>
                   <p class="text-sm font-medium text-gray-400">{{ currentNote.date }}</p>
+                  <div class="mt-2 max-w-sm">
+                    <label class="mb-1 block text-xs font-semibold tracking-wide text-gray-500 uppercase">
+                      Session
+                    </label>
+                    <USelect
+                      v-model="selectedAppointmentId"
+                      :items="appointmentOptions"
+                      value-key="value"
+                      placeholder="Select a session"
+                      size="sm"
+                    />
+                  </div>
                   <span class="text-primary-500 text-xs font-semibold uppercase">Current</span>
                   <!-- {{ isEditingPrevious ? `Editing note from ${editingDate}` : currentNote.date }} -->
                   <!-- <p v-if="isEditingPrevious" class="text-xs text-amber-600"> -->
@@ -1012,6 +1080,7 @@
                   color="primary"
                   label="Save Note"
                   size="md"
+                  :disabled="!isEditingPreviousPanel && !selectedAppointmentId"
                   @click="showSaveModal = true"
                   class="w-auto"
                 />

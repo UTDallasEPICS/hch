@@ -41,6 +41,17 @@ export default defineEventHandler(async (event) => {
     where: { clientId: resolvedClientRowId },
     orderBy: { createdAt: 'desc' },
   })
+  const appointmentRows = await prisma.appointment.findMany({
+    where: { clientId: clientUserId },
+    orderBy: { startTime: 'desc' },
+    select: {
+      id: true,
+      sessionName: true,
+      sessionNumber: true,
+      startTime: true,
+      status: true,
+    },
+  })
 
   // Application uses prospective requirements; ACE/GAD/PHQ/PCL use waitlist clinical checks (see client-forms).
   // Using only `getIncompleteForms(clientStatus)` mislabels the four clinical forms as "complete" for
@@ -79,7 +90,17 @@ export default defineEventHandler(async (event) => {
       id: s.id,
       content: s.content,
       createdAt: s.createdAt.toISOString(),
+      sessionName: s.sessionName,
+      sessionNumber: s.sessionNumber,
+      appointmentId: s.appointmentId,
       preview: s.content.slice(0, 60) + (s.content.length > 60 ? '...' : ''),
+    })),
+    appointments: appointmentRows.map((a) => ({
+      id: a.id,
+      sessionName: a.sessionName,
+      sessionNumber: a.sessionNumber,
+      startTime: a.startTime.toISOString(),
+      status: a.status,
     })),
     forms,
   }

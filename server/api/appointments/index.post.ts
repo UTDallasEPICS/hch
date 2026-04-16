@@ -4,6 +4,26 @@ import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/vide
 import { readBody, createError, defineEventHandler } from 'h3'
 import type { VideoConferenceProvider } from '../../../prisma/generated/enums'
 
+function sanitizeNamePart(part: string | null | undefined) {
+  const normalized = (part ?? '').trim().replace(/\s+/g, '_')
+  return normalized.replace(/[^A-Za-z0-9_]/g, '')
+}
+
+function deriveSessionName(fullName: string | null | undefined, sessionNumber: number) {
+  const raw = (fullName ?? '').trim()
+  const pieces = raw.split(/\s+/).filter(Boolean)
+  const first = sanitizeNamePart(pieces[0] ?? 'Client') || 'Client'
+  const last = sanitizeNamePart(pieces.slice(1).join('_') || 'Unknown') || 'Unknown'
+  return `${first}_${last}_${String(sessionNumber).padStart(2, '0')}`
+}
+
+function nextAvailableNumber(used: number[]) {
+  const usedSet = new Set(used.filter((n) => Number.isInteger(n) && n > 0))
+  let candidate = 1
+  while (usedSet.has(candidate)) candidate += 1
+  return candidate
+}
+
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event)
@@ -11,9 +31,9 @@ export default defineEventHandler(async (event) => {
     const user = requireAdmin(event)
     const adminId = user.id
 
-    const { clientId, title, description, date, startTime, endTime, videoProvider, videoJoinUrl } = body
+    const { clientId, description, date, startTime, endTime, videoProvider, videoJoinUrl } = body
 
-    if (!clientId || !title || !date || !startTime || !endTime) {
+    if (!clientId || !date || !startTime || !endTime) {
       throw createError({
         statusCode: 400,
         statusMessage: 'Missing required fields',
@@ -39,11 +59,40 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    const [clientUser, existingAppointments] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: clientId },
+        select: { name: true, role: true },
+      }),
+      prisma.appointment.findMany({
+        where: { clientId },
+        select: { sessionNumber: true, status: true },
+      }),
+    ])
+
+    if (!clientUser || clientUser.role !== 'CLIENT') {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Invalid client ID',
+      })
+    }
+
+    const activeSessionNumbers = existingAppointments
+      .filter((a) => {
+        const normalized = String(a.status ?? '').toUpperCase()
+        return normalized !== 'CANCELED' && normalized !== 'CANCELLED'
+      })
+      .map((a) => a.sessionNumber)
+    const sessionNumber = nextAvailableNumber(activeSessionNumbers)
+    const sessionName = deriveSessionName(clientUser.name, sessionNumber)
+
     const appointment = await prisma.appointment.create({
       data: {
         clientId,
         adminId,
-        title,
+        title: sessionName,
+        sessionName,
+        sessionNumber,
         description,
         startTime: start,
         endTime: end,

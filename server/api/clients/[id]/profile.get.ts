@@ -354,9 +354,23 @@ export default defineEventHandler(async (event) => {
     isOwnProfile && !canViewScores ? tasks.map(({ score: _s, severity: _v, ...t }) => t) : tasks
 
   // Session notes: always scoped by canonical Client.id
-  let sessionNotesPayload: { id: string; content: string; createdAt: string }[] = []
+  let sessionNotesPayload: {
+    id: string
+    content: string
+    createdAt: string
+    sessionName: string
+    sessionNumber: number
+    appointmentId: string | null
+  }[] = []
   if (showRawSessionNotes && resolvedClientRowId) {
-    let sessionRows: { id: string; content: string; createdAt: Date }[] = []
+    let sessionRows: {
+      id: string
+      content: string
+      createdAt: Date
+      sessionName: string
+      sessionNumber: number
+      appointmentId: string | null
+    }[] = []
     try {
       sessionRows = await prisma.sessionNote.findMany({
         where: { clientId: resolvedClientRowId },
@@ -369,9 +383,26 @@ export default defineEventHandler(async (event) => {
       id: s.id,
       content: s.content,
       createdAt: s.createdAt.toISOString(),
+      sessionName: s.sessionName,
+      sessionNumber: s.sessionNumber,
+      appointmentId: s.appointmentId,
     }))
     sessionNotesPayload = fromSession
   }
+
+  const appointments = resolvedClientRowId
+    ? await prisma.appointment.findMany({
+        where: { clientId: clientUserId },
+        orderBy: [{ startTime: 'desc' }],
+        select: {
+          id: true,
+          sessionName: true,
+          sessionNumber: true,
+          startTime: true,
+          status: true,
+        },
+      })
+    : []
 
   return {
     id: dbUser.id,
@@ -396,6 +427,13 @@ export default defineEventHandler(async (event) => {
     sessionNotesAccess,
     sessionNotesRequests: sessionNotesRequestsPayload,
     sessionNotes: sessionNotesPayload,
+    appointments: appointments.map((a) => ({
+      id: a.id,
+      sessionName: a.sessionName,
+      sessionNumber: a.sessionNumber,
+      startTime: a.startTime.toISOString(),
+      status: a.status,
+    })),
     plan:
       hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewPlan)
         ? clientProfile?.plan

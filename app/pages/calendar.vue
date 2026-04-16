@@ -58,6 +58,8 @@
         {
           id: string
           title: string
+          sessionName: string
+          sessionNumber: number
           start: string
           end: string
           clientName: string
@@ -72,10 +74,12 @@
 
       events.value = data.map((e) => ({
         id: e.id,
-        title: e.title,
+        title: e.sessionName || e.title,
         start: e.start,
         end: e.end,
         extendedProps: {
+          sessionName: e.sessionName,
+          sessionNumber: e.sessionNumber,
           clientName: e.clientName,
           description: e.description,
           status: e.status,
@@ -228,7 +232,6 @@
   })
 
   const editForm = reactive({
-    title: '',
     description: '',
     date: '',
     startTime: '',
@@ -325,6 +328,8 @@
       clientName: clientName, // Make sure clientName is included
       id: info.event.id,
       title: info.event.title,
+      sessionName: ext.sessionName || info.event.title,
+      sessionNumber: ext.sessionNumber ?? null,
       start: info.event.start,
       end: info.event.end,
       description: ext.description,
@@ -340,7 +345,6 @@
 
   function enterEditMode() {
     isEditMode.value = true
-    editForm.title = selectedEvent.value.title
     editForm.description = selectedEvent.value.description || ''
     const d = selectedEvent.value.start
     editForm.date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -372,7 +376,6 @@
         method: 'PUT',
         body: {
           id: selectedEvent.value.id,
-          title: editForm.title,
           description: editForm.description,
           date: editForm.date,
           startTime: editForm.startTime,
@@ -431,7 +434,6 @@
 
   const form = reactive({
     clientId: '',
-    title: '',
     description: '',
     date: '',
     startTime: '',
@@ -482,7 +484,6 @@
 
   function openCreateModal() {
     form.clientId = ''
-    form.title = ''
     form.description = ''
     form.date = ''
     form.startTime = ''
@@ -511,7 +512,6 @@
         method: 'POST',
         body: {
           clientId: form.clientId,
-          title: form.title,
           description: form.description,
           date: form.date,
           startTime: form.startTime,
@@ -613,7 +613,9 @@
           </p>
         </div>
 
-        <UInput v-model="form.title" placeholder="Session Title" />
+        <p class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+          Session name will be auto-generated as <strong>Firstname_Lastname_##</strong>.
+        </p>
 
         <UTextarea v-model="form.description" placeholder="Description" />
 
@@ -694,6 +696,7 @@
       <div class="flex flex-col gap-4 p-4">
         <div v-if="!isEditMode">
           <p><strong>Client:</strong> {{ selectedClientName }}</p>
+          <p><strong>Session Name:</strong> {{ selectedEvent?.sessionName || selectedEvent?.title }}</p>
           <p><strong>Date:</strong> {{ selectedEvent?.start?.toLocaleDateString() }}</p>
           <p>
             <strong>Time:</strong>
@@ -739,10 +742,9 @@
         </div>
 
         <div v-else class="flex flex-col gap-4">
-          <div>
-            <label class="mb-2 block text-sm font-medium">Session Title</label>
-            <UInput v-model="editForm.title" />
-          </div>
+          <p class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+            Session name is auto-generated and cannot be edited.
+          </p>
 
           <div>
             <label class="mb-2 block text-sm font-medium">Description</label>
