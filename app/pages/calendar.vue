@@ -351,7 +351,7 @@
     )
     editForm.videoJoinUrl = selectedEvent.value.videoJoinUrl || ''
     editForm.videoProvider = editForm.includeVideo
-      ? ((selectedEvent.value.videoProvider as typeof editForm.videoProvider) || 'GOOGLE_MEET')
+      ? (selectedEvent.value.videoProvider as typeof editForm.videoProvider) || 'GOOGLE_MEET'
       : ''
   }
 
@@ -578,11 +578,7 @@
     </div>
 
     <div v-if="isAdmin" class="flex justify-start">
-      <UButton
-        icon="i-heroicons-plus"
-        label="Create Event"
-        @click="openCreateModal"
-      />
+      <UButton icon="i-heroicons-plus" label="Create Event" @click="openCreateModal" />
     </div>
 
     <div class="flex gap-6">
@@ -651,13 +647,16 @@
                   type="radio"
                   name="create-video-provider"
                   :value="opt.value"
-                  class="border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600"
+                  class="text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600"
                 />
                 {{ opt.label }}
               </label>
             </div>
             <div>
-              <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400" for="create-video-url">
+              <label
+                class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                for="create-video-url"
+              >
                 Join link
               </label>
               <UInput
@@ -708,7 +707,10 @@
 
           <p><strong>Status:</strong> {{ selectedEvent?.status }}</p>
 
-          <div v-if="selectedEvent?.videoJoinUrl && selectedEvent?.videoProvider === 'GOOGLE_MEET'" class="mt-3">
+          <div
+            v-if="selectedEvent?.videoJoinUrl && selectedEvent?.videoProvider === 'GOOGLE_MEET'"
+            class="mt-3"
+          >
             <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Video</p>
             <UButton
               :to="selectedEvent.videoJoinUrl"
@@ -786,13 +788,16 @@
                     type="radio"
                     name="edit-video-provider"
                     :value="opt.value"
-                    class="border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600"
+                    class="text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600"
                   />
                   {{ opt.label }}
                 </label>
               </div>
               <div>
-                <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400" for="edit-video-url">
+                <label
+                  class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                  for="edit-video-url"
+                >
                   Join link
                 </label>
                 <UInput

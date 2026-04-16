@@ -85,7 +85,7 @@
         class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
       >
         <div class="min-w-0 flex-1">
-          <p class="font-medium text-gray-900 dark:text-white"> {{ a.title }} </p>
+          <p class="font-medium text-gray-900 dark:text-white">{{ a.title }}</p>
           <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
             {{ formatRange(a.startTime, a.endTime) }}
           </p>
