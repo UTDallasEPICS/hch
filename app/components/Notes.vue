@@ -547,7 +547,6 @@
         method: 'POST',
         body: {
           content: savedContent,
-          attended: !isAbsent.value,
         },
       })) as { id: string; createdAt: string }
 
@@ -584,7 +583,6 @@
 
   //Auto-save and status tracking
   const saveStatus = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const isAbsent = ref(false)
   const lastSaved = ref<Date | null>(null)
 
   //Auto-save and status tracking for previous notes
@@ -992,28 +990,12 @@
                 <UButton
                   v-if="noteContent.trim() || isEditingPreviousPanel"
                   color="primary"
-                  label="Save Note"
+                  label="Submit Note"
                   size="md"
                   @click="showSaveModal = true"
                   class="w-auto"
                 />
-                <UButtonGroup v-if="!isEditingPreviousPanel">
-                  <UButton
-                    :color="!isAbsent ? 'success' : 'neutral'"
-                    :variant="!isAbsent ? 'solid' : 'outline'"
-                    label="Present"
-                    size="sm"
-                    @click="isAbsent = false"
-                  />
-                  <UButton
-                    :color="isAbsent ? 'error' : 'neutral'"
-                    :variant="isAbsent ? 'solid' : 'outline'"
-                    label="Absent"
-                    size="sm"
-                    @click="isAbsent = true"
-                  />
-                </UButtonGroup>
-              </div>
+                </div>
             </div>
           </div>
 
@@ -1107,9 +1089,9 @@
       @click.self="showSaveModal = false"
     >
       <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
-        <h2 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Save Note</h2>
+        <h2 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Submit Note</h2>
         <p class="mb-6 text-sm text-gray-500 dark:text-gray-400">
-          Are you sure you want to save this note?
+          Are you sure you want to submit this note?
         </p>
         <div class="flex justify-end gap-3">
           <button
