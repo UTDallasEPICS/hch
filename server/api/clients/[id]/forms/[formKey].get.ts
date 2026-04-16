@@ -3,6 +3,59 @@ import { createError, defineEventHandler, getHeaders, getRouterParam } from 'h3'
 import { prisma } from '../../../../utils/prisma'
 import { isAdmin } from '../../../../utils/is-admin'
 
+const APP_LABELS = [
+  'Email',
+  'First Name',
+  'Last Name',
+  'Phone Number',
+  'Gender',
+  'Date of Birth',
+  'Address',
+  "Child's First Name",
+  "Child's Last Name",
+  "Child's Date of Birth",
+  'Gender (Child)',
+  "Child's Address",
+  'Medical Diagnosis',
+  'Date of Medical Diagnosis',
+  'Please list all members who live in the home',
+  'Does the Child Reside with Both Biological Parents?',
+  'Who Has Custody of the Child?',
+  'Are You the Primary Contact?',
+  "Legal Mother's First Name",
+  "Legal Mother's Last Name",
+  "Legal Mother's Address",
+  "Legal Mother's City",
+  "Legal Mother's State",
+  "Legal Mother's Zip Code",
+  "Legal Mother's Email",
+  "Legal Mother's Occupation",
+  'Is Legal Mother primary contact?',
+  "Legal Father's First Name",
+  "Legal Father's Last Name",
+  "Legal Father's Address",
+  "Legal Father's City",
+  "Legal Father's State",
+  "Legal Father's Zip Code",
+  "Legal Father's Email",
+  "Legal Father's Occupation",
+  'Who is the primary caregiver?',
+  'If child has/had siblings, did any witness a scary or traumatic event?',
+  'Were siblings separated for a prolonged period from a parent and their sibling with cancer?',
+  'Who was responsible for medical decisions?',
+  'Who was primarily at the hospital during treatment?',
+  'How long was the child in treatment?',
+  'Were there any ICU visits?',
+  'Were there any extended hospital admissions? If so, how long?',
+  'Did the child have a relapse or secondary cancer?',
+  'Did the child with cancer require hospice care and/or pass away?',
+  'Are you applying for the Individual Therapy Scholarship?',
+  'Would you like to join a Support Group waitlist?',
+  'If seeking scholarship, who are you seeking therapy scholarship for?',
+  'Do you have a therapist or need a referral?',
+  'Do you currently have medical insurance that provides mental health coverage?',
+]
+
 const GAD_LABELS = [
   'Feeling nervous, anxious or on edge',
   'Not being able to stop or control worrying',
@@ -136,9 +189,7 @@ export default defineEventHandler(async (event) => {
       const key = `q${String(i).padStart(2, '0')}` as keyof typeof q
       const val = q[key]
       const answer = formatAppAnswer(typeof val === 'string' ? val : '')
-      if (answer) {
-        questions.push({ label: `Question ${i}`, answer })
-      }
+      questions.push({ label: APP_LABELS[i - 1] ?? `Question ${i}`, answer })
     }
     return {
       formKey: 'application',

@@ -230,12 +230,26 @@
     severity?: string | null
   }
 
+  const formScores = ref<Record<string, number | string | null>>({})
+  const formSeverities = ref<Record<string, string | null>>({})
   const formPreviewData = ref<FormPreviewPayload | null>(null)
   const formPreviewPending = ref(false)
   const formPreviewError = ref<string | null>(null)
   const isEditingForm = ref(false)
   const editableAnswers = ref<{ label: string; answer: string }[]>([])
   let formPreviewSeq = 0
+
+  function severityColor(label: string): string {
+    const severity = formSeverities.value[label]
+    if (!severity) return ''
+    const s = severity.toLowerCase()
+    if (s.includes('minimal') || s.includes('no exposure')) return 'text-green-600 dark:text-green-400'
+    if (s.includes('mild') || s.includes('low')) return 'text-yellow-500 dark:text-yellow-400'
+    if (s.includes('moderate')) return 'text-orange-500 dark:text-orange-400'
+    if (s.includes('moderately severe')) return 'text-orange-600 dark:text-orange-500'
+    if (s.includes('severe') || s.includes('high')) return 'text-red-600 dark:text-red-400'
+    return ''
+  }
 
   watch(selectedForm, async (label) => {
     if (!label) {
@@ -276,6 +290,14 @@
   watch(formPreviewData, (val) => {
     isEditingForm.value = false
     editableAnswers.value = val?.questions.map(q => ({ ...q })) ?? []
+    if (val && selectedForm.value) {
+      if (val.score != null) {
+        formScores.value[selectedForm.value] = val.score
+      }
+      if (val.severity != null) {
+        formSeverities.value[selectedForm.value] = val.severity
+      }
+    }
   })
 
   async function saveFormEdits() {
@@ -628,13 +650,33 @@
   })
 
   // Load draft when component mounts
-  onMounted(() => {
+  onMounted(async () => {
     const draft = localStorage.getItem(`note_draft_${props.client.id}`)
     if (draft !== null) {
       noteContent.value = draft
       lastSaved.value = new Date() // pretend it was just saved
       saveStatus.value = 'saved'
     }
+    // Prefetch scores for complete forms
+    for (const form of props.forms) {
+      if (form.status !== 'complete') continue
+      const key = FORM_LABEL_TO_KEY[form.label]
+      if (!key) continue
+      try {
+        const data = await $fetch<FormPreviewPayload>(
+          `/api/clients/${props.client.id}/forms/${key}`
+        )
+        if (data.score != null) {
+          formScores.value[form.label] = data.score
+        }
+        if (data.severity != null) {
+          formSeverities.value[form.label] = data.severity
+        } 
+      } catch {
+        // silently skip
+      }
+    }
+
   })
 
   function formatTime(date: Date) {
@@ -885,7 +927,13 @@
               "
             >
               {{ form.label }}
-              <div class="mt-1 text-xs font-normal">{{ form.status }}</div>
+            <div class="mt-1 text-xs font-normal">
+              <template v-if="formScores[form.label] != null">
+                Score: {{ formScores[form.label] }}
+                <span v-if="formSeverities[form.label]"> · {{ formSeverities[form.label] }}</span>
+              </template>
+              <template v-else>{{ form.status }}</template>
+            </div>
             </div>
           </div>
         </div>
@@ -1094,7 +1142,7 @@
                   <span v-if="formPreviewData.score != null" class="font-medium text-gray-900 dark:text-white">
                     Score: {{ formPreviewData.score }}
                   </span>
-                  <span v-if="formPreviewData.severity" class="text-gray-600 dark:text-gray-400">
+                  <span v-if="formPreviewData.severity" :class="severityColor(selectedForm!)">
                     {{ formPreviewData.severity }}
                   </span>
                 </div>
