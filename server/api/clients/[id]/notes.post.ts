@@ -11,6 +11,10 @@ function canEditOnOrAfterSessionDay(sessionStart: Date, now = new Date()) {
   return today >= sessionDay
 }
 
+function canMarkAttendanceOnOrAfterSessionStart(sessionStart: Date, now = new Date()) {
+  return now >= sessionStart
+}
+
 export default defineEventHandler(async (event) => {
   const user = requireAdmin(event)
 
@@ -42,7 +46,7 @@ export default defineEventHandler(async (event) => {
   ) {
     throw createError({ statusCode: 400, statusMessage: 'Invalid signature data format' })
   }
-  const attended = body.attended !== false // default true
+  const hasAttendance = typeof body.attended === 'boolean'
 
   const dbUser = await prisma.user.findFirst({
     where: { id: clientUserId, role: 'CLIENT' },
@@ -73,6 +77,19 @@ export default defineEventHandler(async (event) => {
       statusMessage: 'Notes can only be edited on the session day or after the session has passed.',
     })
   }
+  if (hasAttendance && !canMarkAttendanceOnOrAfterSessionStart(appointment.startTime)) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Present/absent can only be marked on or after the session start time.',
+    })
+  }
+  if (!hasAttendance) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Attendance status is required when saving a session note.',
+    })
+  }
+  const attended = body.attended
 
   const existingNote = await prisma.sessionNote.findFirst({
     where: {

@@ -172,6 +172,7 @@
         body: {
           content: newNoteContent.value.trim(),
           appointmentId: selectedAppointmentId.value,
+          attended: true,
           signatureData: payload.signatureData,
           ...(updating && payload.reasoning?.trim() ? { reason: payload.reasoning.trim() } : {}),
         },

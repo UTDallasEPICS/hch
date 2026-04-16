@@ -268,6 +268,10 @@
     today.setHours(0, 0, 0, 0)
     return today >= sessionDay
   }
+  function canMarkAttendanceOnOrAfterSessionStart(sessionStartIso: string | null | undefined) {
+    if (!sessionStartIso) return false
+    return new Date() >= new Date(sessionStartIso)
+  }
   const selectedAppointment = computed(() =>
     props.appointments.find((a) => a.id === selectedAppointmentId.value) ?? null
   )
@@ -282,6 +286,9 @@
       Boolean(selectedAppointment.value) &&
       canEditOnOrAfterSessionDay(selectedAppointment.value?.startTime ?? null)
   )
+  const canMarkAttendance = computed(() =>
+    canMarkAttendanceOnOrAfterSessionStart(selectedAppointment.value?.startTime ?? null)
+  )
   const currentNoteLockMessage = computed(() => {
     if (!selectedAppointment.value) return 'Select a session to start or edit notes.'
     if (canEditCurrentNote.value) return ''
@@ -289,6 +296,14 @@
       ? new Date(selectedAppointment.value.startTime).toLocaleDateString('en-US')
       : 'the session day'
     return `Notes are locked until ${when}. You can edit on the session day or after.`
+  })
+  const attendanceLockMessage = computed(() => {
+    if (!selectedAppointment.value) return 'Select a session to mark present or absent.'
+    if (canMarkAttendance.value) return ''
+    const when = selectedAppointment.value?.startTime
+      ? new Date(selectedAppointment.value.startTime).toLocaleString('en-US')
+      : 'the session start time'
+    return `Present/absent is locked until ${when}.`
   })
   watch(
     appointmentOptions,
@@ -640,6 +655,11 @@
     )
     if (updating && !editReason?.trim()) {
       alert('A reason is required to update an existing note for this session.')
+      saveStatus.value = 'idle'
+      return
+    }
+    if (!canMarkAttendance.value) {
+      alert('You can only mark present or absent on or after the session start time.')
       saveStatus.value = 'idle'
       return
     }
@@ -1104,7 +1124,24 @@
                   <!-- Changes will be saved as a new version • Reason required -->
                   <!-- </p> -->
                 </div>
-                <!-- <span v-if="!isEditingPrevious" class="text-primary-500 text-xs font-semibold uppercase">Current</span> -->
+                <UButtonGroup v-if="!isEditingPreviousPanel">
+                  <UButton
+                    :color="!isAbsent ? 'success' : 'neutral'"
+                    :variant="!isAbsent ? 'solid' : 'outline'"
+                    label="Present"
+                    size="sm"
+                    :disabled="!canMarkAttendance"
+                    @click="isAbsent = false"
+                  />
+                  <UButton
+                    :color="isAbsent ? 'error' : 'neutral'"
+                    :variant="isAbsent ? 'solid' : 'outline'"
+                    label="Absent"
+                    size="sm"
+                    :disabled="!canMarkAttendance"
+                    @click="isAbsent = true"
+                  />
+                </UButtonGroup>
               </div>
 
               <NotesToolbar
@@ -1137,27 +1174,17 @@
                   color="primary"
                   label="Save Note"
                   size="md"
-                  :disabled="!isEditingPreviousPanel && (!selectedAppointmentId || !canEditCurrentNote)"
+                  :disabled="
+                    !isEditingPreviousPanel &&
+                    (!selectedAppointmentId || !canEditCurrentNote || !canMarkAttendance)
+                  "
                   @click="showSaveModal = true"
                   class="w-auto"
                 />
-                <UButtonGroup v-if="!isEditingPreviousPanel">
-                  <UButton
-                    :color="!isAbsent ? 'success' : 'neutral'"
-                    :variant="!isAbsent ? 'solid' : 'outline'"
-                    label="Present"
-                    size="sm"
-                    @click="isAbsent = false"
-                  />
-                  <UButton
-                    :color="isAbsent ? 'error' : 'neutral'"
-                    :variant="isAbsent ? 'solid' : 'outline'"
-                    label="Absent"
-                    size="sm"
-                    @click="isAbsent = true"
-                  />
-                </UButtonGroup>
               </div>
+              <p v-if="!isEditingPreviousPanel && attendanceLockMessage" class="mt-2 text-xs text-amber-600">
+                {{ attendanceLockMessage }}
+              </p>
             </div>
           </div>
 
