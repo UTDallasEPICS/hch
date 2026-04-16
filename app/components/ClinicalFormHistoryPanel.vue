@@ -22,6 +22,11 @@
   )
 
   defineExpose({ refresh })
+  const openSubmissionId = ref<string | null>(null)
+
+  function toggleSubmission(id: string) {
+    openSubmissionId.value = openSubmissionId.value === id ? null : id
+  }
 
   function formatWhen(iso: string) {
     try {
@@ -47,36 +52,43 @@
       title="Could not load history"
       description="Try again later."
     />
-    <div v-else-if="data?.events?.length" class="space-y-4">
+    <div v-else-if="data?.events?.length" class="space-y-3">
       <div
         v-for="ev in data.events"
         :key="ev.id"
-        class="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900"
+        class="rounded-xl border border-[#233a63] bg-[#0b1930] p-4 text-gray-100"
       >
-        <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-100 pb-2 dark:border-gray-800">
-          <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
+        <button
+          type="button"
+          class="mb-2 flex w-full flex-wrap items-center justify-between gap-2 border-b border-[#2a426f] pb-2 text-left"
+          @click="toggleSubmission(ev.id)"
+        >
+          <span class="text-xs font-medium text-gray-300">
             {{ formatWhen(ev.recordedAt) }}
           </span>
-          <div class="flex flex-wrap gap-2 text-sm">
-            <span v-if="ev.score != null" class="font-semibold text-gray-900 dark:text-white">
-              Score: {{ ev.score }}
+          <div class="flex flex-wrap items-center gap-2 text-sm leading-none">
+            <span v-if="ev.score != null" class="text-white">
+              Score: <span class="font-bold text-yellow-300">{{ ev.score }}</span>
             </span>
-            <span v-if="ev.severity" class="text-gray-600 dark:text-gray-400">{{ ev.severity }}</span>
+            <span v-if="ev.severity" class="text-sm text-gray-300">{{ ev.severity }}</span>
+            <span class="text-sm text-cyan-300 hover:text-cyan-200">
+              {{ openSubmissionId === ev.id ? 'Close submission' : 'Open submission' }}
+            </span>
           </div>
-        </div>
-        <div v-if="ev.questions?.length" class="max-h-56 space-y-2 overflow-y-auto">
+        </button>
+        <div v-if="openSubmissionId === ev.id && ev.questions?.length" class="max-h-56 space-y-2 overflow-y-auto pt-1">
           <div
             v-for="(q, i) in ev.questions"
             :key="i"
-            class="rounded border border-gray-100 bg-gray-50/80 p-2 text-sm dark:border-gray-800 dark:bg-gray-800/50"
+            class="rounded border border-[#2a426f] bg-[#122746] p-2 text-sm"
           >
-            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ q.label }}</p>
-            <p class="mt-0.5 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+            <p class="text-xs font-medium text-gray-300">{{ q.label }}</p>
+            <p class="mt-0.5 whitespace-pre-wrap text-gray-100">
               {{ q.answer || '—' }}
             </p>
           </div>
         </div>
-        <p v-else class="text-xs text-gray-500 dark:text-gray-400">
+        <p v-else-if="openSubmissionId === ev.id" class="text-xs text-gray-300">
           Answers were not stored for this submission (older data).
         </p>
       </div>
