@@ -221,11 +221,12 @@ async function main() {
   console.log('Seeded Admin: alice@a.com')
 
   const newAdmins = [
-    { email: 'cxk230036@utdallas.edu', name: 'Koripella Charvisree', id: 'charvisree_id' },
-    { email: 'dxj230013@utdallas.edu', name: 'Janjanam Deethya', id: 'deethya_id' },
-    { email: 'dxv230030@utdallas.edu', name: 'Viju Devika', id: 'devika_id' },
-    { email: 'rxa230079@utdallas.edu', name: 'Ashok Ritikha', id: 'ritikha_id' },
-    { email: 'sxr230101@utdallas.edu', name: 'Ramanathan Swaminathan', id: 'swaminathan_id' },
+    { email: 'cxk230036@utdallas.edu', name: 'Charvisree Koripella ', id: 'charvisree_id' },
+    { email: 'dxj230013@utdallas.edu', name: 'Deethya Janjanam', id: 'deethya_id' },
+    { email: 'dxv230030@utdallas.edu', name: 'Devika Viju', id: 'devika_id' },
+    { email: 'rxa230079@utdallas.edu', name: 'Ritikha Ashok', id: 'ritikha_id' },
+    { email: 'sxr230101@utdallas.edu', name: 'Swaminathan Ramanathan', id: 'swaminathan_id' },
+    { email: 'tmw220003@utdallas.edu', name: 'Tushar Wani', id: 'tushar_id' },
   ]
 
   for (const admin of newAdmins) {
