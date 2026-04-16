@@ -233,6 +233,8 @@
   const formPreviewData = ref<FormPreviewPayload | null>(null)
   const formPreviewPending = ref(false)
   const formPreviewError = ref<string | null>(null)
+  const isEditingForm = ref(false)
+  const editableAnswers = ref<{ label: string; answer: string }[]>([])
   let formPreviewSeq = 0
 
   watch(selectedForm, async (label) => {
@@ -270,6 +272,23 @@
       if (seq === formPreviewSeq) formPreviewPending.value = false
     }
   })
+
+  watch(formPreviewData, (val) => {
+    isEditingForm.value = false
+    editableAnswers.value = val?.questions.map(q => ({ ...q })) ?? []
+  })
+
+  async function saveFormEdits() {
+    const key = FORM_LABEL_TO_KEY[selectedForm.value!]
+    await $fetch(`/api/clients/${props.client.id}/forms/${key}`, {
+      method: 'PATCH',
+      body: { answers: editableAnswers.value }
+    })
+    if (formPreviewData.value) {
+      formPreviewData.value.questions = [...editableAnswers.value]
+    }
+    isEditingForm.value = false
+  }
 
   const isEditingPreviousPanel = ref(false)
   const editingNoteId = ref<number | null>(null)
@@ -1081,6 +1100,29 @@
                 </div>
                 <div v-if="formPreviewData.questions?.length" class="space-y-2">
                   <div
+                    v-for="(q, i) in editableAnswers"
+                    :key="i"
+                    class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-800/80"
+                  >
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ q.label }}</p>
+                    <input
+                      v-if="isEditingForm"
+                      v-model="q.answer"
+                      class="mt-1 w-full rounded border border-gray-300 bg-white px-2 py-1 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                    />
+                    <p v-else class="mt-1 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+                      {{ q.answer || '—' }}
+                    </p>
+                  </div>
+                  <div class="flex gap-2 mt-3">
+                    <UButton v-if="!isEditingForm" label="Edit" size="xs" @click="isEditingForm = true" />
+                    <UButton v-if="isEditingForm" label="Save" size="xs" color="primary" @click="saveFormEdits" />
+                    <UButton v-if="isEditingForm" label="Cancel" size="xs" variant="ghost" @click="isEditingForm = false" />
+                  </div>
+                </div>
+                <p v-else class="text-sm text-gray-500 dark:text-gray-400">No answers yet.</p>
+                <!-- <div v-if="formPreviewData.questions?.length" class="space-y-2">
+                  <div
                     v-for="(q, i) in formPreviewData.questions"
                     :key="i"
                     class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-800/80"
@@ -1090,8 +1132,8 @@
                       {{ q.answer || '—' }}
                     </p>
                   </div>
-                </div>
-                <p v-else class="text-sm text-gray-500 dark:text-gray-400">No answers yet.</p>
+                </div> -->
+                <!-- <p v-else class="text-sm text-gray-500 dark:text-gray-400">No answers yet.</p> -->
               </div>
             </div>
           </div>

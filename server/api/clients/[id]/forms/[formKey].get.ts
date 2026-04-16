@@ -41,6 +41,28 @@ const GAD_OPTIONS: Record<number, string> = {
   3: 'Nearly every day',
 }
 
+const PCL_LABELS = [
+  'Repeated, disturbing, and unwanted memories of the stressful experience',
+  'Repeated, disturbing dreams of the stressful experience',
+  'Suddenly feeling or acting as if the stressful experience were actually happening again',
+  'Feeling very upset when something reminded you of the stressful experience',
+  'Having strong physical reactions when something reminded you of the stressful experience',
+  'Avoiding memories, thoughts, or feelings related to the stressful experience',
+  'Avoiding external reminders of the stressful experience',
+  'Trouble remembering important parts of the stressful experience',
+  'Having strong negative beliefs about yourself, other people, or the world',
+  'Blaming yourself or someone else for the stressful experience or what happened after it',
+  'Having strong negative feelings such as fear, horror, anger, guilt, or shame',
+  'Loss of interest in activities that you used to enjoy',
+  'Feeling distant or cut off from other people',
+  'Trouble experiencing positive feelings',
+  'Irritable behavior, angry outbursts, or acting aggressively',
+  'Taking too many risks or doing things that could cause you harm',
+  'Being "superalert" or watchful or on guard',
+  'Feeling jumpy or easily startled',
+  'Having difficulty concentrating',
+  'Trouble falling or staying asleep',
+]
 export default defineEventHandler(async (event) => {
   const user = requireUser(event)
 
@@ -290,7 +312,7 @@ export default defineEventHandler(async (event) => {
       const val = q[key]
       const numVal = typeof val === 'number' ? val : null
       if (numVal != null && numVal >= 0) {
-        questions.push({ label: `Item ${i}`, answer: String(numVal) })
+        questions.push({ label: PCL_LABELS[i - 1] ?? `Item ${i}`, answer: String(numVal) })
       }
     }
     let severity = pclForm?.severity ?? null
