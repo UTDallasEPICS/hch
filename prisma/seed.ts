@@ -227,6 +227,7 @@ async function main() {
     { email: 'rxa230079@utdallas.edu', name: 'Ritikha Ashok', id: 'ritikha_id' },
     { email: 'sxr230101@utdallas.edu', name: 'Swaminathan Ramanathan', id: 'swaminathan_id' },
     { email: 'tmw220003@utdallas.edu', name: 'Tushar Wani', id: 'tushar_id' },
+    { email: 'info@hopecopeheal.org', name: 'Adriana Lewin', id: 'adriana_id' },
   ]
 
   for (const admin of newAdmins) {
