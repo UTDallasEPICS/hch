@@ -8,7 +8,7 @@ import {
   resetClientFormDataForEmail,
 } from '../../../utils/client-forms'
 import { sendAppEmail, isEmailConfigured } from '../../../utils/mail'
-import { parseName } from '../../../utils/name'
+import { formatStoredUserNameInitials } from '../../../utils/name'
 
 function escapeHtml(s: string): string {
   return s
@@ -74,8 +74,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: msg })
   }
 
-  const { fname } = parseName(dbUser.name)
-  const greeting = fname ? `Hi ${escapeHtml(fname)},` : 'Hello,'
+  const initials = formatStoredUserNameInitials(dbUser.name ?? '')
+  const greeting = initials ? `Hello ${escapeHtml(initials)},` : 'Hello,'
 
   const listItems = entries
     .map(
@@ -96,7 +96,7 @@ export default defineEventHandler(async (event) => {
 
   await sendAppEmail({
     to: dbUser.email.trim(),
-    subject: '[HCH] Form link' + (entries.length > 1 ? 's' : '') + ' from your care team',
+    subject: '[HCH] Assessment link update',
     html,
   })
 
