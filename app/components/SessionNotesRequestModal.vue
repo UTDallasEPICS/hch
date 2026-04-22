@@ -6,7 +6,14 @@
 
   const emit = defineEmits<{
     close: []
-    submit: [payload: { requestKind: 'FULL' | 'SUMMARY'; signatureData: string }]
+    submit: [
+      payload: {
+        requestKind: 'FULL' | 'SUMMARY'
+        signatureData: string
+        startDate: string | null
+        endDate: string | null
+      },
+    ]
   }>()
 
   const toast = useToast()
@@ -15,6 +22,12 @@
   const declarationAccepted = ref(false)
   const signatureDataUrl = ref('')
   const signatureError = ref('')
+  const startDate = ref('')
+  const endDate = ref('')
+  const wholeRecord = ref(true)
+  const dateRangeError = ref('')
+
+  const today = computed(() => new Date().toISOString().slice(0, 10))
 
   watch(
     () => props.open,
@@ -24,6 +37,10 @@
         declarationAccepted.value = false
         signatureDataUrl.value = ''
         signatureError.value = ''
+        startDate.value = ''
+        endDate.value = ''
+        wholeRecord.value = true
+        dateRangeError.value = ''
         nextTick(() => initSignatureCanvas())
       }
     }
@@ -109,16 +126,22 @@
     signatureDataUrl.value = ''
   }
 
-  function buildDeclarationText(): string {
-    const kind =
-      requestKind.value === 'FULL'
-        ? 'the full session notes as recorded by my clinician'
-        : 'a summary of my session notes (not the full clinical record)'
-    return (
-      `I understand I am requesting access to my behavioral health session records. ` +
-      `I specifically request ${kind}. ` +
-      `I confirm that I am the person making this request and that my digital signature below attests to that fact.`
-    )
+  function validateRange(): boolean {
+    dateRangeError.value = ''
+    if (wholeRecord.value) return true
+    if (!startDate.value || !endDate.value) {
+      dateRangeError.value = 'Please select both a start and end date, or choose "entire record".'
+      return false
+    }
+    if (startDate.value > endDate.value) {
+      dateRangeError.value = 'Start date must be on or before end date.'
+      return false
+    }
+    if (endDate.value > today.value) {
+      dateRangeError.value = 'End date cannot be in the future.'
+      return false
+    }
+    return true
   }
 
   function handleSubmit() {
@@ -126,6 +149,14 @@
       toast.add({
         title: 'Confirmation required',
         description: 'Please confirm the statement above before submitting.',
+        color: 'error',
+      })
+      return
+    }
+    if (!validateRange()) {
+      toast.add({
+        title: 'Check the date range',
+        description: dateRangeError.value || 'Date range is invalid.',
         color: 'error',
       })
       return
@@ -142,6 +173,8 @@
     emit('submit', {
       requestKind: requestKind.value,
       signatureData: signatureDataUrl.value,
+      startDate: wholeRecord.value ? null : startDate.value || null,
+      endDate: wholeRecord.value ? null : endDate.value || null,
     })
   }
 </script>
@@ -149,7 +182,7 @@
 <template>
   <UModal
     :open="open"
-    title="Request session notes"
+    title="Request records"
     :ui="{
       overlay: 'z-[60]',
       content: 'max-w-lg w-full z-[60]',
@@ -159,8 +192,9 @@
   >
     <template #body>
       <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">
-        Choose whether you want the full notes your clinician entered, or a shorter summary. An
-        administrator will review your request. You must sign below to submit.
+        Submit a formal request for your behavioral health records. Choose full notes or a summary
+        and (optionally) limit the request to a specific date range. An administrator will review
+        your request within 14 calendar days.
       </p>
 
       <div class="mb-4 space-y-2">
@@ -171,7 +205,7 @@
           <span>
             <span class="font-medium text-gray-900 dark:text-white">Full session notes</span>
             <span class="block text-sm text-gray-600 dark:text-gray-400">
-              Everything your clinician recorded for your sessions.
+              Everything your clinician recorded for your sessions in the chosen range.
             </span>
           </span>
         </label>
@@ -182,17 +216,89 @@
           <span>
             <span class="font-medium text-gray-900 dark:text-white">Summary only</span>
             <span class="block text-sm text-gray-600 dark:text-gray-400">
-              A brief summary prepared when your request is approved (not the full record).
+              A brief clinician-prepared summary (not the full clinical record).
             </span>
           </span>
         </label>
       </div>
 
+      <div class="mb-4 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+        <div class="mb-2 flex items-center justify-between gap-2">
+          <span class="text-sm font-medium text-gray-900 dark:text-white">Records date range</span>
+          <label class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+            <UCheckbox v-model="wholeRecord" />
+            <span>Entire available record</span>
+          </label>
+        </div>
+        <div
+          v-if="!wholeRecord"
+          class="grid grid-cols-1 gap-3 sm:grid-cols-2"
+        >
+          <label class="block">
+            <span class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+              Start date
+            </span>
+            <input
+              v-model="startDate"
+              type="date"
+              :max="today"
+              class="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+            />
+          </label>
+          <label class="block">
+            <span class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+              End date
+            </span>
+            <input
+              v-model="endDate"
+              type="date"
+              :max="today"
+              class="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+            />
+          </label>
+        </div>
+        <p v-if="dateRangeError" class="mt-2 text-xs text-red-600 dark:text-red-400">
+          {{ dateRangeError }}
+        </p>
+      </div>
+
+      <!--
+        Records-request disclaimer. Generic HIPAA/records phrasing used until Adriana
+        provides final verbiage.
+      -->
+      <div
+        class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+      >
+        <p class="mb-2 font-semibold">Records-request disclaimer</p>
+        <p class="mb-2">
+          I am requesting access to my own protected health information (PHI) held by this clinic
+          under my right of access pursuant to 45 CFR § 164.524. I confirm the following:
+        </p>
+        <ul class="list-disc space-y-1 pl-5">
+          <li>
+            The clinic has up to <strong>fourteen (14) calendar days</strong> from my signed
+            request to approve, deny, or extend this request.
+          </li>
+          <li>
+            Records I receive may contain sensitive clinical information. I am responsible for how
+            I store, share, or disclose any copy released to me.
+          </li>
+          <li>
+            Psychotherapy (process) notes maintained separately from the medical record are not
+            required to be released and may be withheld or summarized.
+          </li>
+          <li>
+            This request and my digital signature are retained with my clinical file as a
+            compliance record.
+          </li>
+        </ul>
+      </div>
+
       <label class="mb-4 flex cursor-pointer items-start gap-2">
         <UCheckbox v-model="declarationAccepted" class="mt-0.5" />
         <span class="text-sm text-gray-700 dark:text-gray-300">
-          I have read and agree that my request and digital signature will be stored with my profile
-          for compliance purposes.
+          I have read and agree to the disclaimer above, and my request and digital signature will
+          be stored with my profile for compliance purposes.
         </span>
       </label>
 

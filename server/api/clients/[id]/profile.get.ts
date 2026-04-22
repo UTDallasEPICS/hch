@@ -334,10 +334,13 @@ export default defineEventHandler(async (event) => {
     status: r.status,
     createdAt: r.createdAt.toISOString(),
     decidedAt: r.decidedAt?.toISOString() ?? null,
+    startDate: r.startDate?.toISOString() ?? null,
+    endDate: r.endDate?.toISOString() ?? null,
     declarationText: r.declarationTemplate.content,
     declarationTemplateId: r.declarationTemplateId,
     declarationVersion: r.declarationTemplate.version,
     signatureData: r.signatureData,
+    approvalReason: r.approvalReason,
     rejectionReason: r.rejectionReason,
     approvedSummaryText: r.approvedSummaryText,
   }))
@@ -373,6 +376,20 @@ export default defineEventHandler(async (event) => {
       appointmentId: string | null
       appointment: { startTime: Date } | null
     }[] = []
+
+    // Clients viewing via an approved FULL records request see only notes within the
+    // date range they asked for (compared against the session's clinical timestamp:
+    // appointment.startTime when available, else the note's createdAt).
+    // Admins and legacy-permission views are unfiltered.
+    const restrictByRequestRange =
+      isOwnProfile &&
+      !hasAdminAccess &&
+      !legacyNotes &&
+      latestApproved?.status === 'APPROVED' &&
+      latestApproved.requestKind === 'FULL'
+    const rangeStart = restrictByRequestRange ? latestApproved?.startDate ?? null : null
+    const rangeEnd = restrictByRequestRange ? latestApproved?.endDate ?? null : null
+
     try {
       sessionRows = await prisma.sessionNote.findMany({
         where: { clientId: resolvedClientRowId },
@@ -385,6 +402,18 @@ export default defineEventHandler(async (event) => {
       })
     } catch {
       sessionRows = []
+    }
+
+    if (rangeStart || rangeEnd) {
+      const endExclusive = rangeEnd
+        ? new Date(rangeEnd.getTime() + 24 * 60 * 60 * 1000)
+        : null
+      sessionRows = sessionRows.filter((s) => {
+        const ts = s.appointment?.startTime ?? s.createdAt
+        if (rangeStart && ts < rangeStart) return false
+        if (endExclusive && ts >= endExclusive) return false
+        return true
+      })
     }
     const fromSession = sessionRows.map((s) => ({
       id: s.id,

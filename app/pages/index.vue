@@ -150,7 +150,7 @@
         >
           <div class="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
             <UIcon name="i-heroicons-document-text-20-solid" class="h-5 w-5" />
-            Pending note requests
+            Pending records requests
           </div>
           <p class="mt-2 text-3xl font-semibold text-gray-900 tabular-nums dark:text-white">
             {{ stats.pendingSessionNotesRequests }}
@@ -173,7 +173,7 @@
           <div class="inline-flex flex-wrap items-center gap-2">
             <UButton
               to="/clients/session-notes-requests"
-              label="Session note requests"
+              label="Records requests"
               color="primary"
               variant="soft"
               icon="i-heroicons-inbox-arrow-down-20-solid"

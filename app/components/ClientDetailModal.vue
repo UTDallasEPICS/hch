@@ -470,11 +470,12 @@
             Save Permissions
           </UButton>
           <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-            Clients can also request notes via the dashboard; those requests are reviewed on the
+            Clients can also submit records requests via the dashboard; those requests are reviewed
+            on the
             <NuxtLink
               to="/clients/session-notes-requests"
               class="text-primary-600 dark:text-primary-400 font-medium underline"
-              >session note requests</NuxtLink
+              >records requests</NuxtLink
             >
             page.
           </p>
@@ -483,7 +484,7 @@
         <section v-if="profile.sessionNotesRequests?.length">
           <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
             <UIcon name="i-heroicons-clipboard-document-list" class="h-4 w-4" />
-            Session note request log
+            Records request log
           </h3>
           <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
             <li

@@ -76,13 +76,71 @@
     getCachedData: () => undefined,
   })
 
-  const { data: pendingNoteRequests } = await useFetch<{ id: string }[]>(
+  type PendingNoteRequest = {
+    id: string
+    clientUserId: string
+    approvalWindowDays: number
+    approvalExpiresAt: string
+  }
+
+  const { data: pendingNoteRequests } = await useFetch<PendingNoteRequest[]>(
     '/api/session-notes-requests',
     {
       getCachedData: () => undefined,
     }
   )
   const pendingNoteRequestCount = computed(() => pendingNoteRequests.value?.length ?? 0)
+
+  /** Per-client most-urgent pending records request (earliest expiry wins). */
+  const pendingByClient = computed(() => {
+    const map = new Map<string, PendingNoteRequest>()
+    for (const r of pendingNoteRequests.value ?? []) {
+      const existing = map.get(r.clientUserId)
+      if (!existing || new Date(r.approvalExpiresAt) < new Date(existing.approvalExpiresAt)) {
+        map.set(r.clientUserId, r)
+      }
+    }
+    return map
+  })
+
+  const showRecordsRequestColumn = computed(() => (pendingNoteRequests.value?.length ?? 0) > 0)
+
+  /** Ticking "now" so the Time-Left countdowns update live. */
+  const nowMs = ref(Date.now())
+  let recordsRequestTickTimer: ReturnType<typeof setInterval> | null = null
+  onMounted(() => {
+    recordsRequestTickTimer = setInterval(() => {
+      nowMs.value = Date.now()
+    }, 1000)
+  })
+  onBeforeUnmount(() => {
+    if (recordsRequestTickTimer) clearInterval(recordsRequestTickTimer)
+  })
+
+  function recordsMsLeft(r: PendingNoteRequest): number {
+    return new Date(r.approvalExpiresAt).getTime() - nowMs.value
+  }
+
+  /** e.g. "12d 03:47:12" or "Expired" */
+  function formatRecordsCountdown(r: PendingNoteRequest): string {
+    const ms = recordsMsLeft(r)
+    if (ms <= 0) return 'Expired'
+    const totalSec = Math.floor(ms / 1000)
+    const days = Math.floor(totalSec / 86400)
+    const hours = Math.floor((totalSec % 86400) / 3600)
+    const mins = Math.floor((totalSec % 3600) / 60)
+    const secs = totalSec % 60
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${days}d ${pad(hours)}:${pad(mins)}:${pad(secs)}`
+  }
+
+  function recordsCountdownColor(r: PendingNoteRequest): 'success' | 'warning' | 'error' {
+    const ms = recordsMsLeft(r)
+    if (ms <= 0) return 'error'
+    const dayMs = 24 * 60 * 60 * 1000
+    if (ms < 3 * dayMs) return 'warning'
+    return 'success'
+  }
 
   async function refreshClientsAndCounts() {
     await Promise.all([refreshClients(), refreshCounts()])
@@ -222,6 +280,9 @@
     if (showWeekNoColumn.value) {
       cols.push({ id: 'weekNo', header: 'Week no' })
     }
+    if (showRecordsRequestColumn.value) {
+      cols.push({ id: 'recordsRequest', header: 'Records request' })
+    }
     cols.push({
       id: 'actions',
       header: 'Actions',
@@ -298,7 +359,7 @@
         to="/clients/session-notes-requests"
         class="text-primary-600 hover:text-primary-700 dark:text-primary-400 inline-flex items-center gap-2 text-sm font-medium"
       >
-        Session note requests
+        Records requests
         <UBadge v-if="pendingNoteRequestCount > 0" color="warning" variant="subtle" size="sm">
           {{ pendingNoteRequestCount }} pending
         </UBadge>
@@ -426,6 +487,26 @@
                   : ''
             }}
           </span>
+        </template>
+        <template #recordsRequest-cell="{ row }">
+          <template v-if="pendingByClient.get(row.original.id)">
+            <NuxtLink
+              to="/clients/session-notes-requests"
+              class="inline-flex items-center gap-1"
+              :title="`Expires ${new Date(pendingByClient.get(row.original.id)!.approvalExpiresAt).toLocaleString()}`"
+              @click.stop
+            >
+              <UBadge
+                :color="recordsCountdownColor(pendingByClient.get(row.original.id)!)"
+                variant="subtle"
+                size="sm"
+              >
+                <UIcon name="i-heroicons-clock" class="mr-1 h-3.5 w-3.5" />
+                {{ formatRecordsCountdown(pendingByClient.get(row.original.id)!) }}
+              </UBadge>
+            </NuxtLink>
+          </template>
+          <span v-else class="text-sm text-gray-400 dark:text-gray-600">—</span>
         </template>
         <template #actions-cell="{ row }">
           <div v-if="updatingId !== row.original.id" class="flex flex-wrap justify-end gap-1.5">
