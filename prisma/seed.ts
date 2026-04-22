@@ -163,11 +163,11 @@ async function seedForms(userId: string) {
   })
 }
 
-async function ensureBobBuilderSessionNotes(bobUserId: string) {
-  const client = await prisma.client.upsert({
+async function ensureBobBuilderSessionNotes(bobUserId: string, clinicianUserId: string) {
+  await prisma.client.upsert({
     where: { userId: bobUserId },
-    update: { status: 'ACTIVE' },
-    create: { userId: bobUserId, status: 'ACTIVE' },
+    update: { status: 'ACTIVE', clinicianUserId },
+    create: { userId: bobUserId, status: 'ACTIVE', clinicianUserId },
   })
   // Populate form dummy data if it doesn't exist
   const existingApp = await prisma.appForm.count({ where: { userId: bobUserId } })
@@ -197,6 +197,20 @@ async function main() {
   })
   console.log('Seeded Admin: alice@a.com')
 
+  // Create / Upsert Carl (Clinician)
+  const carl = await prisma.user.upsert({
+    where: { email: 'carl@c.com' },
+    update: { role: 'CLINICIAN', name: 'Carl Karl' },
+    create: {
+      id: 'carl_id',
+      email: 'carl@c.com',
+      name: 'Carl Karl',
+      emailVerified: true,
+      role: 'CLINICIAN',
+    },
+  })
+  console.log('Seeded Clinician: carl@c.com')
+
   // Create / Upsert Bob (Client)
   const bob = await prisma.user.upsert({
     where: { email: 'bob@b.com' },
@@ -211,7 +225,7 @@ async function main() {
   })
   console.log('Seeded Client: bob@b.com')
 
-  await ensureBobBuilderSessionNotes(bob.id)
+  await ensureBobBuilderSessionNotes(bob.id, carl.id)
 
   console.log('Seeding finished.')
 }

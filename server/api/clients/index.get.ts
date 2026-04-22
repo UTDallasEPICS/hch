@@ -1,4 +1,4 @@
-import { requireAdmin } from '../../utils/guard'
+import { requireStaff } from '../../utils/guard'
 import { createError, defineEventHandler, getHeaders, getQuery } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { isAdmin } from '../../utils/is-admin'
@@ -18,7 +18,8 @@ import { joinName, parseName } from '../../utils/name'
 import type { ClientStatus } from '../../../prisma/generated/client'
 
 export default defineEventHandler(async (event) => {
-  const user = requireAdmin(event)
+  const user = requireStaff(event)
+  const isClinicianViewer = event.context.isClinician === true && !event.context.isAdmin
 
   const query = getQuery(event)
   const statusFilter = query.status as string | undefined
@@ -26,20 +27,31 @@ export default defineEventHandler(async (event) => {
   const hasStatusFilter = Boolean(statusFilter && isClientStatusLabel(statusFilter))
   const dbStatusFilter = toDbClientStatus(statusFilter)
 
+  // Build where clause. Clinicians only see clients assigned to them -- and
+  // because "unassigned client record" and "no client record yet" both have no
+  // clinicianUserId, clinicians never see INCOMPLETE-with-no-record entries.
+  type UserWhere = NonNullable<Parameters<typeof prisma.user.findMany>[0]>['where']
+  let where: UserWhere = { role: 'CLIENT' }
+
+  if (isClinicianViewer) {
+    const clientFilter: { clinicianUserId: string; status?: ClientStatus } = {
+      clinicianUserId: user.id,
+    }
+    if (hasStatusFilter) clientFilter.status = dbStatusFilter as ClientStatus
+    where = { ...where, client: clientFilter }
+  } else if (hasStatusFilter) {
+    if (dbStatusFilter === 'INCOMPLETE') {
+      where = {
+        ...where,
+        OR: [{ client: null }, { client: { status: 'INCOMPLETE' as ClientStatus } }],
+      }
+    } else {
+      where = { ...where, client: { status: dbStatusFilter as ClientStatus } }
+    }
+  }
+
   const users = await prisma.user.findMany({
-    where: {
-      role: 'CLIENT',
-      ...(hasStatusFilter &&
-        (dbStatusFilter === 'INCOMPLETE'
-          ? {
-              OR: [{ client: null }, { client: { status: 'INCOMPLETE' as ClientStatus } }],
-            }
-          : {
-              client: {
-                status: dbStatusFilter as ClientStatus,
-              },
-            })),
-    },
+    where,
     include: {
       client: true,
       appForms: {

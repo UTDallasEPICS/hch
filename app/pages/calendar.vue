@@ -22,13 +22,14 @@
         | ({ id: string; role?: string } & Record<string, unknown>)
         | null) ?? null
   )
-  const { data: adminData, refresh: refreshAdminData } = await useFetch<{ isAdmin: boolean }>(
-    '/api/users/me/is-admin',
-    {
-      server: false,
-      default: () => ({ isAdmin: false }),
-    }
-  )
+  const { data: adminData, refresh: refreshAdminData } = await useFetch<{
+    isAdmin: boolean
+    isClinician: boolean
+    isStaff: boolean
+  }>('/api/users/me/is-admin', {
+    server: false,
+    default: () => ({ isAdmin: false, isClinician: false, isStaff: false }),
+  })
   watch(
     () => currentUser.value?.id,
     () => {
@@ -39,7 +40,7 @@
   const toast = useToast()
   const clients = ref<any[]>([])
   const events = ref<any[]>([])
-  const isAdmin = computed(() => adminData.value?.isAdmin ?? false)
+  const isAdmin = computed(() => adminData.value?.isStaff ?? false)
   const clientColors = [
     '#3b82f6', // blue
     '#10b981', // green

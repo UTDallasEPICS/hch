@@ -1,11 +1,15 @@
 <script setup lang="ts">
   import { authClient } from '../utils/auth-client'
 
-  const { data: adminData } = await useFetch<{ isAdmin: boolean }>('/api/users/me/is-admin', {
+  const { data: adminData } = await useFetch<{
+    isAdmin: boolean
+    isClinician: boolean
+    isStaff: boolean
+  }>('/api/users/me/is-admin', {
     getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
   })
 
-  const isAdminUser = adminData.value?.isAdmin === true
+  const isAdminUser = adminData.value?.isStaff === true
 
   type AdminStats = {
     userCount: number

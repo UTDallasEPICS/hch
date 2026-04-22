@@ -1,4 +1,5 @@
-import { requireAdmin } from '../../utils/guard'
+import { requireStaff } from '../../utils/guard'
+import { assertStaffCanAccessClient } from '../../utils/clinician-access'
 import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../utils/prisma'
@@ -37,7 +38,7 @@ const bodySchema = z
   })
 
 export default defineEventHandler(async (event) => {
-  const user = requireAdmin(event)
+  const user = requireStaff(event)
 
   const id = getRouterParam(event, 'id')
   if (!id) {
@@ -60,6 +61,7 @@ export default defineEventHandler(async (event) => {
   if (!req) {
     throw createError({ statusCode: 404, statusMessage: 'Request not found' })
   }
+  await assertStaffCanAccessClient(event, req.client.userId)
   if (req.status !== 'PENDING') {
     throw createError({ statusCode: 409, statusMessage: 'Request is no longer pending' })
   }

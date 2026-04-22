@@ -1,4 +1,5 @@
-import { requireAdmin } from '../../../../utils/guard'
+import { requireStaff } from '../../../../utils/guard'
+import { assertStaffCanAccessClient } from '../../../../utils/clinician-access'
 import { createError, defineEventHandler, getHeaders, getRouterParam, readBody } from 'h3'
 import { prisma } from '../../../../utils/prisma'
 import { isAdmin } from '../../../../utils/is-admin'
@@ -12,13 +13,14 @@ function canEditOnOrAfterSessionDay(sessionStart: Date, now = new Date()) {
 }
 
 export default defineEventHandler(async (event) => {
-  const user = requireAdmin(event)
+  const user = requireStaff(event)
 
   const clientUserId = getRouterParam(event, 'id')
   const noteId = getRouterParam(event, 'noteId')
   if (!clientUserId || !noteId) {
     throw createError({ statusCode: 400, statusMessage: 'Missing client or note id' })
   }
+  await assertStaffCanAccessClient(event, clientUserId)
 
   const body = await readBody<{
     content?: string

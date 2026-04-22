@@ -1,4 +1,5 @@
-import { requireAdmin } from '../../../utils/guard'
+import { requireStaff } from '../../../utils/guard'
+import { assertStaffCanAccessClient } from '../../../utils/clinician-access'
 import { createError, defineEventHandler, getRouterParam } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import {
@@ -12,12 +13,13 @@ const FORM_ORDER = ['application', 'ace', 'gad', 'phq', 'pcl'] as const
 
 export default defineEventHandler(async (event) => {
 
-  const user = requireAdmin(event)
+  const user = requireStaff(event)
 
   const clientUserId = getRouterParam(event, 'id')
   if (!clientUserId) {
     throw createError({ statusCode: 400, statusMessage: 'Missing client id' })
   }
+  await assertStaffCanAccessClient(event, clientUserId)
 
   const dbUser = await prisma.user.findFirst({
     where: { id: clientUserId, role: 'CLIENT' },

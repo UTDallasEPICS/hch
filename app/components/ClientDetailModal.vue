@@ -13,6 +13,7 @@
     therapyWeek: number | null
     missedSessions: number
     incompleteForms?: string[]
+    clinicianUserId?: string | null
     permissions: {
       canViewScores: boolean
       canViewNotes: boolean
@@ -58,6 +59,49 @@
   const pending = ref(false)
   const error = ref<Error | null>(null)
   let profileLoadSeq = 0
+
+  type ClinicianOption = { id: string; name: string; email: string }
+  const { data: roleData } = await useFetch<{
+    isAdmin: boolean
+    isClinician: boolean
+    isStaff: boolean
+  }>('/api/users/me/is-admin', {
+    getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
+  })
+  const isAdminViewer = computed(() => roleData.value?.isAdmin === true)
+
+  const { data: clinicians } = await useFetch<ClinicianOption[]>('/api/clinicians', {
+    getCachedData: () => undefined,
+  })
+
+  const selectedClinicianId = ref<string | null>(null)
+  watch(
+    () => profile.value?.clinicianUserId,
+    (v) => {
+      selectedClinicianId.value = v ?? null
+    },
+    { immediate: true }
+  )
+
+  const clinicianSaving = ref(false)
+  const clinicianSelectItems = computed(() => {
+    const base = [{ label: 'Unassigned', value: '__none__' }]
+    for (const c of clinicians.value ?? []) {
+      base.push({ label: c.name ? `${c.name} (${c.email})` : c.email, value: c.id })
+    }
+    return base
+  })
+  const clinicianSelectValue = computed({
+    get() {
+      return selectedClinicianId.value ?? '__none__'
+    },
+    set(v: string) {
+      selectedClinicianId.value = v === '__none__' ? null : v
+    },
+  })
+  const clinicianHasChanged = computed(() => {
+    return (profile.value?.clinicianUserId ?? null) !== (selectedClinicianId.value ?? null)
+  })
 
   async function loadProfile() {
     if (!props.clientId) return
@@ -260,6 +304,30 @@
   )
   const permsSaving = ref(false)
 
+  async function saveClinician() {
+    if (!props.clientId || clinicianSaving.value) return
+    try {
+      clinicianSaving.value = true
+      const res = await $fetch<{ clinicianUserId: string | null }>(
+        `/api/clients/${props.clientId}/clinician`,
+        {
+          method: 'PATCH',
+          body: { clinicianUserId: selectedClinicianId.value },
+        }
+      )
+      if (profile.value) profile.value.clinicianUserId = res.clinicianUserId
+      toast.add({ title: 'Clinician updated', color: 'success' })
+      emit('refreshed')
+    } catch (e: unknown) {
+      const msg =
+        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ??
+        'Failed to update clinician'
+      toast.add({ title: 'Error', description: msg, color: 'error' })
+    } finally {
+      clinicianSaving.value = false
+    }
+  }
+
   async function savePermissions() {
     if (!props.clientId || permsSaving.value) return
     try {
@@ -438,6 +506,50 @@
             </template>
           </div>
         </div>
+
+        <!-- Clinician assignment (admin only) -->
+        <section v-if="isAdminViewer">
+          <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
+            <UIcon name="i-heroicons-user-circle" class="h-4 w-4" />
+            Assigned Clinician
+          </h3>
+          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+            The assigned clinician can see and edit this client's information. Unassign to limit
+            visibility to admins only.
+          </p>
+          <div class="flex flex-wrap items-center gap-2">
+            <USelect
+              v-model="clinicianSelectValue"
+              :items="clinicianSelectItems"
+              placeholder="Select a clinician"
+              class="min-w-[18rem]"
+            />
+            <UButton
+              size="sm"
+              color="primary"
+              variant="soft"
+              :loading="clinicianSaving"
+              :disabled="!clinicianHasChanged"
+              @click="saveClinician"
+            >
+              Save Clinician
+            </UButton>
+          </div>
+        </section>
+
+        <!-- Clinician view of assignment (read-only) -->
+        <section v-else-if="profile.clinicianUserId">
+          <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
+            <UIcon name="i-heroicons-user-circle" class="h-4 w-4" />
+            Assigned Clinician
+          </h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            <template v-if="(clinicians ?? []).find((c) => c.id === profile.clinicianUserId)">
+              {{ (clinicians ?? []).find((c) => c.id === profile.clinicianUserId)?.name }}
+            </template>
+            <template v-else>Assigned</template>
+          </p>
+        </section>
 
         <!-- Permissions -->
         <section>

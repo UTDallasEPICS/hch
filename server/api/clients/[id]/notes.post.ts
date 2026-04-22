@@ -1,4 +1,5 @@
-import { requireAdmin } from '../../../utils/guard'
+import { requireStaff } from '../../../utils/guard'
+import { assertStaffCanAccessClient } from '../../../utils/clinician-access'
 import { createError, defineEventHandler, getHeaders, getRouterParam, readBody } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
@@ -16,12 +17,13 @@ function canMarkAttendanceOnOrAfterSessionStart(sessionStart: Date, now = new Da
 }
 
 export default defineEventHandler(async (event) => {
-  const user = requireAdmin(event)
+  const user = requireStaff(event)
 
   const clientUserId = getRouterParam(event, 'id')
   if (!clientUserId) {
     throw createError({ statusCode: 400, statusMessage: 'Missing client id' })
   }
+  await assertStaffCanAccessClient(event, clientUserId)
 
   const body = await readBody<{
     content?: string

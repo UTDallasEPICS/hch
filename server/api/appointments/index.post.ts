@@ -1,4 +1,5 @@
-import { requireAdmin } from '../../utils/guard'
+import { requireStaff } from '../../utils/guard'
+import { assertStaffCanAccessClient } from '../../utils/clinician-access'
 import { prisma } from '../../utils/prisma'
 import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/video-conference'
 import { readBody, createError, defineEventHandler } from 'h3'
@@ -28,7 +29,7 @@ export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event)
 
-    const user = requireAdmin(event)
+    const user = requireStaff(event)
     const adminId = user.id
 
     const { clientId, description, date, startTime, endTime, videoProvider, videoJoinUrl } = body
@@ -39,6 +40,7 @@ export default defineEventHandler(async (event) => {
         statusMessage: 'Missing required fields',
       })
     }
+    await assertStaffCanAccessClient(event, clientId)
 
     const start = new Date(`${date}T${startTime}`)
     const end = new Date(`${date}T${endTime}`)

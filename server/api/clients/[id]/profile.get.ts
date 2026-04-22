@@ -1,7 +1,7 @@
 import { requireUser } from '../../../utils/guard'
 import { createError, defineEventHandler, getHeaders, getRouterParam } from 'h3'
 import { prisma } from '../../../utils/prisma'
-import { isAdmin } from '../../../utils/is-admin'
+import { isAdmin, isClinician } from '../../../utils/is-admin'
 import { isClinicalClient } from '../../../utils/is-clinical-client'
 import { getIncompleteForms, FORM_LABELS } from '../../../utils/client-forms'
 import { parseName } from '../../../utils/name'
@@ -25,14 +25,16 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing client id' })
   }
 
-  // Allow admin to view any client, or client to view their own (limited)
+  // Allow admin to view any client, clinician to view their assigned clients,
+  // or a client to view their own (limited).
   const currentUser = await prisma.user.findUnique({
     where: { id: user.id },
     select: { role: true, email: true },
   })
   const isOwnProfile = user.id === clientUserId
   const hasAdminAccess = isAdmin(currentUser?.role ?? null, currentUser?.email ?? null)
-  if (!isOwnProfile && !hasAdminAccess) {
+  const isClinicianViewer = isClinician(currentUser?.role ?? null) && !hasAdminAccess
+  if (!isOwnProfile && !hasAdminAccess && !isClinicianViewer) {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 
@@ -54,6 +56,13 @@ export default defineEventHandler(async (event) => {
 
   if (!dbUser) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
+  }
+
+  // Clinicians may only read profiles for clients assigned to them.
+  if (isClinicianViewer && !isOwnProfile) {
+    if (dbUser.client?.clinicianUserId !== user.id) {
+      throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
+    }
   }
 
   if (!isClinicalClient(dbUser.role, dbUser.email)) {
@@ -298,7 +307,7 @@ export default defineEventHandler(async (event) => {
     hasPendingRequest: hasPendingRequest,
   }
 
-  if (hasAdminAccess || (isOwnProfile && legacyNotes)) {
+  if (hasAdminAccess || isClinicianViewer || (isOwnProfile && legacyNotes)) {
     sessionNotesAccess = {
       hasAccess: true,
       mode: 'full',
@@ -325,6 +334,7 @@ export default defineEventHandler(async (event) => {
 
   const showRawSessionNotes =
     hasAdminAccess ||
+    isClinicianViewer ||
     (isOwnProfile && legacyNotes) ||
     (isOwnProfile && latestApproved?.status === 'APPROVED' && latestApproved.requestKind === 'FULL')
 
@@ -346,7 +356,7 @@ export default defineEventHandler(async (event) => {
   }))
 
   const canViewScores =
-    hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewScores)
+    hasAdminAccess || isClinicianViewer || (isOwnProfile && clientProfile?.permissions?.canViewScores)
   const metrics = canViewScores
     ? tasks
         .filter((t) => t.submitted && (t.score != null || t.severity != null))
@@ -472,8 +482,9 @@ export default defineEventHandler(async (event) => {
       status: a.status,
     })),
     plan:
-      hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewPlan)
+      hasAdminAccess || isClinicianViewer || (isOwnProfile && clientProfile?.permissions?.canViewPlan)
         ? clientProfile?.plan
         : null,
+    clinicianUserId: clientProfile?.clinicianUserId ?? null,
   }
 })

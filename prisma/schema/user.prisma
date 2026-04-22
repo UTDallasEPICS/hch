@@ -1,5 +1,6 @@
 enum Role {
   ADMIN
+  CLINICIAN
   CLIENT
 }
 
@@ -30,6 +31,7 @@ model User {
 
   // Relations to other entities
   client                                Client?
+  assignedClients                       Client[]                               @relation("ClinicianClients")
   changeAudits                          ChangeAudit[]
   sessionNotesRequestsDecided           SessionNotesRequest[]
   appointmentsAsClient                  Appointment[]                          @relation("ClientAppointments")

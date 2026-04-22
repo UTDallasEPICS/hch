@@ -1,10 +1,14 @@
 <script setup lang="ts">
   import { useFormStore } from '~/stores/formStore'
 
-  const { data: adminData } = await useFetch<{ isAdmin: boolean }>('/api/users/me/is-admin', {
+  const { data: adminData } = await useFetch<{
+    isAdmin: boolean
+    isClinician: boolean
+    isStaff: boolean
+  }>('/api/users/me/is-admin', {
     getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
   })
-  if (adminData.value?.isAdmin) {
+  if (adminData.value?.isStaff) {
     await navigateTo('/', { replace: true })
   }
 

@@ -1,4 +1,5 @@
-import { requireAdmin } from '../../../utils/guard'
+import { requireStaff } from '../../../utils/guard'
+import { assertStaffCanAccessClient } from '../../../utils/clinician-access'
 import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { isClinicalClient } from '../../../utils/is-clinical-client'
@@ -19,7 +20,7 @@ function escapeHtml(s: string): string {
 }
 
 export default defineEventHandler(async (event) => {
-  requireAdmin(event)
+  requireStaff(event)
 
   if (!isEmailConfigured()) {
     throw createError({
@@ -32,6 +33,7 @@ export default defineEventHandler(async (event) => {
   if (!clientUserId) {
     throw createError({ statusCode: 400, statusMessage: 'Missing client id' })
   }
+  await assertStaffCanAccessClient(event, clientUserId)
 
   const body = await readBody<{ formKeys?: string[] }>(event)
   const formKeys = body?.formKeys

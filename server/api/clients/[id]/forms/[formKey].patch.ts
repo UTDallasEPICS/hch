@@ -1,4 +1,5 @@
 import { requireUser } from '../../../../utils/guard'
+import { assertStaffCanAccessClient } from '../../../../utils/clinician-access'
 import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { prisma } from '../../../../utils/prisma'
 import { isAdmin } from '../../../../utils/is-admin'
@@ -32,13 +33,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing client id or form key' })
   }
 
-  const currentUser = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { role: true, email: true },
-  })
-  if (!isAdmin(currentUser?.role ?? null, currentUser?.email ?? null)) {
-    throw createError({ statusCode: 403, statusMessage: 'Admin only' })
+  if (!event.context.isStaff) {
+    throw createError({ statusCode: 403, statusMessage: 'Staff only' })
   }
+  await assertStaffCanAccessClient(event, clientUserId)
 
   const body = await readBody<{ answers: { label: string; answer: string }[] }>(event)
   const answers = body?.answers ?? []

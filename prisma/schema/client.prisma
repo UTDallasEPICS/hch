@@ -11,13 +11,16 @@ model Client {
   status               ClientStatus          @default(INCOMPLETE)
   therapyWeek          Int? // 0-26, max weeks of therapy
   missedSessions       Int                   @default(0) // count of missed therapy sessions
+  clinicianUserId      String? // assigned clinician (optional)
   user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clinician            User?                 @relation("ClinicianClients", fields: [clinicianUserId], references: [id], onDelete: SetNull)
   permissions          ClientPermission?
   sessionNotes         SessionNote[]
   plan                 ClientPlan?
   sessionNotesRequests SessionNotesRequest[]
 
   @@index([status])
+  @@index([clinicianUserId])
   @@map("client")
 }
 

@@ -1,4 +1,5 @@
 import { requireUser } from '../../../../../utils/guard'
+import { assertStaffCanAccessClient } from '../../../../../utils/clinician-access'
 import { createError, defineEventHandler, getRouterParam } from 'h3'
 import { prisma } from '../../../../../utils/prisma'
 import { isAdmin } from '../../../../../utils/is-admin'
@@ -37,8 +38,12 @@ export default defineEventHandler(async (event) => {
   const email = currentUser?.email ?? user.email ?? null
   const isOwnProfile = user.id === clientUserId
   const hasAdminAccess = isAdmin(currentUser?.role ?? null, email)
-  if (!isOwnProfile && !hasAdminAccess) {
-    throw createError({ statusCode: 403, statusMessage: 'Admin only' })
+  const isClinicianViewer = !hasAdminAccess && event.context.isClinician === true
+  if (!isOwnProfile && !hasAdminAccess && !isClinicianViewer) {
+    throw createError({ statusCode: 403, statusMessage: 'Staff only' })
+  }
+  if (isClinicianViewer && !isOwnProfile) {
+    await assertStaffCanAccessClient(event, clientUserId)
   }
 
   const dbUser = await prisma.user.findFirst({

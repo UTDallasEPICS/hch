@@ -1,4 +1,4 @@
-import { requireAdmin } from '../../utils/guard'
+import { requireStaff } from '../../utils/guard'
 import { defineEventHandler } from 'h3'
 import { prisma } from '../../utils/prisma'
 import {
@@ -7,12 +7,16 @@ import {
 } from '../../utils/declaration-templates'
 
 export default defineEventHandler(async (event) => {
-  requireAdmin(event)
+  const user = requireStaff(event)
+  const isClinicianViewer = event.context.isClinician === true && !event.context.isAdmin
 
   await ensureDefaultDeclarationTemplates(prisma)
 
   const pending = await prisma.sessionNotesRequest.findMany({
-    where: { status: 'PENDING' },
+    where: {
+      status: 'PENDING',
+      ...(isClinicianViewer ? { client: { clinicianUserId: user.id } } : {}),
+    },
     include: {
       declarationTemplate: true,
       client: {

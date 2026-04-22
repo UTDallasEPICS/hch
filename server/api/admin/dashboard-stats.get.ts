@@ -2,7 +2,7 @@ import { createError, defineEventHandler, getHeaders } from 'h3'
 import { auth } from '../../utils/auth'
 import { formatStoredUserNameForDisplay } from '../../utils/name'
 import { prisma } from '../../utils/prisma'
-import { isAdmin } from '../../utils/is-admin'
+import { isAdmin, isClinician, isStaff } from '../../utils/is-admin'
 
 const CLINICAL_STATUS_LABEL: Record<string, string> = {
   INCOMPLETE: 'Pre-waitlist',
@@ -40,17 +40,28 @@ export default defineEventHandler(async (event) => {
     where: { id: session.user.id },
     select: { role: true, email: true, name: true },
   })
-  if (!isAdmin(currentUser?.role ?? null, currentUser?.email ?? null)) {
+  const hasAdminAccess = isAdmin(currentUser?.role ?? null, currentUser?.email ?? null)
+  const isClinicianViewer =
+    !hasAdminAccess && isClinician(currentUser?.role ?? null)
+  if (!isStaff(currentUser?.role ?? null, currentUser?.email ?? null)) {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 
   const displayName = currentUser ? welcomeDisplayName(currentUser) : 'there'
 
+  // Admins see global counts; clinicians see counts scoped to their assigned clients.
+  const clientWhere = isClinicianViewer ? { clinicianUserId: session.user.id } : {}
+  const pendingWhere = isClinicianViewer
+    ? { status: 'PENDING' as const, client: { clinicianUserId: session.user.id } }
+    : { status: 'PENDING' as const }
+
   const [userCount, clientCount, pendingSessionNotesRequests, viewerClient] =
     await prisma.$transaction([
-      prisma.user.count(),
-      prisma.client.count(),
-      prisma.sessionNotesRequest.count({ where: { status: 'PENDING' } }),
+      isClinicianViewer
+        ? prisma.user.count({ where: { client: { clinicianUserId: session.user.id } } })
+        : prisma.user.count(),
+      prisma.client.count({ where: clientWhere }),
+      prisma.sessionNotesRequest.count({ where: pendingWhere }),
       prisma.client.findUnique({
         where: { userId: session.user.id },
         select: { status: true },
@@ -59,7 +70,9 @@ export default defineEventHandler(async (event) => {
 
   const statusLabel = viewerClient
     ? CLINICAL_STATUS_LABEL[viewerClient.status] ?? viewerClient.status
-    : 'Administrator'
+    : isClinicianViewer
+      ? 'Clinician'
+      : 'Administrator'
 
   return {
     userCount,
