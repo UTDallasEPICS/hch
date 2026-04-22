@@ -1191,7 +1191,7 @@
                   <!-- Changes will be saved as a new version • Reason required -->
                   <!-- </p> -->
                 </div>
-                <UButtonGroup v-if="!isEditingPreviousPanel">
+                <UFieldGroup v-if="!isEditingPreviousPanel">
                   <UButton
                     :color="!isAbsent ? 'success' : 'neutral'"
                     :variant="!isAbsent ? 'solid' : 'outline'"
@@ -1208,7 +1208,7 @@
                     :disabled="!canMarkAttendance"
                     @click="isAbsent = true"
                   />
-                </UButtonGroup>
+                </UFieldGroup>
               </div>
 
               <NotesToolbar
