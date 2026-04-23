@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
     ])
 
   const statusLabel = viewerClient
-    ? CLINICAL_STATUS_LABEL[viewerClient.status] ?? viewerClient.status
+    ? (CLINICAL_STATUS_LABEL[viewerClient.status] ?? viewerClient.status)
     : 'Administrator'
 
   return {

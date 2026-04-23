@@ -18,6 +18,22 @@
     severity?: string | null
   }
 
+  type ClientProfile = {
+    id: string
+    fname?: string | null
+    lname?: string | null
+    name?: string | null
+    email?: string | null
+    status: ClientStatus
+    therapyWeek: number | null
+    missedSessions: number
+    tasks: Task[]
+    metrics?: Metric[]
+    permissions?: Permissions
+    sessionNotes?: SessionNote[]
+    plan?: ClientPlan
+  }
+
   type Permissions = {
     canViewScores: boolean
     canViewNotes: boolean
@@ -35,7 +51,7 @@
     pending,
     error,
     refresh,
-  } = await useFetch(() => `/api/clients/${clientId.value}/profile`, {
+  } = await useFetch<ClientProfile>(() => `/api/clients/${clientId.value}/profile`, {
     key: `client-profile-${clientId.value}`,
     watch: [clientId],
     getCachedData: () => undefined,
@@ -153,6 +169,13 @@
       addingNote.value = false
     }
   }
+
+  // Admin check
+  const { data: adminData } = await useFetch<{ isAdmin: boolean }>('/api/users/me/is-admin', {
+    getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
+    default: () => ({ isAdmin: false }),
+  })
+  const isAdmin = computed(() => adminData.value?.isAdmin ?? false)
 
   // Absences counter
   const absencesEditing = ref(false)
@@ -424,6 +447,15 @@
             :loading="addingNote"
             :disabled="!newNoteContent.trim()"
             @click="addNote"
+          />
+        </div>
+        <div v-if="isAdmin" class="mb-4">
+          <UButton
+            label="View client metrics"
+            color="neutral"
+            variant="outline"
+            icon="i-heroicons-chart-bar"
+            :to="`/clients/metrics?clientId=${clientId}`"
           />
         </div>
         <div v-if="profile.sessionNotes?.length" class="space-y-3">

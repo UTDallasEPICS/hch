@@ -32,13 +32,50 @@
       sessionNotes?: SessionNoteRow[]
       initialFocusNoteId?: string | null
       backHref?: string
+      /** When set (e.g. admin notes editor), header shows a client switcher; notes/forms use `client.id`. */
+      clientPickerOptions?: { id: string; label: string }[]
+      /** Where the picker navigates: `/clients/[id]/notes-editor` vs `/notes-test?client=[id]`. */
+      clientPickerMode?: 'notes-editor' | 'notes-test'
     }>(),
     {
       sessionNotes: () => [],
       initialFocusNoteId: null,
       backHref: '/taskPage',
+      clientPickerOptions: () => [],
+      clientPickerMode: 'notes-editor',
     }
   )
+
+  const route = useRoute()
+  const router = useRouter()
+
+  const clientPickerSelectItems = computed(() => {
+    const items = props.clientPickerOptions.map((c) => ({ label: c.label, value: c.id }))
+    if (items.length > 0 && !items.some((i) => i.value === props.client.id)) {
+      items.unshift({ label: props.client.name, value: props.client.id })
+    }
+    return items
+  })
+
+  const selectedClientPickerId = computed({
+    get: () => props.client.id,
+    set: (id: string) => {
+      if (!id || id === props.client.id) return
+      // Full page load so editor state / fetches always match the selected client (SPA-only
+      // navigate can leave stale UI when only the query changes on the same path).
+      const resolved =
+        props.clientPickerMode === 'notes-test'
+          ? router.resolve({
+              path: '/notes-test',
+              query: { ...route.query, client: id },
+            })
+          : router.resolve({
+              path: `/clients/${id}/notes-editor`,
+              query: { ...route.query },
+            })
+      window.location.assign(resolved.href)
+    },
+  })
 
   const sidebarOpen = ref(true)
 
@@ -172,6 +209,67 @@
   const signature = ref('')
   const selectedForm = ref<string | null>(null)
   const sidebarTab = ref<'notes' | 'forms'>('notes')
+
+  /** Display labels from notes-editor-data `FORM_LABELS` — must stay in sync with that API. */
+  const FORM_LABEL_TO_KEY: Record<string, string> = {
+    Application: 'application',
+    ACE: 'ace',
+    'GAD-7': 'gad',
+    'PHQ-9': 'phq',
+    'PCL-5': 'pcl',
+  }
+
+  type FormPreviewPayload = {
+    formKey: string
+    formName: string
+    questions: { label: string; answer: string }[]
+    submitted?: boolean
+    submittedAt?: string
+    completedAt?: string
+    score?: number | null
+    severity?: string | null
+  }
+
+  const formPreviewData = ref<FormPreviewPayload | null>(null)
+  const formPreviewPending = ref(false)
+  const formPreviewError = ref<string | null>(null)
+  let formPreviewSeq = 0
+
+  watch(selectedForm, async (label) => {
+    if (!label) {
+      formPreviewData.value = null
+      formPreviewError.value = null
+      formPreviewPending.value = false
+      return
+    }
+    const formKey = FORM_LABEL_TO_KEY[label]
+    if (!formKey) {
+      formPreviewError.value = 'Unknown form.'
+      formPreviewData.value = null
+      formPreviewPending.value = false
+      return
+    }
+    const seq = ++formPreviewSeq
+    formPreviewPending.value = true
+    formPreviewError.value = null
+    formPreviewData.value = null
+    try {
+      const data = await $fetch<FormPreviewPayload>(
+        `/api/clients/${props.client.id}/forms/${formKey}`
+      )
+      if (seq !== formPreviewSeq) return
+      formPreviewData.value = data
+    } catch (e: unknown) {
+      if (seq !== formPreviewSeq) return
+      formPreviewData.value = null
+      formPreviewError.value =
+        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ??
+        (e as Error)?.message ??
+        'Could not load form data.'
+    } finally {
+      if (seq === formPreviewSeq) formPreviewPending.value = false
+    }
+  })
 
   const isEditingPreviousPanel = ref(false)
   const editingNoteId = ref<number | null>(null)
@@ -562,9 +660,20 @@
           @click="sidebarOpen = false"
         />
         <!-- </div> -->
-        <div class="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
-          <UIcon name="i-heroicons-user-circle" class="h-5 w-5 text-gray-400" />
-          <span>{{ client.name }}</span>
+        <div
+          class="flex min-w-0 flex-1 items-center justify-center gap-2 px-2 text-lg font-semibold text-gray-900 dark:text-white"
+        >
+          <UIcon name="i-heroicons-user-circle" class="h-5 w-5 shrink-0 text-gray-400" />
+          <USelect
+            v-if="clientPickerOptions.length > 0"
+            v-model="selectedClientPickerId"
+            :items="clientPickerSelectItems"
+            value-key="value"
+            :placeholder="client.name"
+            size="md"
+            class="min-w-0 w-full max-w-xs"
+          />
+          <span v-else class="truncate">{{ client.name }}</span>
         </div>
         <UButton
           icon="i-heroicons-x-mark"
@@ -911,20 +1020,80 @@
           <!-- Form Details -->
           <div
             v-if="selectedForm"
-            class="w-64 flex-shrink-0 border-l border-gray-200 px-6 py-4 dark:border-gray-800"
+            class="flex w-full max-w-md min-w-0 flex-shrink-0 flex-col border-l border-gray-200 dark:border-gray-800 md:max-h-screen md:w-96"
           >
-            <div class="mb-3 flex items-center justify-between">
+            <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
               <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
                 {{ selectedForm }}
               </h2>
               <button
+                type="button"
                 @click="selectedForm = null"
-                class="text-lg font-bold text-gray-400 hover:text-gray-600"
+                class="text-lg leading-none font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                title="Close"
               >
                 ×
               </button>
             </div>
-            <p class="text-sm text-gray-500 dark:text-gray-400">Form details will appear here.</p>
+            <div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+              <div v-if="formPreviewPending" class="flex justify-center py-8">
+                <UIcon
+                  name="i-heroicons-arrow-path"
+                  class="h-8 w-8 animate-spin text-primary-500"
+                />
+              </div>
+              <UAlert
+                v-else-if="formPreviewError"
+                color="error"
+                variant="subtle"
+                icon="i-heroicons-exclamation-triangle-20-solid"
+                :title="formPreviewError"
+                description="Try again or open the client profile to view form answers."
+              />
+              <div v-else-if="formPreviewData" class="space-y-3">
+                <p
+                  v-if="formPreviewData.submitted != null"
+                  class="text-xs text-gray-500 dark:text-gray-400"
+                >
+                  {{ formPreviewData.submitted ? 'Submitted' : 'Not submitted' }}
+                  <span
+                    v-if="formPreviewData.submittedAt || formPreviewData.completedAt"
+                    class="text-gray-400"
+                  >
+                    ·
+                    {{
+                      new Date(
+                        formPreviewData.completedAt ?? formPreviewData.submittedAt ?? ''
+                      ).toLocaleString('en-US')
+                    }}
+                  </span>
+                </p>
+                <div
+                  v-if="formPreviewData.score != null || formPreviewData.severity"
+                  class="flex flex-wrap gap-2 text-sm"
+                >
+                  <span v-if="formPreviewData.score != null" class="font-medium text-gray-900 dark:text-white">
+                    Score: {{ formPreviewData.score }}
+                  </span>
+                  <span v-if="formPreviewData.severity" class="text-gray-600 dark:text-gray-400">
+                    {{ formPreviewData.severity }}
+                  </span>
+                </div>
+                <div v-if="formPreviewData.questions?.length" class="space-y-2">
+                  <div
+                    v-for="(q, i) in formPreviewData.questions"
+                    :key="i"
+                    class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-800/80"
+                  >
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ q.label }}</p>
+                    <p class="mt-1 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+                      {{ q.answer || '—' }}
+                    </p>
+                  </div>
+                </div>
+                <p v-else class="text-sm text-gray-500 dark:text-gray-400">No answers yet.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

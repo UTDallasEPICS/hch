@@ -1,6 +1,7 @@
 import { createError, defineEventHandler, getHeaders } from 'h3'
 import { auth } from '../../utils/auth'
 import { formatStoredUserNameForDisplay } from '../../utils/name'
+import { isAppointmentTableMissingError } from '../../utils/is-appointment-table-error'
 import { prisma } from '../../utils/prisma'
 import { isAdmin } from '../../utils/is-admin'
 
@@ -161,6 +162,7 @@ export default defineEventHandler(async (event) => {
       therapyWeekDisplay: '—',
       formsProgressDisplay: '—',
       pendingSessionNotesRequests: 0,
+      upcomingAppointments: [],
     }
   }
 
@@ -195,6 +197,50 @@ export default defineEventHandler(async (event) => {
     where: { clientId: client.id, status: 'PENDING' },
   })
 
+  let upcomingAppointments: {
+    id: string
+    title: string
+    startTime: string
+    endTime: string
+    videoProvider: string | null
+    videoJoinUrl: string | null
+  }[] = []
+
+  try {
+    const now = new Date()
+    const upcomingRows = await prisma.appointment.findMany({
+      where: {
+        clientId: session.user.id,
+        status: 'SCHEDULED',
+        startTime: { gte: now },
+      },
+      orderBy: { startTime: 'asc' },
+      take: 8,
+      select: {
+        id: true,
+        title: true,
+        startTime: true,
+        endTime: true,
+        videoProvider: true,
+        videoJoinUrl: true,
+      },
+    })
+
+    upcomingAppointments = upcomingRows.map((a) => ({
+      id: a.id,
+      title: a.title,
+      startTime: a.startTime.toISOString(),
+      endTime: a.endTime.toISOString(),
+      videoProvider: a.videoProvider,
+      videoJoinUrl: a.videoJoinUrl,
+    }))
+  } catch (e: unknown) {
+    // P2021 / adapter-wrapped: Appointment table missing (migrations not applied).
+    if (!isAppointmentTableMissingError(e)) {
+      throw e
+    }
+  }
+
   return {
     displayName,
     clientDisplayName,
@@ -203,5 +249,6 @@ export default defineEventHandler(async (event) => {
     therapyWeekDisplay,
     formsProgressDisplay,
     pendingSessionNotesRequests,
+    upcomingAppointments,
   }
 })

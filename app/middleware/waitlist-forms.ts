@@ -1,6 +1,6 @@
 type ClientStatus = 'Prospective' | 'Waitlist' | 'Active' | 'Archived'
 
-function isWaitlistOnlyRoute(path: string) {
+function isRestrictedFormRoute(path: string) {
   return (
     path === '/forms/gad' ||
     path === '/forms/phq' ||
@@ -12,18 +12,44 @@ function isWaitlistOnlyRoute(path: string) {
   )
 }
 
+const DOCUMENT_PATHS = new Set([
+  '/forms/physician-statement',
+  '/forms/release-of-information-authorization',
+])
+
+const CLINICAL_ASSESSMENT_PATHS = new Set([
+  '/forms/gad',
+  '/forms/phq',
+  '/forms/pcl',
+  '/forms/ace-form',
+  '/forms/ace-form-results',
+])
+
 export default defineNuxtRouteMiddleware(async (to) => {
-  if (!isWaitlistOnlyRoute(to.path)) return
+  if (!isRestrictedFormRoute(to.path)) return
 
   try {
     const data = await $fetch<{ status: ClientStatus }>('/api/users/me/client-status')
-    const canAccessDocumentTasks =
-      (to.path === '/forms/physician-statement' ||
-        to.path === '/forms/release-of-information-authorization') &&
-      (data.status === 'Prospective' || data.status === 'Waitlist')
-    if (!canAccessDocumentTasks && data.status !== 'Waitlist') {
+
+    // Physician statement & ROI: prospective, waitlist, and active clients may open these pages.
+    if (DOCUMENT_PATHS.has(to.path)) {
+      if (
+        data.status === 'Prospective' ||
+        data.status === 'Waitlist' ||
+        data.status === 'Active'
+      ) {
+        return
+      }
       return navigateTo('/taskPage')
     }
+
+    // ACE, GAD, PHQ, PCL — waitlist and active clients on the tasks page.
+    if (CLINICAL_ASSESSMENT_PATHS.has(to.path)) {
+      if (data.status === 'Waitlist' || data.status === 'Active') return
+      return navigateTo('/taskPage')
+    }
+
+    return navigateTo('/taskPage')
   } catch {
     return navigateTo('/taskPage')
   }

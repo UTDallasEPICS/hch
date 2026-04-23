@@ -374,11 +374,11 @@ export default defineEventHandler(async (event) => {
   }
 
   return {
-    id: user.id,
+    id: dbUser.id,
     fname,
     lname,
     name: dbUser.name,
-    email: user.email,
+    email: dbUser.email,
     status: (clientProfile?.status ?? 'INCOMPLETE') as ClientStatus,
     therapyWeek: clientProfile?.therapyWeek ?? null,
     missedSessions: clientProfile?.missedSessions ?? 0,

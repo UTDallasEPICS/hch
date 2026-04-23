@@ -8,9 +8,11 @@
     fname?: string | null
     lname?: string | null
     name?: string | null
+    email?: string | null
     status: ClientStatus
     therapyWeek: number | null
     missedSessions: number
+    incompleteForms?: string[]
     permissions: {
       canViewScores: boolean
       canViewNotes: boolean
@@ -114,6 +116,70 @@
     severity?: string | null
   } | null>(null)
   const formAnswersLoading = ref(false)
+  const sendingFormKey = ref<string | null>(null)
+  const sendingIncompleteLinks = ref(false)
+
+  /** ACE, GAD-7, PHQ-9, PCL-5 only — matches server send-form-links (resets answers when emailing). */
+  const SENDABLE_EMAIL_TASK_KEYS = new Set(['ace', 'gad', 'phq', 'pcl'])
+
+  function canSendFormEmail(key: string) {
+    return SENDABLE_EMAIL_TASK_KEYS.has(key)
+  }
+
+  const incompleteSendableKeys = computed(() =>
+    (profile.value?.incompleteForms ?? []).filter((k) => SENDABLE_EMAIL_TASK_KEYS.has(k))
+  )
+
+  async function sendFormLink(formKey: string) {
+    if (!props.clientId || !canSendFormEmail(formKey)) return
+    sendingFormKey.value = formKey
+    try {
+      await $fetch(`/api/clients/${props.clientId}/send-form-links`, {
+        method: 'POST',
+        body: { formKeys: [formKey] },
+      })
+      toast.add({
+        title: 'Email sent',
+        description: profile.value?.email
+          ? `Link sent to ${profile.value.email}. Their saved answers for this assessment were cleared.`
+          : 'Form link sent; saved answers for this assessment were cleared.',
+        color: 'success',
+      })
+      await refresh()
+      emit('refreshed')
+    } catch (e: unknown) {
+      const msg =
+        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to send email'
+      toast.add({ title: 'Error', description: msg, color: 'error' })
+    } finally {
+      sendingFormKey.value = null
+    }
+  }
+
+  async function sendIncompleteFormLinks() {
+    const keys = incompleteSendableKeys.value
+    if (!props.clientId || !keys.length) return
+    sendingIncompleteLinks.value = true
+    try {
+      await $fetch(`/api/clients/${props.clientId}/send-form-links`, {
+        method: 'POST',
+        body: { formKeys: keys },
+      })
+      toast.add({
+        title: 'Email sent',
+        description: `Sent ${keys.length} link(s)${profile.value?.email ? ` to ${profile.value.email}` : ''}. Saved answers for those assessments were cleared.`,
+        color: 'success',
+      })
+      await refresh()
+      emit('refreshed')
+    } catch (e: unknown) {
+      const msg =
+        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to send email'
+      toast.add({ title: 'Error', description: msg, color: 'error' })
+    } finally {
+      sendingIncompleteLinks.value = false
+    }
+  }
 
   async function toggleFormAnswers(formKey: string) {
     if (expandedFormKey.value === formKey) {
@@ -430,34 +496,78 @@
             Client Tasks
           </h3>
           <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-            Click a form to view the client's answers.
+            Click a form to view the client's answers. For ACE, GAD-7, PHQ-9, and PCL-5, use Email link
+            to send a portal link and clear their saved answers so they start fresh. Application,
+            physician statement, and ROI cannot be sent from here.
           </p>
+          <div
+            v-if="incompleteSendableKeys.length"
+            class="mb-3 flex flex-wrap items-center gap-2"
+          >
+            <UButton
+              size="xs"
+              color="primary"
+              variant="soft"
+              icon="i-heroicons-envelope"
+              label="Email links for incomplete clinical assessments"
+              :loading="sendingIncompleteLinks"
+              :disabled="!!sendingFormKey"
+              @click="sendIncompleteFormLinks()"
+            />
+          </div>
           <div class="space-y-1">
             <div
               v-for="task in profile.tasks"
               :key="task.key"
               class="rounded border border-gray-200 dark:border-gray-700"
             >
-              <button
-                type="button"
-                class="flex w-full items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                @click="toggleFormAnswers(task.key)"
+              <div
+                class="flex w-full flex-wrap items-center gap-2 border-b border-gray-100 px-3 py-2 dark:border-gray-800 sm:flex-nowrap sm:justify-between"
               >
-                <span class="font-medium">{{ task.name }}</span>
-                <span class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                  {{ task.submitted ? 'Submitted' : `${task.answered}/${task.total}` }}
-                  <span v-if="task.submitted && task.score != null"> • {{ task.score }}</span>
-                  <span v-if="task.submitted && task.severity"> • {{ task.severity }}</span>
-                  <UIcon
-                    :name="
-                      expandedFormKey === task.key
-                        ? 'i-heroicons-chevron-up'
-                        : 'i-heroicons-chevron-down'
-                    "
-                    class="h-4 w-4 shrink-0"
+                <button
+                  type="button"
+                  class="min-w-0 flex-1 text-left transition-colors hover:opacity-90"
+                  @click="toggleFormAnswers(task.key)"
+                >
+                  <span class="font-medium">{{ task.name }}</span>
+                  <span
+                    class="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+                  >
+                    {{ task.submitted ? 'Submitted' : `${task.answered}/${task.total}` }}
+                    <span v-if="task.submitted && task.score != null"> • {{ task.score }}</span>
+                    <span v-if="task.submitted && task.severity"> • {{ task.severity }}</span>
+                  </span>
+                </button>
+                <div class="flex shrink-0 items-center gap-2">
+                  <UButton
+                    v-if="canSendFormEmail(task.key)"
+                    size="xs"
+                    color="neutral"
+                    variant="soft"
+                    icon="i-heroicons-envelope"
+                    label="Email link"
+                    :loading="sendingFormKey === task.key"
+                    :disabled="sendingIncompleteLinks || (sendingFormKey !== null && sendingFormKey !== task.key)"
+                    @click.stop="sendFormLink(task.key)"
                   />
-                </span>
-              </button>
+                  <button
+                    type="button"
+                    class="rounded p-1 text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+                    :aria-expanded="expandedFormKey === task.key"
+                    aria-label="Expand answers"
+                    @click="toggleFormAnswers(task.key)"
+                  >
+                    <UIcon
+                      :name="
+                        expandedFormKey === task.key
+                          ? 'i-heroicons-chevron-up'
+                          : 'i-heroicons-chevron-down'
+                      "
+                      class="h-4 w-4 shrink-0"
+                    />
+                  </button>
+                </div>
+              </div>
               <div
                 v-if="expandedFormKey === task.key"
                 class="border-t border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"

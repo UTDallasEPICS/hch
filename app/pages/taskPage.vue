@@ -17,14 +17,15 @@
   })
   const userStatus = computed(() => statusData.value?.status ?? 'INCOMPLETE')
 
-  const { data: profile, refresh: refreshProfile } = await useFetch(
-    () => `/api/clients/${statusData.value?.userId}/profile`,
-    {
-      key: () => `client-profile-${statusData.value?.userId ?? 'none'}`,
-      watch: [() => statusData.value?.userId],
-      getCachedData: () => undefined,
-    }
-  )
+  const {
+    data: profile,
+    pending: profilePending,
+    refresh: refreshProfile,
+  } = await useFetch(() => `/api/clients/${statusData.value?.userId}/profile`, {
+    key: () => `client-profile-${statusData.value?.userId ?? 'none'}`,
+    watch: [() => statusData.value?.userId],
+    getCachedData: () => undefined,
+  })
   const { parse: parseMarkdown } = useMarkdown()
   const toast = useToast()
 
@@ -69,6 +70,9 @@
   )
 
   const hasClient = computed(() => Boolean(statusData.value?.hasClient && statusData.value?.userId))
+  const canViewTasks = computed(
+    () => Boolean(statusData.value?.userId) && (isPreWaitlist.value || isWaitlist.value)
+  )
 
   const sessionNotesRequestModalOpen = ref(false)
   const sessionNotesRequestSubmitting = ref(false)
@@ -163,10 +167,6 @@
     return task.answered === task.total && task.total > 0
   })
 
-  const aceTarget = computed(() =>
-    getTask('ace').submitted ? '/forms/ace-form-results' : '/forms/ace-form'
-  )
-
   const applicationPhoneValid = computed(() => {
     const digits = (form.value?.q5 || '').replace(/\D/g, '')
     return digits.length === 10
@@ -205,6 +205,114 @@
         severity: null,
       }
     )
+  }
+
+  const tasksFromProfile = computed(
+    () =>
+      (profile.value?.tasks ?? []) as {
+        key: string
+        name: string
+        to: string
+        answered: number
+        total: number
+        submitted: boolean
+        score?: number | null
+        severity?: string | null
+      }[]
+  )
+
+  const visibleTasks = computed(() => {
+    if (isPreWaitlist.value) {
+      return tasksFromProfile.value.filter((task) => isEnrollmentTaskKey(task.key))
+    }
+    return tasksFromProfile.value
+  })
+
+  const tasksBadgeColor = computed(() => {
+    if (isPreWaitlist.value) return 'warning' as const
+    if (isWaitlist.value) return 'primary' as const
+    if (isActive.value) return 'success' as const
+    return 'neutral' as const
+  })
+
+  const tasksIntro = computed(() => {
+    if (isPreWaitlist.value) {
+      return 'Complete the application and required documents. Every form below opens in the app—the same pages as the links in email reminders from your care team.'
+    }
+    if (isWaitlist.value) {
+      return 'Complete each clinical assessment while you wait. All forms are listed below; open any link to continue or review.'
+    }
+    if (isActive.value) {
+      return 'Clinical assessments for your care. Open any form below—the same in-app pages as in email reminders.'
+    }
+    return 'Your forms and documents are listed below. Open a link anytime to continue or review, with or without an email reminder.'
+  })
+
+  function isEnrollmentTaskKey(key: string) {
+    return (
+      key === 'application' ||
+      key === 'physicianStatement' ||
+      key === 'releaseOfInformationAuthorization'
+    )
+  }
+
+  function formatTaskProgress(task: {
+    key: string
+    answered: number
+    total: number
+    submitted: boolean
+    score?: number | null
+    severity?: string | null
+  }): string {
+    if (task.key === 'physicianStatement' || task.key === 'releaseOfInformationAuthorization') {
+      return task.submitted ? 'Submitted' : 'Pending'
+    }
+    if (task.submitted) {
+      if (
+        task.key === 'gad' &&
+        permissions.value.canViewScores &&
+        task.score != null &&
+        task.severity
+      ) {
+        return `Submitted • ${task.severity}`
+      }
+      return 'Submitted'
+    }
+    return `${task.answered}/${task.total}`
+  }
+
+  function showSubmitFor(key: string) {
+    switch (key) {
+      case 'application':
+        return showApplicationSubmit.value
+      case 'ace':
+        return showAceSubmit.value
+      case 'gad':
+        return showGadSubmit.value
+      case 'phq':
+        return showPhqSubmit.value
+      case 'pcl':
+        return showPclSubmit.value
+      default:
+        return false
+    }
+  }
+
+  function submitForTaskKey(key: string) {
+    switch (key) {
+      case 'application':
+        return submitApplication()
+      case 'ace':
+        return submitAce()
+      case 'gad':
+        return submitGad()
+      case 'phq':
+        return submitPhq()
+      case 'pcl':
+        return submitPcl()
+      default:
+        break
+    }
   }
 
   async function submitApplication() {
@@ -340,14 +448,6 @@
     }
   }
 
-  async function handlePhysicianStatement() {
-    await navigateTo('/forms/physician-statement')
-  }
-
-  async function handleReleaseOfInfo() {
-    await navigateTo('/forms/release-of-information-authorization')
-  }
-
   onMounted(async () => {
     try {
       await refreshProfile()
@@ -359,110 +459,17 @@
 
 <template>
   <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-    <!-- Pre-waitlist: Application + 2 buttons -->
-    <template v-if="isPreWaitlist">
+    <!-- All client statuses: same form list as `/api/clients/:id/profile` (matches email reminder links) -->
+    <template v-if="canViewTasks && visibleTasks.length">
       <div class="mb-8">
         <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
           Tasks to Complete
         </h1>
-        <UBadge class="mt-2" color="warning" variant="soft" size="md">
+        <UBadge class="mt-2" :color="tasksBadgeColor" variant="soft" size="md">
           Your status: {{ statusLabel }}
         </UBadge>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Complete the application form and provide the required documents.
-        </p>
-      </div>
-      <div
-        class="mb-6 flex items-center justify-between px-1 text-sm font-medium text-black dark:text-white"
-      >
-        <span>Form</span>
-        <span>Progress</span>
-      </div>
-
-      <!-- Application Form -->
-      <div
-        class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
-      >
-        <NuxtLink
-          to="/forms/application"
-          class="hover:text-primary-600 dark:hover:text-primary-400 min-w-0 flex-1 font-semibold text-black dark:text-white"
-        >
-          Application Form
-        </NuxtLink>
-        <div class="flex shrink-0 items-center gap-3">
-          <span class="text-sm text-gray-600 dark:text-gray-400">
-            {{
-              getTask('application').submitted
-                ? 'Submitted'
-                : `${getTask('application').answered}/${getTask('application').total}`
-            }}
-          </span>
-          <UButton
-            v-if="showApplicationSubmit"
-            label="Submit"
-            color="primary"
-            variant="solid"
-            size="sm"
-            :loading="submittingForm === 'application'"
-            @click="submitApplication"
-          />
-        </div>
-      </div>
-
-      <!-- Physician Statement Form -->
-      <div
-        class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
-      >
-        <span class="min-w-0 flex-1 font-semibold text-black dark:text-white">
-          Provide Physician Statement Form
-        </span>
-        <div class="flex shrink-0 items-center gap-3">
-          <span class="text-sm text-gray-600 dark:text-gray-400">
-            {{ getTask('physicianStatement').submitted ? 'Submitted' : 'Pending' }}
-          </span>
-          <UButton
-            :label="getTask('physicianStatement').submitted ? 'View' : 'Provide'"
-            :color="getTask('physicianStatement').submitted ? 'success' : 'primary'"
-            variant="soft"
-            size="sm"
-            @click="handlePhysicianStatement"
-          />
-        </div>
-      </div>
-
-      <!-- Release of Information Authorization Form -->
-      <div
-        class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
-      >
-        <span class="min-w-0 flex-1 font-semibold text-black dark:text-white">
-          Provide Release of Information Authorization Form
-        </span>
-        <div class="flex shrink-0 items-center gap-3">
-          <span class="text-sm text-gray-600 dark:text-gray-400">
-            {{ getTask('releaseOfInformationAuthorization').submitted ? 'Submitted' : 'Pending' }}
-          </span>
-          <UButton
-            :label="getTask('releaseOfInformationAuthorization').submitted ? 'View' : 'Provide'"
-            :color="getTask('releaseOfInformationAuthorization').submitted ? 'success' : 'primary'"
-            variant="soft"
-            size="sm"
-            @click="handleReleaseOfInfo"
-          />
-        </div>
-      </div>
-    </template>
-
-    <!-- Waitlist: all tasks (pre-waitlist completed + clinical assessments) -->
-    <template v-else-if="isWaitlist">
-      <div class="mb-8">
-        <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
-          Tasks to Complete
-        </h1>
-        <UBadge class="mt-2" color="primary" variant="soft" size="md">
-          Your status: {{ statusLabel }}
-        </UBadge>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Complete each clinical assessment form while you wait for a spot to open.
+          {{ tasksIntro }}
         </p>
       </div>
       <div
@@ -472,225 +479,59 @@
         <span>Progress</span>
       </div>
 
-      <!-- Completed pre-waitlist tasks (read-only) -->
-      <div
-        class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 opacity-60 dark:border-gray-700 dark:bg-gray-900"
-      >
-        <NuxtLink
-          to="/forms/application"
-          class="hover:text-primary-600 dark:hover:text-primary-400 min-w-0 flex-1 font-semibold text-black dark:text-white"
+      <template v-for="task in visibleTasks" :key="task.key">
+        <div
+          v-if="task.key === 'ace' && (isWaitlist || isPreWaitlist)"
+          class="mt-8 mb-2 px-1 text-sm font-medium text-black dark:text-white"
         >
-          Application Form
-        </NuxtLink>
-        <div class="flex shrink-0 items-center gap-3">
-          <UBadge color="success" variant="subtle" size="sm">Submitted</UBadge>
+          Clinical assessments
         </div>
-      </div>
-
-      <div
-        class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 opacity-60 dark:border-gray-700 dark:bg-gray-900"
-      >
-        <NuxtLink
-          to="/forms/physician-statement"
-          class="hover:text-primary-600 dark:hover:text-primary-400 min-w-0 flex-1 font-semibold text-black dark:text-white"
+        <div
+          class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
+          :class="isWaitlist && isEnrollmentTaskKey(task.key) && task.submitted ? 'opacity-60' : ''"
         >
-          Provide Physician Statement Form
-        </NuxtLink>
-        <div class="flex shrink-0 items-center gap-3">
-          <UBadge color="success" variant="subtle" size="sm">Submitted</UBadge>
+          <NuxtLink
+            :to="task.to"
+            class="hover:text-primary-600 dark:hover:text-primary-400 min-w-0 flex-1 font-semibold text-black dark:text-white"
+          >
+            {{ task.name }}
+          </NuxtLink>
+          <div class="flex shrink-0 items-center gap-3">
+            <span class="text-sm text-gray-600 dark:text-gray-400">
+              {{ formatTaskProgress(task) }}
+            </span>
+            <UButton
+              v-if="showSubmitFor(task.key)"
+              label="Submit"
+              color="primary"
+              variant="solid"
+              size="sm"
+              :loading="submittingForm === task.key"
+              @click="submitForTaskKey(task.key)"
+            />
+          </div>
         </div>
-      </div>
+      </template>
+    </template>
 
-      <div
-        class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 opacity-60 dark:border-gray-700 dark:bg-gray-900"
-      >
-        <NuxtLink
-          to="/forms/release-of-information-authorization"
-          class="hover:text-primary-600 dark:hover:text-primary-400 min-w-0 flex-1 font-semibold text-black dark:text-white"
-        >
-          Provide Release of Information Authorization Form
-        </NuxtLink>
-        <div class="flex shrink-0 items-center gap-3">
-          <UBadge color="success" variant="subtle" size="sm">Submitted</UBadge>
-        </div>
-      </div>
-
-      <div class="mt-8 mb-2 px-1 text-sm font-medium text-black dark:text-white">
-        Clinical assessments
-      </div>
-
-      <div
-        v-for="formItem in [
-          {
-            name: 'ACE Form',
-            to: aceTarget,
-            progress: getTask('ace').submitted
-              ? 'Submitted'
-              : `${getTask('ace').answered}/${getTask('ace').total}`,
-            showSubmit: showAceSubmit,
-            onSubmit: submitAce,
-            key: 'ace',
-          },
-          {
-            name: 'GAD-7 Form',
-            to: '/forms/gad',
-            progress: getTask('gad').submitted
-              ? `Submitted${permissions.canViewScores && getTask('gad').score !== null ? ` • ${getTask('gad').severity}` : ''}`
-              : `${getTask('gad').answered}/${getTask('gad').total}`,
-            showSubmit: showGadSubmit,
-            onSubmit: submitGad,
-            key: 'gad',
-          },
-          {
-            name: 'PHQ-9 Form',
-            to: '/forms/phq',
-            progress: getTask('phq').submitted
-              ? 'Submitted'
-              : `${getTask('phq').answered}/${getTask('phq').total}`,
-            showSubmit: showPhqSubmit,
-            onSubmit: submitPhq,
-            key: 'phq',
-          },
-          {
-            name: 'PCL-5 Form',
-            to: '/forms/pcl',
-            progress: getTask('pcl').submitted
-              ? 'Submitted'
-              : `${getTask('pcl').answered}/${getTask('pcl').total}`,
-            showSubmit: showPclSubmit,
-            onSubmit: submitPcl,
-            key: 'pcl',
-          },
-        ]"
-        :key="formItem.key"
-        class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
-      >
-        <NuxtLink
-          :to="formItem.to"
-          class="hover:text-primary-600 dark:hover:text-primary-400 min-w-0 flex-1 font-semibold text-black dark:text-white"
-        >
-          {{ formItem.name }}
-        </NuxtLink>
-        <div class="flex shrink-0 items-center gap-3">
-          <span class="text-sm text-gray-600 dark:text-gray-400">
-            {{ formItem.progress }}
-          </span>
-          <UButton
-            v-if="formItem.showSubmit"
-            label="Submit"
-            color="primary"
-            variant="solid"
-            size="sm"
-            :loading="submittingForm === formItem.key"
-            @click="formItem.onSubmit"
-          />
-        </div>
+    <template v-else-if="canViewTasks && profilePending">
+      <div class="mb-8 space-y-4 py-4">
+        <USkeleton class="h-10 max-w-md" />
+        <USkeleton class="h-6 w-full max-w-lg" />
+        <USkeleton class="h-16 w-full" />
+        <USkeleton class="h-16 w-full" />
       </div>
     </template>
 
-    <!-- Active patient: ACE, GAD-7, PHQ-9, PCL-5 -->
-    <template v-else-if="isActive">
-      <div class="mb-8">
-        <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
-          Tasks to Complete
-        </h1>
-        <UBadge class="mt-2" color="success" variant="soft" size="md">
-          Your status: {{ statusLabel }}
-        </UBadge>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Complete each clinical assessment form.
-        </p>
-      </div>
-      <div
-        class="mb-6 flex items-center justify-between px-1 text-sm font-medium text-black dark:text-white"
-      >
-        <span>Form</span>
-        <span>Progress</span>
-      </div>
-
-      <div
-        v-for="formItem in [
-          {
-            name: 'ACE Form',
-            to: aceTarget,
-            progress: getTask('ace').submitted
-              ? 'Submitted'
-              : `${getTask('ace').answered}/${getTask('ace').total}`,
-            showSubmit: showAceSubmit,
-            onSubmit: submitAce,
-            key: 'ace',
-          },
-          {
-            name: 'GAD-7 Form',
-            to: '/forms/gad',
-            progress: getTask('gad').submitted
-              ? `Submitted${permissions.canViewScores && getTask('gad').score !== null ? ` • ${getTask('gad').severity}` : ''}`
-              : `${getTask('gad').answered}/${getTask('gad').total}`,
-            showSubmit: showGadSubmit,
-            onSubmit: submitGad,
-            key: 'gad',
-          },
-          {
-            name: 'PHQ-9 Form',
-            to: '/forms/phq',
-            progress: getTask('phq').submitted
-              ? 'Submitted'
-              : `${getTask('phq').answered}/${getTask('phq').total}`,
-            showSubmit: showPhqSubmit,
-            onSubmit: submitPhq,
-            key: 'phq',
-          },
-          {
-            name: 'PCL-5 Form',
-            to: '/forms/pcl',
-            progress: getTask('pcl').submitted
-              ? 'Submitted'
-              : `${getTask('pcl').answered}/${getTask('pcl').total}`,
-            showSubmit: showPclSubmit,
-            onSubmit: submitPcl,
-            key: 'pcl',
-          },
-        ]"
-        :key="formItem.key"
-        class="mt-3 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
-      >
-        <NuxtLink
-          :to="formItem.to"
-          class="hover:text-primary-600 dark:hover:text-primary-400 min-w-0 flex-1 font-semibold text-black dark:text-white"
-        >
-          {{ formItem.name }}
-        </NuxtLink>
-        <div class="flex shrink-0 items-center gap-3">
-          <span class="text-sm text-gray-600 dark:text-gray-400">
-            {{ formItem.progress }}
-          </span>
-          <UButton
-            v-if="formItem.showSubmit"
-            label="Submit"
-            color="primary"
-            variant="solid"
-            size="sm"
-            :loading="submittingForm === formItem.key"
-            @click="formItem.onSubmit"
-          />
-        </div>
-      </div>
-    </template>
-
-    <!-- Archived or unknown status -->
-    <template v-else>
-      <div class="mb-8">
-        <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
-          Tasks
-        </h1>
-        <UBadge class="mt-2" color="neutral" variant="soft" size="md">
-          Your status: {{ statusLabel }}
-        </UBadge>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          You have no pending tasks at this time.
-        </p>
-      </div>
-    </template>
+    <UAlert
+      v-else-if="canViewTasks"
+      class="mb-6"
+      icon="i-heroicons-exclamation-triangle-20-solid"
+      color="warning"
+      variant="subtle"
+      title="Could not load your tasks"
+      description="Try refreshing the page. If this continues, contact your care team."
+    />
 
     <div
       v-if="permissions.canViewPlan && profile?.plan?.content"
