@@ -6,6 +6,9 @@
   import DOMPurify from 'dompurify'
   import { useWindowSize } from '@vueuse/core'
 
+  type NoteKind = 'PROGRESS' | 'PSYCHOTHERAPY'
+  type NoteStatus = 'DRAFT' | 'CLINICIAN_SIGNED' | 'FULLY_APPROVED'
+
   type SessionNoteRow = {
     id: string
     content: string
@@ -14,6 +17,37 @@
     sessionNumber: number
     appointmentId: string | null
     appointmentStartTime: string | null
+    kind?: NoteKind
+    status?: NoteStatus
+    clinicianSignedAt?: string | null
+    clinicianSignedById?: string | null
+    adminSignedAt?: string | null
+    adminSignedById?: string | null
+    adminApprovalNote?: string | null
+  }
+
+  const { data: roleData } = await useFetch<{
+    isAdmin: boolean
+    isClinician: boolean
+    isStaff: boolean
+  }>('/api/users/me/is-admin', {
+    getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
+  })
+  const isAdminViewer = computed(() => roleData.value?.isAdmin === true)
+
+  const STATUS_LABELS: Record<NoteStatus, string> = {
+    DRAFT: 'Draft',
+    CLINICIAN_SIGNED: 'Clinician Signed',
+    FULLY_APPROVED: 'Fully Approved',
+  }
+  const KIND_LABELS: Record<NoteKind, string> = {
+    PROGRESS: 'Progress note',
+    PSYCHOTHERAPY: 'Psychotherapy note',
+  }
+  function statusColor(s?: NoteStatus) {
+    if (s === 'FULLY_APPROVED') return 'success' as const
+    if (s === 'CLINICIAN_SIGNED') return 'warning' as const
+    return 'neutral' as const
   }
 
   type SelectedNote =
@@ -161,10 +195,25 @@
 
   const filteredSessionNotes = computed(() =>
     localSessionNotes.value.filter((sn) => {
+      if (notesKindFilter.value !== 'all' && (sn.kind ?? 'PROGRESS') !== notesKindFilter.value) {
+        return false
+      }
       if (!q.value) return true
       const d = new Date(sn.createdAt).toLocaleDateString('en-US').toLowerCase()
       return sn.content.toLowerCase().includes(q.value) || d.includes(q.value)
     })
+  )
+
+  /** Currently selected session note row (if any) – used for admin approval UI. */
+  const selectedSessionNoteRow = computed<SessionNoteRow | null>(() =>
+    selectedSessionNoteId.value
+      ? localSessionNotes.value.find((n) => n.id === selectedSessionNoteId.value) ?? null
+      : null
+  )
+  const canAdminApproveSelected = computed(
+    () =>
+      isAdminViewer.value &&
+      selectedSessionNoteRow.value?.status === 'CLINICIAN_SIGNED'
   )
 
   function closeSelectedNote() {
@@ -217,6 +266,14 @@
   }
 
   const noteContent = ref(props.currentNote.content || '')
+  /** Kind for the current in-progress note; progress notes are the default. */
+  const currentNoteKind = ref<NoteKind>('PROGRESS')
+  /** Filter for the sidebar Notes tab: 'all' | 'PROGRESS' | 'PSYCHOTHERAPY'. */
+  const notesKindFilter = ref<'all' | NoteKind>('all')
+  /** Admin approval modal state. */
+  const showApproveModal = ref(false)
+  const approvingNoteId = ref<string | null>(null)
+  const approving = ref(false)
   const pendingEdits = ref<Map<number, string>>(new Map())
   const pendingMeta = ref<Map<number, { reason: string; signature: string }>>(new Map())
   const pendingSessionEdits = ref<Map<string, string>>(new Map())
@@ -683,6 +740,57 @@
     showSaveModal.value = true
   }
 
+  /** Persist the current-note content as a DRAFT (no signature, no admin notification). */
+  async function saveDraftNote() {
+    if (!noteContent.value.trim()) return
+    if (!selectedAppointmentId.value) {
+      alert('Please select a session before saving this draft.')
+      return
+    }
+    saveStatus.value = 'saving'
+    try {
+      const response = (await $fetch(`/api/clients/${props.client.id}/notes`, {
+        method: 'POST',
+        body: {
+          content: noteContent.value,
+          attended: !isAbsent.value,
+          appointmentId: selectedAppointmentId.value,
+          kind: currentNoteKind.value,
+          action: 'save-draft',
+        },
+      })) as {
+        id: string
+        createdAt: string
+        sessionName: string
+        sessionNumber: number
+        appointmentId: string | null
+        kind: NoteKind
+        status: NoteStatus
+      }
+      localStorage.removeItem(`note_draft_${props.client.id}`)
+      const existingIdx = localSessionNotes.value.findIndex((n) => n.id === response.id)
+      const row: SessionNoteRow = {
+        id: response.id,
+        createdAt: response.createdAt,
+        content: noteContent.value,
+        sessionName: response.sessionName,
+        sessionNumber: response.sessionNumber,
+        appointmentId: response.appointmentId,
+        appointmentStartTime: selectedAppointment.value?.startTime ?? null,
+        kind: response.kind,
+        status: response.status,
+      }
+      if (existingIdx === -1) localSessionNotes.value.unshift(row)
+      else localSessionNotes.value[existingIdx] = row
+      lastSaved.value = new Date()
+      saveStatus.value = 'saved'
+    } catch (err) {
+      console.error('Draft save failed:', err)
+      saveStatus.value = 'error'
+      alert('Failed to save draft – check console')
+    }
+  }
+
   async function confirmSaveNote(signatureData: string, editReason?: string) {
     saveStatus.value = 'saving'
     if (!selectedAppointmentId.value) {
@@ -716,7 +824,9 @@
           content: savedContent,
           attended: !isAbsent.value,
           appointmentId: selectedAppointmentId.value,
-          signatureData,
+          kind: currentNoteKind.value,
+          action: 'clinician-sign',
+          clinicianSignatureData: signatureData,
           ...(updating && editReason?.trim() ? { reason: editReason.trim() } : {}),
         },
       })) as {
@@ -725,6 +835,8 @@
         sessionName: string
         sessionNumber: number
         appointmentId: string | null
+        kind: NoteKind
+        status: NoteStatus
       }
 
       // Clear local draft
@@ -732,7 +844,7 @@
 
       // Upsert in sidebar list (existing blank note becomes filled).
       const existingIdx = localSessionNotes.value.findIndex((n) => n.id === response.id)
-      const row = {
+      const row: SessionNoteRow = {
         id: response.id,
         createdAt: response.createdAt,
         content: savedContent,
@@ -740,6 +852,8 @@
         sessionNumber: response.sessionNumber,
         appointmentId: response.appointmentId,
         appointmentStartTime: selectedAppointment.value?.startTime ?? null,
+        kind: response.kind,
+        status: response.status,
       }
       if (existingIdx === -1) localSessionNotes.value.unshift(row)
       else localSessionNotes.value[existingIdx] = row
@@ -759,6 +873,52 @@
     editingNoteId.value = null
     editingSessionNoteId.value = null
     editingDate.value = ''
+  }
+
+  function openApproveModal() {
+    if (!selectedSessionNoteId.value || !canAdminApproveSelected.value) return
+    approvingNoteId.value = selectedSessionNoteId.value
+    showApproveModal.value = true
+  }
+
+  async function onAdminApprove(payload: { signatureData: string; reasoning?: string }) {
+    if (!approvingNoteId.value) return
+    approving.value = true
+    try {
+      const res = (await $fetch(
+        `/api/clients/${props.client.id}/session-notes/${approvingNoteId.value}/approve`,
+        {
+          method: 'POST',
+          body: {
+            adminSignatureData: payload.signatureData,
+            approvalNote: payload.reasoning,
+          },
+        }
+      )) as {
+        id: string
+        status: NoteStatus
+        adminSignedAt: string | null
+      }
+      const idx = localSessionNotes.value.findIndex((n) => n.id === approvingNoteId.value)
+      if (idx !== -1) {
+        const row = localSessionNotes.value[idx]!
+        localSessionNotes.value[idx] = {
+          ...row,
+          status: res.status,
+          adminSignedAt: res.adminSignedAt ?? null,
+        }
+      }
+      showApproveModal.value = false
+      approvingNoteId.value = null
+    } catch (err) {
+      console.error('Approval failed:', err)
+      alert(
+        (err as { data?: { statusMessage?: string } })?.data?.statusMessage ??
+          'Failed to approve note – check console'
+      )
+    } finally {
+      approving.value = false
+    }
   }
 
   //Auto-save and status tracking
@@ -932,7 +1092,7 @@
 
           <!-- Notes Tab -->
           <template v-if="sidebarTab === 'notes'">
-            <div class="border-b border-gray-100 px-3 py-2 dark:border-gray-800">
+            <div class="space-y-2 border-b border-gray-100 px-3 py-2 dark:border-gray-800">
               <div
                 class="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-gray-700 dark:bg-gray-800"
               >
@@ -946,6 +1106,46 @@
                   placeholder="Search notes..."
                   class="w-full bg-transparent text-xs text-gray-700 placeholder-gray-400 focus:outline-none dark:text-gray-300"
                 />
+              </div>
+              <div
+                class="flex gap-1 rounded-lg border border-gray-200 bg-white p-0.5 text-[11px] font-medium dark:border-gray-700 dark:bg-gray-900"
+              >
+                <button
+                  type="button"
+                  class="flex-1 rounded-md px-1.5 py-1 transition-colors"
+                  :class="
+                    notesKindFilter === 'all'
+                      ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                      : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                  "
+                  @click="notesKindFilter = 'all'"
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 rounded-md px-1.5 py-1 transition-colors"
+                  :class="
+                    notesKindFilter === 'PROGRESS'
+                      ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                      : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                  "
+                  @click="notesKindFilter = 'PROGRESS'"
+                >
+                  Progress
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 rounded-md px-1.5 py-1 transition-colors"
+                  :class="
+                    notesKindFilter === 'PSYCHOTHERAPY'
+                      ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                      : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                  "
+                  @click="notesKindFilter = 'PSYCHOTHERAPY'"
+                >
+                  Psychotherapy
+                </button>
               </div>
             </div>
             <div class="flex-1 overflow-y-auto">
@@ -1039,6 +1239,23 @@
                     {{ new Date(sn.createdAt).toLocaleDateString('en-US') }} ·
                     {{ sn.content.slice(0, 60) }}{{ sn.content.length > 60 ? '...' : '' }}
                   </p>
+                  <div class="mt-1 flex flex-wrap items-center gap-1">
+                    <UBadge
+                      :color="statusColor(sn.status)"
+                      variant="subtle"
+                      size="xs"
+                    >
+                      {{ STATUS_LABELS[sn.status ?? 'DRAFT'] }}
+                    </UBadge>
+                    <UBadge
+                      v-if="sn.kind === 'PSYCHOTHERAPY'"
+                      color="secondary"
+                      variant="subtle"
+                      size="xs"
+                    >
+                      Psychotherapy
+                    </UBadge>
+                  </div>
                 </div>
               </template>
               <div
@@ -1086,8 +1303,8 @@
           >
             <!-- Previous Note -->
             <div v-if="selectedNoteData" class="flex min-w-0 flex-col p-5 md:flex-1">
-              <div class="mb-3 flex items-center justify-between gap-2">
-                <div>
+              <div class="mb-3 flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
                   <p class="text-sm font-medium text-gray-400">{{ selectedNoteData.date }}</p>
                   <p
                     v-if="selectedNoteData.source === 'session'"
@@ -1095,6 +1312,47 @@
                   >
                     Session log note
                   </p>
+                  <div
+                    v-if="selectedSessionNoteRow"
+                    class="mt-2 flex flex-wrap items-center gap-1.5"
+                  >
+                    <UBadge
+                      :color="statusColor(selectedSessionNoteRow.status)"
+                      variant="subtle"
+                      size="sm"
+                    >
+                      {{ STATUS_LABELS[selectedSessionNoteRow.status ?? 'DRAFT'] }}
+                    </UBadge>
+                    <UBadge
+                      :color="selectedSessionNoteRow.kind === 'PSYCHOTHERAPY' ? 'secondary' : 'primary'"
+                      variant="subtle"
+                      size="sm"
+                    >
+                      {{ KIND_LABELS[selectedSessionNoteRow.kind ?? 'PROGRESS'] }}
+                    </UBadge>
+                    <span
+                      v-if="selectedSessionNoteRow.clinicianSignedAt"
+                      class="text-[10px] text-gray-500 dark:text-gray-400"
+                    >
+                      Clinician signed {{ new Date(selectedSessionNoteRow.clinicianSignedAt).toLocaleString('en-US') }}
+                    </span>
+                    <span
+                      v-if="selectedSessionNoteRow.adminSignedAt"
+                      class="text-[10px] text-gray-500 dark:text-gray-400"
+                    >
+                      · Admin approved {{ new Date(selectedSessionNoteRow.adminSignedAt).toLocaleString('en-US') }}
+                    </span>
+                  </div>
+                  <UButton
+                    v-if="canAdminApproveSelected"
+                    class="mt-2"
+                    color="success"
+                    variant="solid"
+                    size="sm"
+                    icon="i-heroicons-check-badge"
+                    label="Approve & sign"
+                    @click="openApproveModal"
+                  />
                 </div>
                 <button
                   @click="closeSelectedNote"
@@ -1185,7 +1443,46 @@
                       No sessions available yet for this client.
                     </p>
                   </div>
-                  <span class="text-primary-500 text-xs font-semibold uppercase">Current</span>
+                  <div class="mt-3 max-w-sm">
+                    <label class="mb-1 block text-xs font-semibold tracking-wide text-gray-500 uppercase">
+                      Note type
+                    </label>
+                    <div
+                      class="flex gap-1 rounded-lg border border-gray-200 bg-white p-0.5 text-xs font-medium dark:border-gray-700 dark:bg-gray-900"
+                    >
+                      <button
+                        type="button"
+                        class="flex-1 rounded-md px-2 py-1.5 transition-colors"
+                        :class="
+                          currentNoteKind === 'PROGRESS'
+                            ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                            : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                        "
+                        @click="currentNoteKind = 'PROGRESS'"
+                      >
+                        Progress note
+                      </button>
+                      <button
+                        type="button"
+                        class="flex-1 rounded-md px-2 py-1.5 transition-colors"
+                        :class="
+                          currentNoteKind === 'PSYCHOTHERAPY'
+                            ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                            : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                        "
+                        @click="currentNoteKind = 'PSYCHOTHERAPY'"
+                      >
+                        Psychotherapy note
+                      </button>
+                    </div>
+                    <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                      Psychotherapy (process) notes are stored separately and are not visible to
+                      the client.
+                    </p>
+                  </div>
+                  <span class="mt-3 inline-block text-primary-500 text-xs font-semibold uppercase">
+                    Current
+                  </span>
                   <!-- {{ isEditingPrevious ? `Editing note from ${editingDate}` : currentNote.date }} -->
                   <!-- <p v-if="isEditingPrevious" class="text-xs text-amber-600"> -->
                   <!-- Changes will be saved as a new version • Reason required -->
@@ -1237,10 +1534,22 @@
                 </div>
 
                 <UButton
+                  v-if="noteContent.trim() && !isEditingPreviousPanel"
+                  color="neutral"
+                  variant="soft"
+                  label="Save draft"
+                  size="md"
+                  icon="i-heroicons-document"
+                  :disabled="!selectedAppointmentId || !canEditCurrentNote"
+                  @click="saveDraftNote"
+                  class="w-auto"
+                />
+                <UButton
                   v-if="noteContent.trim() || isEditingPreviousPanel"
                   color="primary"
-                  label="Save Note"
+                  :label="isEditingPreviousPanel ? 'Save Note' : 'Sign & submit'"
                   size="md"
+                  icon="i-heroicons-pencil-square"
                   :disabled="
                     !isEditingPreviousPanel &&
                     (!selectedAppointmentId || !canEditCurrentNote || !canMarkAttendance)
@@ -1408,18 +1717,32 @@
   <Teleport to="body">
     <ChangeWithJustificationModal
       :open="showSaveModal"
-      title="Save session note"
+      title="Clinician sign & submit"
       :description="
         isUpdatingSelectedSessionNote
-          ? 'This session already has a note. Enter why you are changing it, then sign.'
-          : 'A digital signature is required to save this note to the clinical record.'
+          ? 'This session already has a note. Enter why you are changing it, then sign. The admin will be notified to counter-sign.'
+          : 'Your signature submits this note for admin approval. An administrator will be notified to counter-sign.'
       "
-      :submit-label="isUpdatingSelectedSessionNote ? 'Sign & update note' : 'Sign & save note'"
+      :submit-label="isUpdatingSelectedSessionNote ? 'Sign & resubmit for approval' : 'Sign & submit for approval'"
       :loading="saveStatus === 'saving'"
       :signature-only="!isUpdatingSelectedSessionNote"
       :requires-edit-reason="isUpdatingSelectedSessionNote"
       @close="showSaveModal = false"
       @submit="onSaveSessionNoteSigned"
+    />
+  </Teleport>
+
+  <!-- Admin counter-sign modal -->
+  <Teleport to="body">
+    <ChangeWithJustificationModal
+      :open="showApproveModal"
+      title="Admin approval – final sign-off"
+      description="Sign below to fully approve this note. Clinician will be notified once you approve."
+      submit-label="Sign & approve"
+      :loading="approving"
+      signature-only
+      @close="showApproveModal = false"
+      @submit="onAdminApprove"
     />
   </Teleport>
 

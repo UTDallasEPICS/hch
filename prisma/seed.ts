@@ -164,7 +164,7 @@ async function seedForms(userId: string) {
 }
 
 async function ensureBobBuilderSessionNotes(bobUserId: string, clinicianUserId: string) {
-  await prisma.client.upsert({
+  const bobClient = await prisma.client.upsert({
     where: { userId: bobUserId },
     update: { status: 'ACTIVE', clinicianUserId },
     create: { userId: bobUserId, status: 'ACTIVE', clinicianUserId },
@@ -175,6 +175,128 @@ async function ensureBobBuilderSessionNotes(bobUserId: string, clinicianUserId: 
     await seedForms(bobUserId)
     console.log('Seeded clinical forms for Bob Builder.')
   }
+  return bobClient
+}
+
+/**
+ * Seed a representative note in each workflow state so the multi-tier approval
+ * UI (draft / clinician-signed / fully-approved) has real data to exercise,
+ * and across both kinds (progress vs psychotherapy).
+ */
+async function seedApprovalWorkflowNotes(
+  clientId: string,
+  clinicianUserId: string,
+  adminUserId: string
+) {
+  const existing = await prisma.sessionNote.count({ where: { clientId } })
+  if (existing > 0) {
+    console.log('Session notes already exist; skipping approval-workflow seed.')
+    return
+  }
+
+  const PLACEHOLDER_SIG =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+
+  const now = new Date()
+
+  // 1. DRAFT progress note – still being written.
+  await prisma.sessionNote.create({
+    data: {
+      clientId,
+      sessionName: 'Intake – initial session',
+      sessionNumber: 1,
+      kind: 'PROGRESS',
+      status: 'DRAFT',
+      content:
+        'Client arrived on time. Presenting concerns include sleep disruption and work stress. Draft — still gathering history.',
+      attended: true,
+    },
+  })
+
+  // 2. CLINICIAN_SIGNED progress note – waiting for admin sign-off.
+  const pendingNote = await prisma.sessionNote.create({
+    data: {
+      clientId,
+      sessionName: 'Session 2 – CBT intro',
+      sessionNumber: 2,
+      kind: 'PROGRESS',
+      status: 'CLINICIAN_SIGNED',
+      content:
+        'Reviewed sleep-hygiene worksheet. Client reports mild improvement. Introduced cognitive-restructuring framework.',
+      attended: true,
+      clinicianSignedAt: now,
+      clinicianSignedById: clinicianUserId,
+      clinicianSignatureData: PLACEHOLDER_SIG,
+    },
+  })
+  await prisma.notification.create({
+    data: {
+      userId: adminUserId,
+      type: 'NOTE_READY_FOR_APPROVAL',
+      title: 'Note awaiting approval',
+      message:
+        'Carl Karl signed a progress note for Bob Builder. Please review and countersign.',
+      sessionNoteId: pendingNote.id,
+    },
+  })
+
+  // 3. FULLY_APPROVED progress note.
+  await prisma.sessionNote.create({
+    data: {
+      clientId,
+      sessionName: 'Session 3 – thought records',
+      sessionNumber: 3,
+      kind: 'PROGRESS',
+      status: 'FULLY_APPROVED',
+      content:
+        'Completed two thought-record examples in session. Client identified core belief patterns and committed to daily practice.',
+      attended: true,
+      clinicianSignedAt: now,
+      clinicianSignedById: clinicianUserId,
+      clinicianSignatureData: PLACEHOLDER_SIG,
+      adminSignedAt: now,
+      adminSignedById: adminUserId,
+      adminSignatureData: PLACEHOLDER_SIG,
+      adminApprovalNote: 'Reviewed — documentation meets clinic standard.',
+    },
+  })
+
+  // 4. PSYCHOTHERAPY draft – separately stored per HIPAA.
+  await prisma.sessionNote.create({
+    data: {
+      clientId,
+      sessionName: 'Session 3 – clinician process notes',
+      sessionNumber: 3,
+      kind: 'PSYCHOTHERAPY',
+      status: 'DRAFT',
+      content:
+        'Clinician-only process notes: countertransference observations, working hypotheses, and next-session targets.',
+      attended: true,
+    },
+  })
+
+  // 5. PSYCHOTHERAPY fully approved – demonstrates tier-2 sign-off on process notes.
+  await prisma.sessionNote.create({
+    data: {
+      clientId,
+      sessionName: 'Session 2 – clinician process notes',
+      sessionNumber: 2,
+      kind: 'PSYCHOTHERAPY',
+      status: 'FULLY_APPROVED',
+      content:
+        'Process notes: explored defense patterns around perfectionism. Plan to revisit in session 4.',
+      attended: true,
+      clinicianSignedAt: now,
+      clinicianSignedById: clinicianUserId,
+      clinicianSignatureData: PLACEHOLDER_SIG,
+      adminSignedAt: now,
+      adminSignedById: adminUserId,
+      adminSignatureData: PLACEHOLDER_SIG,
+      adminApprovalNote: 'Approved — psychotherapy note retained separately.',
+    },
+  })
+
+  console.log('Seeded 5 session notes across DRAFT / CLINICIAN_SIGNED / FULLY_APPROVED.')
 }
 
 async function main() {
@@ -183,8 +305,8 @@ async function main() {
   await ensureDefaultDeclarationTemplates(prisma)
   await backfillSessionNotesRequestTemplates(prisma)
 
-  // Create / Upsert Alice (Admin)
-  await prisma.user.upsert({
+  // Create / Upsert Alice (Admin — default approver for the note workflow)
+  const alice = await prisma.user.upsert({
     where: { email: 'alice@a.com' },
     update: { role: 'ADMIN', name: 'Alice Wonderland' },
     create: {
@@ -225,7 +347,8 @@ async function main() {
   })
   console.log('Seeded Client: bob@b.com')
 
-  await ensureBobBuilderSessionNotes(bob.id, carl.id)
+  const bobClient = await ensureBobBuilderSessionNotes(bob.id, carl.id)
+  await seedApprovalWorkflowNotes(bobClient.id, carl.id, alice.id)
 
   console.log('Seeding finished.')
 }

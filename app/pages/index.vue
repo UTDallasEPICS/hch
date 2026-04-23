@@ -15,6 +15,8 @@
     userCount: number
     clientCount: number
     pendingSessionNotesRequests: number
+    pendingNoteApprovals: number
+    unreadNotifications: number
     displayName: string
     statusLabel: string
     /** Not used for admin; optional so `stats` union matches client payload shape. */
@@ -56,6 +58,11 @@
     return stats.value as ClientStats | null
   })
 
+  const adminStats = computed(() => {
+    if (!isAdminUser) return null
+    return stats.value as AdminStats | null
+  })
+
   async function logout() {
     await authClient.signOut()
     await navigateTo('/auth', { external: true })
@@ -71,13 +78,13 @@
           <USkeleton class="mb-3 h-10 max-w-lg" />
           <USkeleton class="h-6 w-56" />
         </template>
-        <template v-else-if="stats">
+        <template v-else-if="adminStats">
           <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
-            Welcome, {{ stats.displayName }} !!!
+            Welcome, {{ adminStats.displayName }} !!!
           </h1>
           <div class="mt-3 flex flex-wrap items-center gap-2">
             <span class="text-sm text-gray-600 dark:text-gray-400">Your status:</span>
-            <UBadge color="primary" variant="soft" size="md">{{ stats.statusLabel }}</UBadge>
+            <UBadge color="primary" variant="soft" size="md">{{ adminStats.statusLabel }}</UBadge>
           </div>
           <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
             Overview of your clinic workspace. Open Clients for the full client list and actions.
@@ -100,7 +107,7 @@
       </div>
     </div>
 
-    <div v-if="pending" class="grid gap-4 sm:grid-cols-3">
+    <div v-if="pending" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <div
         v-for="i in 3"
         :key="i"
@@ -125,19 +132,8 @@
       </UAlert>
     </div>
 
-    <template v-else-if="stats">
-      <div class="grid gap-4 sm:grid-cols-3">
-        <div
-          class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-        >
-          <div class="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
-            <UIcon name="i-heroicons-users-20-solid" class="h-5 w-5" />
-            Registered users
-          </div>
-          <p class="mt-2 text-3xl font-semibold text-gray-900 tabular-nums dark:text-white">
-            {{ stats.userCount }}
-          </p>
-        </div>
+    <template v-else-if="adminStats">
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div
           class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
         >
@@ -146,7 +142,7 @@
             Clients
           </div>
           <p class="mt-2 text-3xl font-semibold text-gray-900 tabular-nums dark:text-white">
-            {{ stats.clientCount }}
+            {{ adminStats.clientCount }}
           </p>
         </div>
         <div
@@ -157,9 +153,31 @@
             Pending records requests
           </div>
           <p class="mt-2 text-3xl font-semibold text-gray-900 tabular-nums dark:text-white">
-            {{ stats.pendingSessionNotesRequests }}
+            {{ adminStats.pendingSessionNotesRequests }}
           </p>
         </div>
+        <NuxtLink
+          to="/clients/session-notes-approvals"
+          class="hover:border-primary-300 focus:ring-primary-500 focus:outline-none focus-visible:ring-2 rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-600"
+        >
+          <div class="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
+            <UIcon name="i-heroicons-check-badge-20-solid" class="h-5 w-5" />
+            Notes awaiting approval
+          </div>
+          <div class="mt-2 flex items-end justify-between gap-2">
+            <p class="text-3xl font-semibold text-gray-900 tabular-nums dark:text-white">
+              {{ adminStats.pendingNoteApprovals }}
+            </p>
+            <UBadge
+              v-if="adminStats.pendingNoteApprovals > 0"
+              color="warning"
+              variant="subtle"
+              size="sm"
+            >
+              Action needed
+            </UBadge>
+          </div>
+        </NuxtLink>
       </div>
 
       <div
@@ -183,12 +201,12 @@
               icon="i-heroicons-inbox-arrow-down-20-solid"
             />
             <UBadge
-              v-if="stats.pendingSessionNotesRequests > 0"
+              v-if="adminStats.pendingSessionNotesRequests > 0"
               color="warning"
               variant="subtle"
               size="sm"
             >
-              {{ stats.pendingSessionNotesRequests }} pending
+              {{ adminStats.pendingSessionNotesRequests }} pending
             </UBadge>
           </div>
           <UButton
@@ -198,8 +216,27 @@
             variant="soft"
             icon="i-heroicons-pencil-square-20-solid"
           />
+          <div class="inline-flex flex-wrap items-center gap-2">
+            <UButton
+              to="/clients/session-notes-approvals"
+              label="Note approvals"
+              color="primary"
+              variant="soft"
+              icon="i-heroicons-check-badge-20-solid"
+            />
+            <UBadge
+              v-if="adminStats.pendingNoteApprovals > 0"
+              color="warning"
+              variant="subtle"
+              size="sm"
+            >
+              {{ adminStats.pendingNoteApprovals }} pending
+            </UBadge>
+          </div>
         </div>
       </div>
+
+      <NotificationsPanel class="mt-8" />
     </template>
   </main>
 

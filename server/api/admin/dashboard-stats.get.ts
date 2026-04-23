@@ -55,18 +55,34 @@ export default defineEventHandler(async (event) => {
     ? { status: 'PENDING' as const, client: { clinicianUserId: session.user.id } }
     : { status: 'PENDING' as const }
 
-  const [userCount, clientCount, pendingSessionNotesRequests, viewerClient] =
-    await prisma.$transaction([
-      isClinicianViewer
-        ? prisma.user.count({ where: { client: { clinicianUserId: session.user.id } } })
-        : prisma.user.count(),
-      prisma.client.count({ where: clientWhere }),
-      prisma.sessionNotesRequest.count({ where: pendingWhere }),
-      prisma.client.findUnique({
-        where: { userId: session.user.id },
-        select: { status: true },
-      }),
-    ])
+  // Pending note approvals: only admins can act on this queue, so clinicians
+  // see 0 (their own CLINICIAN_SIGNED notes aren't "pending approval" to them).
+  const pendingNoteApprovalsWhere = isClinicianViewer
+    ? { id: '__never__' }
+    : { status: 'CLINICIAN_SIGNED' as const }
+
+  const [
+    userCount,
+    clientCount,
+    pendingSessionNotesRequests,
+    pendingNoteApprovals,
+    unreadNotifications,
+    viewerClient,
+  ] = await prisma.$transaction([
+    isClinicianViewer
+      ? prisma.user.count({ where: { client: { clinicianUserId: session.user.id } } })
+      : prisma.user.count(),
+    prisma.client.count({ where: clientWhere }),
+    prisma.sessionNotesRequest.count({ where: pendingWhere }),
+    prisma.sessionNote.count({ where: pendingNoteApprovalsWhere }),
+    prisma.notification.count({
+      where: { userId: session.user.id, readAt: null },
+    }),
+    prisma.client.findUnique({
+      where: { userId: session.user.id },
+      select: { status: true },
+    }),
+  ])
 
   const statusLabel = viewerClient
     ? CLINICAL_STATUS_LABEL[viewerClient.status] ?? viewerClient.status
@@ -78,6 +94,8 @@ export default defineEventHandler(async (event) => {
     userCount,
     clientCount,
     pendingSessionNotesRequests,
+    pendingNoteApprovals,
+    unreadNotifications,
     displayName,
     statusLabel,
   }

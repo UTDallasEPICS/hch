@@ -9,23 +9,63 @@ enum SessionNotesRequestStatus {
   REJECTED
 }
 
+/// Multi-tier approval status for a session note.
+/// DRAFT = work-in-progress, only clinician can see.
+/// CLINICIAN_SIGNED = clinician has signed; awaits admin sign-off.
+/// FULLY_APPROVED = admin has countersigned; note is final.
+enum SessionNoteStatus {
+  DRAFT
+  CLINICIAN_SIGNED
+  FULLY_APPROVED
+}
+
+/// Regulatory separation: progress notes are part of the clinical record;
+/// psychotherapy notes (aka "process notes") are stored separately and
+/// protected more strictly under HIPAA.
+enum SessionNoteKind {
+  PROGRESS
+  PSYCHOTHERAPY
+}
+
 model SessionNote {
-  id        String            @id @default(cuid())
-  clientId  String
-  sessionName String
+  id            String            @id @default(cuid())
+  clientId      String
+  sessionName   String
   sessionNumber Int
   appointmentId String?
-  content   String
-  attended  Boolean           @default(true)
-  /// Admin digital signature (PNG data URL) captured when the note is saved.
+  kind          SessionNoteKind   @default(PROGRESS)
+  status        SessionNoteStatus @default(DRAFT)
+  content       String
+  attended      Boolean           @default(true)
+  /// Deprecated: legacy single-signature field kept for back-compat with existing rows.
+  /// New flow uses `clinicianSignatureData` / `adminSignatureData` below.
   signatureData String?
-  createdAt DateTime          @default(now())
-  client    Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  appointment Appointment?    @relation("AppointmentSessionNotes", fields: [appointmentId], references: [id], onDelete: SetNull)
-  edits     SessionNoteEdit[]
+
+  /// Tier 1 — signed by the clinician who wrote the note.
+  clinicianSignedAt      DateTime?
+  clinicianSignedById    String?
+  clinicianSignatureData String?
+
+  /// Tier 2 — admin counter-sign.
+  adminSignedAt      DateTime?
+  adminSignedById    String?
+  adminSignatureData String?
+  adminApprovalNote  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  client          Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  appointment     Appointment?      @relation("AppointmentSessionNotes", fields: [appointmentId], references: [id], onDelete: SetNull)
+  clinicianSigner User?             @relation("ClinicianSignedNotes", fields: [clinicianSignedById], references: [id], onDelete: SetNull)
+  adminSigner     User?             @relation("AdminSignedNotes", fields: [adminSignedById], references: [id], onDelete: SetNull)
+  edits           SessionNoteEdit[]
+  notifications   Notification[]
 
   @@index([clientId])
   @@index([appointmentId])
+  @@index([status])
+  @@index([kind])
   @@map("session_note")
 }
 
@@ -40,6 +80,30 @@ model SessionNoteEdit {
 
   @@index([sessionNoteId])
   @@map("session_note_edit")
+}
+
+enum NotificationType {
+  NOTE_READY_FOR_APPROVAL
+  NOTE_FULLY_APPROVED
+  NOTE_EDITED_AFTER_APPROVAL
+}
+
+/// In-app notifications (e.g. admins are notified whenever a clinician signs a note).
+model Notification {
+  id            String           @id @default(cuid())
+  userId        String
+  user          User             @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  type          NotificationType
+  title         String
+  message       String
+  sessionNoteId String?
+  sessionNote   SessionNote?     @relation(fields: [sessionNoteId], references: [id], onDelete: Cascade)
+  readAt        DateTime?
+  createdAt     DateTime         @default(now())
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+  @@map("notification")
 }
 
 // Canonical declaration copy per request kind + version (avoids duplicating long text on every request).

@@ -40,6 +40,11 @@ model User {
   releaseOfInformationAuthorizationForm ReleaseOfInformationAuthorizationForm?
   clientFormScoreHistory              ClientFormScoreHistory[]
 
+  // Multi-tier session-note approval
+  clinicianSignedNotes SessionNote[] @relation("ClinicianSignedNotes")
+  adminSignedNotes     SessionNote[] @relation("AdminSignedNotes")
+  notifications        Notification[] @relation("UserNotifications")
+
   @@unique([email])
   @@map("user")
 }

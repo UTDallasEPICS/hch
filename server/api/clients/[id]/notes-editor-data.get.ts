@@ -102,6 +102,13 @@ export default defineEventHandler(async (event) => {
       appointmentId: s.appointmentId,
       appointmentStartTime: s.appointment?.startTime?.toISOString() ?? null,
       preview: s.content.slice(0, 60) + (s.content.length > 60 ? '...' : ''),
+      kind: s.kind,
+      status: s.status,
+      clinicianSignedAt: s.clinicianSignedAt?.toISOString() ?? null,
+      clinicianSignedById: s.clinicianSignedById,
+      adminSignedAt: s.adminSignedAt?.toISOString() ?? null,
+      adminSignedById: s.adminSignedById,
+      adminApprovalNote: s.adminApprovalNote,
     })),
     appointments: appointmentRows.map((a) => ({
       id: a.id,

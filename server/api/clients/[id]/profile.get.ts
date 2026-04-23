@@ -385,6 +385,8 @@ export default defineEventHandler(async (event) => {
       sessionNumber: number
       appointmentId: string | null
       appointment: { startTime: Date } | null
+      kind: 'PROGRESS' | 'PSYCHOTHERAPY'
+      status: 'DRAFT' | 'CLINICIAN_SIGNED' | 'FULLY_APPROVED'
     }[] = []
 
     // Clients viewing via an approved FULL records request see only notes within the
@@ -425,7 +427,12 @@ export default defineEventHandler(async (event) => {
         return true
       })
     }
-    const fromSession = sessionRows.map((s) => ({
+    // Clients never see psychotherapy (process) notes; only staff can.
+    const filteredForClient =
+      isOwnProfile && !hasAdminAccess && !isClinicianViewer
+        ? sessionRows.filter((s) => s.kind !== 'PSYCHOTHERAPY')
+        : sessionRows
+    const fromSession = filteredForClient.map((s) => ({
       id: s.id,
       content: s.content,
       createdAt: s.createdAt.toISOString(),
@@ -433,6 +440,8 @@ export default defineEventHandler(async (event) => {
       sessionNumber: s.sessionNumber,
       appointmentId: s.appointmentId,
       appointmentStartTime: s.appointment?.startTime?.toISOString() ?? null,
+      kind: s.kind,
+      status: s.status,
     }))
     sessionNotesPayload = fromSession
   }

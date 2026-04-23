@@ -9,7 +9,7 @@ export const DECLARATION_SUMMARY_V1 = `I understand I am requesting access to my
 
 /**
  * v2 records-request disclaimer (placeholder / generic HIPAA style).
- * TODO: replace with Adriana's final approved verbiage once provided.
+ * TODO: replace with the clinic's final approved verbiage once provided.
  */
 export const DECLARATION_FULL_V2 = `I am requesting access to my own protected health information (PHI) held by this clinic under my right of access pursuant to 45 CFR § 164.524. I specifically request the full session notes recorded by my clinician for the date range I have indicated. I understand:
 
