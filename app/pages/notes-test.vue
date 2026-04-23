@@ -83,7 +83,7 @@
     :current-note="data.currentNote"
     :previous-notes="data.previousNotes"
     :session-notes="data.sessionNotes"
-    :forms="data.forms"
+    :forms="data.forms.filter((f): f is { label: string; status: 'complete' | 'pending' } => !!f.label)"
     :client-picker-options="clientPickerOptions"
     client-picker-mode="notes-test"
     back-href="/"

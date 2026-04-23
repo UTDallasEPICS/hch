@@ -1,5 +1,6 @@
 <script setup lang="ts">
   import NotesToolbar from '~/components/NotesToolbar.vue'
+  import AttendanceDropdown from '~/components/AttendanceDropdown.vue'
   import { useDebounceFn } from '@vueuse/core'
   import { marked } from 'marked'
   import DOMPurify from 'dompurify'
@@ -417,7 +418,7 @@
 
   async function submitAndCloseModal() {
     showSubmitModal.value = false
-    await submitPreviousEdit()
+    await confirmSaveNote()
   }
 
   async function submitPreviousEdit() {
@@ -533,20 +534,33 @@
     showSaveModal.value = true
   }
 
+  const attendanceStatus = ref('show')
+
+  const fallbackClientId = 'cmnrxzc240002n0h8x692okwp'
+  const routeClientId = route.params.id as string | undefined
+
   async function confirmSaveNote() {
     console.log('confirmSaveNote called - Debug log added')
     console.log('noteContent:', noteContent.value)
     console.log('client:', props.client)
+
+    const clientId = routeClientId || props.client?.id || fallbackClientId
+    if (!clientId) {
+      alert('Client ID is missing. Cannot save note.')
+      return
+    }
+
     showSaveModal.value = false
     saveStatus.value = 'saving'
 
     try {
       const savedContent = noteContent.value
 
-      const response = (await $fetch(`/api/clients/${props.client.id}/notes`, {
+      const response = (await $fetch(`/api/clients/${clientId}/notes`, {
         method: 'POST',
         body: {
           content: savedContent,
+          attendanceStatus: attendanceStatus.value,
         },
       })) as { id: string; createdAt: string }
 
@@ -669,7 +683,7 @@
             value-key="value"
             :placeholder="client.name"
             size="md"
-            class="min-w-0 w-full max-w-xs"
+            class="w-full max-w-xs min-w-0"
           />
           <span v-else class="truncate">{{ client.name }}</span>
         </div>
@@ -961,13 +975,11 @@
                 <div>
                   <p class="text-sm font-medium text-gray-400">{{ currentNote.date }}</p>
                   <span class="text-primary-500 text-xs font-semibold uppercase">Current</span>
-                  <!-- {{ isEditingPrevious ? `Editing note from ${editingDate}` : currentNote.date }} -->
-                  <!-- <p v-if="isEditingPrevious" class="text-xs text-amber-600"> -->
-                  <!-- Changes will be saved as a new version • Reason required -->
-                  <!-- </p> -->
                 </div>
-                <!-- <span v-if="!isEditingPrevious" class="text-primary-500 text-xs font-semibold uppercase">Current</span> -->
               </div>
+
+              <!-- Attendance Dropdown -->
+              <AttendanceDropdown v-model="attendanceStatus" />
 
               <NotesToolbar
                 v-model="noteContent"
@@ -995,16 +1007,18 @@
                   @click="showSaveModal = true"
                   class="w-auto"
                 />
-                </div>
+              </div>
             </div>
           </div>
 
           <!-- Form Details -->
           <div
             v-if="selectedForm"
-            class="flex w-full max-w-md min-w-0 flex-shrink-0 flex-col border-l border-gray-200 dark:border-gray-800 md:max-h-screen md:w-96"
+            class="flex w-full max-w-md min-w-0 flex-shrink-0 flex-col border-l border-gray-200 md:max-h-screen md:w-96 dark:border-gray-800"
           >
-            <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+            <div
+              class="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800"
+            >
               <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
                 {{ selectedForm }}
               </h2>
@@ -1021,7 +1035,7 @@
               <div v-if="formPreviewPending" class="flex justify-center py-8">
                 <UIcon
                   name="i-heroicons-arrow-path"
-                  class="h-8 w-8 animate-spin text-primary-500"
+                  class="text-primary-500 h-8 w-8 animate-spin"
                 />
               </div>
               <UAlert
@@ -1054,7 +1068,10 @@
                   v-if="formPreviewData.score != null || formPreviewData.severity"
                   class="flex flex-wrap gap-2 text-sm"
                 >
-                  <span v-if="formPreviewData.score != null" class="font-medium text-gray-900 dark:text-white">
+                  <span
+                    v-if="formPreviewData.score != null"
+                    class="font-medium text-gray-900 dark:text-white"
+                  >
                     Score: {{ formPreviewData.score }}
                   </span>
                   <span v-if="formPreviewData.severity" class="text-gray-600 dark:text-gray-400">
@@ -1067,7 +1084,9 @@
                     :key="i"
                     class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-800/80"
                   >
-                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ q.label }}</p>
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      {{ q.label }}
+                    </p>
                     <p class="mt-1 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
                       {{ q.answer || '—' }}
                     </p>
@@ -1096,7 +1115,7 @@
         <div class="flex justify-end gap-3">
           <button
             type="button"
-            @click.prevent="showSaveModal = false"
+            @click.prevent="confirmSaveNote"
             class="rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
           >
             Cancel

@@ -11,11 +11,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing client id' })
   }
 
-  const body = await readBody<{ content: string; attended?: boolean }>(event)
+  const body = await readBody<{ content: string; attendanceStatus?: string }>(event)
   if (!body?.content || typeof body.content !== 'string') {
     throw createError({ statusCode: 400, statusMessage: 'Content is required' })
   }
-  const attended = body.attended !== false // default true
+  const attendanceStatus = body.attendanceStatus ?? 'show'
 
   const dbUser = await prisma.user.findFirst({
     where: { id: clientUserId, role: 'CLIENT' },
@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const note = await prisma.sessionNote.create({
-    data: { clientId: client.id, content: body.content.trim(), attended },
+    data: { clientId: client.id, content: body.content.trim(), attendanceStatus: body.attendanceStatus ?? 'show' },
   })
 
   return note
