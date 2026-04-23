@@ -8,26 +8,68 @@ export const DECLARATION_FULL_V1 = `I understand I am requesting access to my be
 export const DECLARATION_SUMMARY_V1 = `I understand I am requesting access to my behavioral health session records. I specifically request a summary of my session notes (not the full clinical record). I confirm that I am the person making this request and that my digital signature below attests to that fact.`
 
 /**
- * Ensures default v1 templates exist for each request kind. Idempotent.
+ * v2 records-request disclaimer (placeholder / generic HIPAA style).
+ * TODO: replace with the clinic's final approved verbiage once provided.
+ */
+export const DECLARATION_FULL_V2 = `I am requesting access to my own protected health information (PHI) held by this clinic under my right of access pursuant to 45 CFR § 164.524. I specifically request the full session notes recorded by my clinician for the date range I have indicated. I understand:
+
+• The clinic has up to fourteen (14) calendar days from the date of my signed request to approve, deny, or extend this request.
+• Records I receive may contain sensitive clinical information. I am responsible for how I store, share, or disclose any copy released to me.
+• Psychotherapy (process) notes maintained separately from the medical record are not required to be released under HIPAA and may be withheld or summarized.
+• This request and my digital signature are retained with my clinical file as a compliance record.
+
+I confirm that I am the individual making this request and that my digital signature below attests to my identity and agreement.`
+
+export const DECLARATION_SUMMARY_V2 = `I am requesting a clinician-prepared summary of my protected health information (PHI) held by this clinic, in lieu of the full clinical record, under my right of access pursuant to 45 CFR § 164.524. I specifically request a summary of my session notes for the date range I have indicated (not the full clinical record). I understand:
+
+• The clinic has up to fourteen (14) calendar days from the date of my signed request to approve, deny, or extend this request.
+• The summary is prepared by clinical staff and reflects their professional judgment of what is appropriate to disclose.
+• Records I receive may contain sensitive clinical information. I am responsible for how I store, share, or disclose any copy released to me.
+• This request and my digital signature are retained with my clinical file as a compliance record.
+
+I confirm that I am the individual making this request and that my digital signature below attests to my identity and agreement.`
+
+/** Business-rule constant: SLA window admins have to act on a new records request. */
+export const RECORDS_REQUEST_APPROVAL_WINDOW_DAYS = 14
+
+/**
+ * Ensures default templates exist for each request kind. Idempotent.
+ * Seeds v1 (legacy) if missing, then adds v2 (current) if missing.
  */
 export async function ensureDefaultDeclarationTemplates(prisma: PrismaClient): Promise<void> {
-  const full = await prisma.declarationTemplate.findFirst({
-    where: { requestKind: 'FULL' },
-    orderBy: { version: 'desc' },
+  const fullV1 = await prisma.declarationTemplate.findFirst({
+    where: { requestKind: 'FULL', version: 1 },
   })
-  if (!full) {
+  if (!fullV1) {
     await prisma.declarationTemplate.create({
       data: { requestKind: 'FULL', version: 1, content: DECLARATION_FULL_V1 },
     })
   }
 
-  const summary = await prisma.declarationTemplate.findFirst({
-    where: { requestKind: 'SUMMARY' },
-    orderBy: { version: 'desc' },
+  const fullV2 = await prisma.declarationTemplate.findFirst({
+    where: { requestKind: 'FULL', version: 2 },
   })
-  if (!summary) {
+  if (!fullV2) {
+    await prisma.declarationTemplate.create({
+      data: { requestKind: 'FULL', version: 2, content: DECLARATION_FULL_V2 },
+    })
+  }
+
+  const summaryV1 = await prisma.declarationTemplate.findFirst({
+    where: { requestKind: 'SUMMARY', version: 1 },
+  })
+  if (!summaryV1) {
     await prisma.declarationTemplate.create({
       data: { requestKind: 'SUMMARY', version: 1, content: DECLARATION_SUMMARY_V1 },
+    })
+  }
+
+  const summaryV2 = await prisma.declarationTemplate.findFirst({
+    where: { requestKind: 'SUMMARY', version: 2 },
+  })
+  if (!summaryV2) {
+    await prisma.declarationTemplate.create({
+      data: { requestKind: 'SUMMARY', version: 2, content: DECLARATION_SUMMARY_V2 },
     })
   }
 }

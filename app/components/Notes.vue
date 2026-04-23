@@ -1,11 +1,54 @@
 <script setup lang="ts">
   import NotesToolbar from '~/components/NotesToolbar.vue'
+  import type { ChangeJustificationPayload } from '~/components/ChangeWithJustificationModal.vue'
   import { useDebounceFn } from '@vueuse/core'
   import { marked } from 'marked'
   import DOMPurify from 'dompurify'
   import { useWindowSize } from '@vueuse/core'
 
-  type SessionNoteRow = { id: string; content: string; createdAt: string }
+  type NoteKind = 'PROGRESS' | 'PSYCHOTHERAPY'
+  type NoteStatus = 'DRAFT' | 'CLINICIAN_SIGNED' | 'FULLY_APPROVED'
+
+  type SessionNoteRow = {
+    id: string
+    content: string
+    createdAt: string
+    sessionName: string
+    sessionNumber: number
+    appointmentId: string | null
+    appointmentStartTime: string | null
+    kind?: NoteKind
+    status?: NoteStatus
+    clinicianSignedAt?: string | null
+    clinicianSignedById?: string | null
+    adminSignedAt?: string | null
+    adminSignedById?: string | null
+    adminApprovalNote?: string | null
+  }
+
+  const { data: roleData } = await useFetch<{
+    isAdmin: boolean
+    isClinician: boolean
+    isStaff: boolean
+  }>('/api/users/me/is-admin', {
+    getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
+  })
+  const isAdminViewer = computed(() => roleData.value?.isAdmin === true)
+
+  const STATUS_LABELS: Record<NoteStatus, string> = {
+    DRAFT: 'Draft',
+    CLINICIAN_SIGNED: 'Clinician Signed',
+    FULLY_APPROVED: 'Fully Approved',
+  }
+  const KIND_LABELS: Record<NoteKind, string> = {
+    PROGRESS: 'Progress note',
+    PSYCHOTHERAPY: 'Psychotherapy note',
+  }
+  function statusColor(s?: NoteStatus) {
+    if (s === 'FULLY_APPROVED') return 'success' as const
+    if (s === 'CLINICIAN_SIGNED') return 'warning' as const
+    return 'neutral' as const
+  }
 
   type SelectedNote =
     | { source: 'editor'; id: number; date: string; content: string; preview: string }
@@ -30,15 +73,60 @@
         status: 'complete' | 'pending'
       }[]
       sessionNotes?: SessionNoteRow[]
+      appointments?: {
+        id: string
+        sessionName: string
+        sessionNumber: number
+        startTime: string
+        status: string
+      }[]
       initialFocusNoteId?: string | null
       backHref?: string
+      /** When set (e.g. admin notes editor), header shows a client switcher; notes/forms use `client.id`. */
+      clientPickerOptions?: { id: string; label: string }[]
+      /** Where the picker navigates: `/clients/[id]/notes-editor` vs `/notes-test?client=[id]`. */
+      clientPickerMode?: 'notes-editor' | 'notes-test'
     }>(),
     {
       sessionNotes: () => [],
       initialFocusNoteId: null,
       backHref: '/taskPage',
+      clientPickerOptions: () => [],
+      clientPickerMode: 'notes-editor',
+      appointments: () => [],
     }
   )
+
+  const route = useRoute()
+  const router = useRouter()
+
+  const clientPickerSelectItems = computed(() => {
+    const items = props.clientPickerOptions.map((c) => ({ label: c.label, value: c.id }))
+    if (items.length > 0 && !items.some((i) => i.value === props.client.id)) {
+      items.unshift({ label: props.client.name, value: props.client.id })
+    }
+    return items
+  })
+
+  const selectedClientPickerId = computed({
+    get: () => props.client.id,
+    set: (id: string) => {
+      if (!id || id === props.client.id) return
+      // Full page load so editor state / fetches always match the selected client (SPA-only
+      // navigate can leave stale UI when only the query changes on the same path).
+      const resolved =
+        props.clientPickerMode === 'notes-test'
+          ? router.resolve({
+              path: '/notes-test',
+              query: { ...route.query, client: id },
+            })
+          : router.resolve({
+              path: `/clients/${id}/notes-editor`,
+              query: { ...route.query },
+            })
+      window.location.assign(resolved.href)
+    },
+  })
 
   const sidebarOpen = ref(true)
 
@@ -107,10 +195,25 @@
 
   const filteredSessionNotes = computed(() =>
     localSessionNotes.value.filter((sn) => {
+      if (notesKindFilter.value !== 'all' && (sn.kind ?? 'PROGRESS') !== notesKindFilter.value) {
+        return false
+      }
       if (!q.value) return true
       const d = new Date(sn.createdAt).toLocaleDateString('en-US').toLowerCase()
       return sn.content.toLowerCase().includes(q.value) || d.includes(q.value)
     })
+  )
+
+  /** Currently selected session note row (if any) – used for admin approval UI. */
+  const selectedSessionNoteRow = computed<SessionNoteRow | null>(() =>
+    selectedSessionNoteId.value
+      ? localSessionNotes.value.find((n) => n.id === selectedSessionNoteId.value) ?? null
+      : null
+  )
+  const canAdminApproveSelected = computed(
+    () =>
+      isAdminViewer.value &&
+      selectedSessionNoteRow.value?.status === 'CLINICIAN_SIGNED'
   )
 
   function closeSelectedNote() {
@@ -163,15 +266,253 @@
   }
 
   const noteContent = ref(props.currentNote.content || '')
+  /** Kind for the current in-progress note; progress notes are the default. */
+  const currentNoteKind = ref<NoteKind>('PROGRESS')
+  /** Filter for the sidebar Notes tab: 'all' | 'PROGRESS' | 'PSYCHOTHERAPY'. */
+  const notesKindFilter = ref<'all' | NoteKind>('all')
+  /** Admin approval modal state. */
+  const showApproveModal = ref(false)
+  const approvingNoteId = ref<string | null>(null)
+  const approving = ref(false)
   const pendingEdits = ref<Map<number, string>>(new Map())
   const pendingMeta = ref<Map<number, { reason: string; signature: string }>>(new Map())
   const pendingSessionEdits = ref<Map<string, string>>(new Map())
   const pendingSessionMeta = ref<Map<string, { reason: string; signature: string }>>(new Map())
-  const showEditModal = ref(false)
-  const editReason = ref('')
-  const signature = ref('')
+  const showEditJustificationModal = ref(false)
   const selectedForm = ref<string | null>(null)
+  const selectedAppointmentId = ref<string>('')
   const sidebarTab = ref<'notes' | 'forms'>('notes')
+
+  const showNewFormModal = ref(false)
+  const newFormModalSelection = ref('')
+
+  function openNewFormVersion() {
+    newFormModalSelection.value = props.forms[0]?.label ?? ''
+    showNewFormModal.value = true
+  }
+
+  const newFormSubmitting = ref(false)
+  const historyPanelRef = ref<{ refresh: () => void } | null>(null)
+
+  async function confirmNewFormVersion() {
+    if (!newFormModalSelection.value) return
+    const formKey = FORM_LABEL_TO_KEY[newFormModalSelection.value]
+    if (!formKey) return
+
+    newFormSubmitting.value = true
+    try {
+      await $fetch(`/api/clients/${props.client.id}/forms/${formKey}`, {
+        method: 'POST',
+      })
+      sidebarTab.value = 'forms'
+      // Force the watcher to re-fetch by briefly clearing then resetting
+      const label = newFormModalSelection.value
+      selectedForm.value = null
+      await nextTick()
+      selectedForm.value = label
+      formPanelSubTab.value = 'answers'
+      showNewFormModal.value = false
+      await nextTick()
+      historyPanelRef.value?.refresh()
+    } catch (err) {
+      console.error('Failed to create new form version:', err)
+      alert('Could not create new submission – check console')
+    } finally {
+      newFormSubmitting.value = false
+    }
+  }
+
+  /** Display labels from notes-editor-data `FORM_LABELS` — must stay in sync with that API. */
+  const FORM_LABEL_TO_KEY: Record<string, string> = {
+    Application: 'application',
+    ACE: 'ace',
+    'GAD-7': 'gad',
+    'PHQ-9': 'phq',
+    'PCL-5': 'pcl',
+  }
+
+  watch(sidebarTab, (t) => {
+    if (t !== 'forms') selectedForm.value = null
+  })
+
+  const formPanelSubTab = ref<'answers' | 'history'>('answers')
+
+  const CLINICAL_FORM_KEYS = new Set(['ace', 'gad', 'phq', 'pcl'])
+  const appointmentOptions = computed(() =>
+    props.appointments
+      .filter((a) => {
+        const normalized = String(a.status ?? '').toUpperCase()
+        return normalized !== 'CANCELED' && normalized !== 'CANCELLED'
+      })
+      .map((a) => ({
+        label: `${a.sessionName} (${new Date(a.startTime).toLocaleDateString('en-US')})`,
+        value: a.id,
+      }))
+  )
+  const appointmentsById = computed(() => {
+    const map = new Map<string, { id: string; startTime: string }>()
+    for (const a of props.appointments) {
+      map.set(a.id, { id: a.id, startTime: a.startTime })
+    }
+    return map
+  })
+  function canEditOnOrAfterSessionDay(sessionStartIso: string | null | undefined) {
+    if (!sessionStartIso) return true
+    const sessionDay = new Date(sessionStartIso)
+    sessionDay.setHours(0, 0, 0, 0)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return today >= sessionDay
+  }
+  function canMarkAttendanceOnOrAfterSessionStart(sessionStartIso: string | null | undefined) {
+    if (!sessionStartIso) return false
+    return new Date() >= new Date(sessionStartIso)
+  }
+  const selectedAppointment = computed(() =>
+    props.appointments.find((a) => a.id === selectedAppointmentId.value) ?? null
+  )
+
+  /** True when saving would update an existing DB row for the selected session (not first save). */
+  const isUpdatingSelectedSessionNote = computed(() =>
+    localSessionNotes.value.some((n) => n.appointmentId === selectedAppointmentId.value)
+  )
+
+  const canEditCurrentNote = computed(
+    () =>
+      Boolean(selectedAppointment.value) &&
+      canEditOnOrAfterSessionDay(selectedAppointment.value?.startTime ?? null)
+  )
+  const canMarkAttendance = computed(() =>
+    canMarkAttendanceOnOrAfterSessionStart(selectedAppointment.value?.startTime ?? null)
+  )
+  const currentNoteLockMessage = computed(() => {
+    if (!selectedAppointment.value) return 'Select a session to start or edit notes.'
+    if (canEditCurrentNote.value) return ''
+    const when = selectedAppointment.value?.startTime
+      ? new Date(selectedAppointment.value.startTime).toLocaleDateString('en-US')
+      : 'the session day'
+    return `Notes are locked until ${when}. You can edit on the session day or after.`
+  })
+  const attendanceLockMessage = computed(() => {
+    if (!selectedAppointment.value) return 'Select a session to mark present or absent.'
+    if (canMarkAttendance.value) return ''
+    const when = selectedAppointment.value?.startTime
+      ? new Date(selectedAppointment.value.startTime).toLocaleString('en-US')
+      : 'the session start time'
+    return `Present/absent is locked until ${when}.`
+  })
+  watch(
+    appointmentOptions,
+    (opts) => {
+      if (!selectedAppointmentId.value || !opts.some((o) => o.value === selectedAppointmentId.value)) {
+        selectedAppointmentId.value = opts[0]?.value ?? ''
+      }
+    },
+    { immediate: true }
+  )
+  const selectedFormKey = computed(() => {
+    const label = selectedForm.value
+    if (!label) return null
+    return FORM_LABEL_TO_KEY[label] ?? null
+  })
+  const showFormHistoryTab = computed(() => {
+    const k = selectedFormKey.value
+    return k != null && CLINICAL_FORM_KEYS.has(k)
+  })
+
+  type FormPreviewPayload = {
+    formKey: string
+    formName: string
+    questions: { label: string; answer: string }[]
+    submitted?: boolean
+    submittedAt?: string
+    completedAt?: string
+    score?: number | null
+    severity?: string | null
+  }
+
+  const formScores = ref<Record<string, number | string | null>>({})
+  const formSeverities = ref<Record<string, string | null>>({})
+  const formPreviewData = ref<FormPreviewPayload | null>(null)
+  const formPreviewPending = ref(false)
+  const formPreviewError = ref<string | null>(null)
+  const isEditingForm = ref(false)
+  const editableAnswers = ref<{ label: string; answer: string }[]>([])
+  let formPreviewSeq = 0
+
+  function severityColor(label: string): string {
+    const severity = formSeverities.value[label]
+    if (!severity) return ''
+    const s = severity.toLowerCase()
+    if (s.includes('minimal') || s.includes('no exposure')) return 'text-green-600 dark:text-green-400'
+    if (s.includes('mild') || s.includes('low')) return 'text-yellow-500 dark:text-yellow-400'
+    if (s.includes('moderate')) return 'text-orange-500 dark:text-orange-400'
+    if (s.includes('moderately severe')) return 'text-orange-600 dark:text-orange-500'
+    if (s.includes('severe') || s.includes('high')) return 'text-red-600 dark:text-red-400'
+    return ''
+  }
+
+  watch(selectedForm, async (label) => {
+    formPanelSubTab.value = 'answers'
+    if (!label) {
+      formPreviewData.value = null
+      formPreviewError.value = null
+      formPreviewPending.value = false
+      return
+    }
+    const formKey = FORM_LABEL_TO_KEY[label]
+    if (!formKey) {
+      formPreviewError.value = 'Unknown form.'
+      formPreviewData.value = null
+      formPreviewPending.value = false
+      return
+    }
+    const seq = ++formPreviewSeq
+    formPreviewPending.value = true
+    formPreviewError.value = null
+    formPreviewData.value = null
+    try {
+      const data = await $fetch<FormPreviewPayload>(
+        `/api/clients/${props.client.id}/forms/${formKey}`
+      )
+      if (seq !== formPreviewSeq) return
+      formPreviewData.value = data
+    } catch (e: unknown) {
+      if (seq !== formPreviewSeq) return
+      formPreviewData.value = null
+      formPreviewError.value =
+        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ??
+        (e as Error)?.message ??
+        'Could not load form data.'
+    } finally {
+      if (seq === formPreviewSeq) formPreviewPending.value = false
+    }
+  })
+
+  watch(formPreviewData, (val) => {
+    isEditingForm.value = false
+    editableAnswers.value = val?.questions.map(q => ({ ...q })) ?? []
+    if (val && selectedForm.value) {
+      if (val.score != null) {
+        formScores.value[selectedForm.value] = val.score
+      }
+      if (val.severity != null) {
+        formSeverities.value[selectedForm.value] = val.severity
+      }
+    }
+  })
+
+  async function saveFormEdits() {
+    const key = FORM_LABEL_TO_KEY[selectedForm.value!]
+    await $fetch(`/api/clients/${props.client.id}/forms/${key}`, {
+      method: 'PATCH',
+      body: { answers: editableAnswers.value }
+    })
+    if (formPreviewData.value) {
+      formPreviewData.value.questions = [...editableAnswers.value]
+    }
+    isEditingForm.value = false
+  }
 
   const isEditingPreviousPanel = ref(false)
   const editingNoteId = ref<number | null>(null)
@@ -237,42 +578,40 @@
       editingNoteId.value = sd.id
       editingSessionNoteId.value = null
     } else {
+      const sessionRow = localSessionNotes.value.find((n) => n.id === sd.id)
+      const canEdit =
+        canEditOnOrAfterSessionDay(sessionRow?.appointmentStartTime) ||
+        canEditOnOrAfterSessionDay(
+          sessionRow?.appointmentId ? appointmentsById.value.get(sessionRow.appointmentId)?.startTime : null
+        )
+      if (!canEdit) {
+        alert('This note is locked until the session day. You can edit on or after that date.')
+        return
+      }
       editingSessionNoteId.value = sd.id
       editingNoteId.value = null
     }
     editingDate.value = sd.date
     isEditingPreviousPanel.value = false
-    const meta =
-      sd.source === 'editor' ? pendingMeta.value.get(sd.id) : pendingSessionMeta.value.get(sd.id)
-    editReason.value = meta?.reason ?? ''
-    signature.value = meta?.signature ?? ''
-    showEditModal.value = true
+    showEditJustificationModal.value = true
   }
 
-  function confirmEdit() {
+  function onEditNoteJustified(payload: ChangeJustificationPayload) {
     const sd = selectedNoteData.value
-    if (!sd) return
+    if (!sd || !payload.reasoning?.trim() || !payload.signatureData) return
 
-    if (!editReason.value.trim() || !signature.value.trim()) {
-      alert('Please provide reason and signature')
-      return
-    }
+    const reason = payload.reasoning.trim()
+    const signatureData = payload.signatureData
 
     if (sd.source === 'session') {
-      pendingSessionMeta.value.set(sd.id, {
-        reason: editReason.value,
-        signature: signature.value,
-      })
+      pendingSessionMeta.value.set(sd.id, { reason, signature: signatureData })
       if (!pendingSessionEdits.value.has(sd.id)) {
         pendingSessionEdits.value.set(sd.id, sd.content)
       }
       editingSessionNoteId.value = sd.id
       editingNoteId.value = null
     } else {
-      pendingMeta.value.set(sd.id, {
-        reason: editReason.value,
-        signature: signature.value,
-      })
+      pendingMeta.value.set(sd.id, { reason, signature: signatureData })
       if (!pendingEdits.value.has(sd.id)) {
         pendingEdits.value.set(sd.id, sd.content)
       }
@@ -281,7 +620,7 @@
     }
 
     isEditingPreviousPanel.value = true
-    showEditModal.value = false
+    showEditJustificationModal.value = false
   }
 
   const isSavingPrevious = ref(false)
@@ -319,7 +658,13 @@
 
   async function submitAndCloseModal() {
     showSubmitModal.value = false
-    await submitPreviousEdit()
+    if (isEditingPreviousPanel.value) {
+      await submitPreviousEdit()
+    }
+  }
+
+  async function onSaveSessionNoteSigned(payload: ChangeJustificationPayload) {
+    await confirmSaveNote(payload.signatureData, payload.reasoning)
   }
 
   async function submitPreviousEdit() {
@@ -333,15 +678,17 @@
         return
       }
 
+      const sig = meta.signature
+      const patchBody =
+        sig.startsWith('data:image/png;base64,')
+          ? { content: draft, reason: meta.reason, signatureData: sig }
+          : { content: draft, reason: meta.reason, signature: sig }
+
       isSavingPrevious.value = true
       try {
         await $fetch(`/api/clients/${props.client.id}/session-notes/${sid}`, {
           method: 'PATCH',
-          body: {
-            content: draft,
-            reason: meta.reason,
-            signature: meta.signature,
-          },
+          body: patchBody,
         })
 
         const idx = localSessionNotes.value.findIndex((n) => n.id === sid)
@@ -364,8 +711,6 @@
           selectedNoteEdits.value = []
         }
 
-        editReason.value = ''
-        signature.value = ''
         previousLastSaved.value = new Date()
         previousSaveStatus.value = 'saved'
       } catch (err) {
@@ -389,15 +734,17 @@
       return
     }
 
+    const sig = meta.signature
+    const patchBody =
+      sig.startsWith('data:image/png;base64,')
+        ? { content: draft, reason: meta.reason, signatureData: sig }
+        : { content: draft, reason: meta.reason, signature: sig }
+
     isSavingPrevious.value = true
     try {
       await $fetch(`/api/clients/${props.client.id}/session-notes/${editingNoteId.value}`, {
         method: 'PATCH',
-        body: {
-          content: draft,
-          reason: meta.reason,
-          signature: meta.signature,
-        },
+        body: patchBody,
       })
 
       const noteIndex = localPreviousNotes.value.findIndex((n) => n.id === editingNoteId.value)
@@ -416,8 +763,6 @@
       pendingMeta.value.delete(editingNoteId.value)
       isEditingPreviousPanel.value = false
       editingNoteId.value = null
-      editReason.value = ''
-      signature.value = ''
       previousLastSaved.value = new Date()
       previousSaveStatus.value = 'saved'
     } catch (err) {
@@ -430,17 +775,84 @@
   }
 
   async function saveNote() {
-    console.log('Manual save clicked')
     if (!noteContent.value.trim()) return
     showSaveModal.value = true
   }
 
-  async function confirmSaveNote() {
-    console.log('confirmSaveNote called - Debug log added')
-    console.log('noteContent:', noteContent.value)
-    console.log('client:', props.client)
-    showSaveModal.value = false
+  /** Persist the current-note content as a DRAFT (no signature, no admin notification). */
+  async function saveDraftNote() {
+    if (!noteContent.value.trim()) return
+    if (!selectedAppointmentId.value) {
+      alert('Please select a session before saving this draft.')
+      return
+    }
     saveStatus.value = 'saving'
+    try {
+      const response = (await $fetch(`/api/clients/${props.client.id}/notes`, {
+        method: 'POST',
+        body: {
+          content: noteContent.value,
+          attended: !isAbsent.value,
+          appointmentId: selectedAppointmentId.value,
+          kind: currentNoteKind.value,
+          action: 'save-draft',
+        },
+      })) as {
+        id: string
+        createdAt: string
+        sessionName: string
+        sessionNumber: number
+        appointmentId: string | null
+        kind: NoteKind
+        status: NoteStatus
+      }
+      localStorage.removeItem(`note_draft_${props.client.id}`)
+      const existingIdx = localSessionNotes.value.findIndex((n) => n.id === response.id)
+      const row: SessionNoteRow = {
+        id: response.id,
+        createdAt: response.createdAt,
+        content: noteContent.value,
+        sessionName: response.sessionName,
+        sessionNumber: response.sessionNumber,
+        appointmentId: response.appointmentId,
+        appointmentStartTime: selectedAppointment.value?.startTime ?? null,
+        kind: response.kind,
+        status: response.status,
+      }
+      if (existingIdx === -1) localSessionNotes.value.unshift(row)
+      else localSessionNotes.value[existingIdx] = row
+      lastSaved.value = new Date()
+      saveStatus.value = 'saved'
+    } catch (err) {
+      console.error('Draft save failed:', err)
+      saveStatus.value = 'error'
+      alert('Failed to save draft – check console')
+    }
+  }
+
+  async function confirmSaveNote(signatureData: string, editReason?: string) {
+    saveStatus.value = 'saving'
+    if (!selectedAppointmentId.value) {
+      alert('Please select a session before saving this note.')
+      saveStatus.value = 'idle'
+      return
+    }
+
+    const updating = localSessionNotes.value.some(
+      (n) => n.appointmentId === selectedAppointmentId.value
+    )
+    if (updating && !editReason?.trim()) {
+      alert('A reason is required to update an existing note for this session.')
+      saveStatus.value = 'idle'
+      return
+    }
+    if (!canMarkAttendance.value) {
+      alert('You can only mark present or absent on or after the session start time.')
+      saveStatus.value = 'idle'
+      return
+    }
+
+    showSaveModal.value = false
 
     try {
       const savedContent = noteContent.value
@@ -450,20 +862,40 @@
         body: {
           content: savedContent,
           attended: !isAbsent.value,
+          appointmentId: selectedAppointmentId.value,
+          kind: currentNoteKind.value,
+          action: 'clinician-sign',
+          clinicianSignatureData: signatureData,
+          ...(updating && editReason?.trim() ? { reason: editReason.trim() } : {}),
         },
-      })) as { id: string; createdAt: string }
-
-      console.log('New note created:', response)
+      })) as {
+        id: string
+        createdAt: string
+        sessionName: string
+        sessionNumber: number
+        appointmentId: string | null
+        kind: NoteKind
+        status: NoteStatus
+      }
 
       // Clear local draft
       localStorage.removeItem(`note_draft_${props.client.id}`)
 
-      // Add to session notes list (this is what moves it to sidebar)
-      localSessionNotes.value.unshift({
+      // Upsert in sidebar list (existing blank note becomes filled).
+      const existingIdx = localSessionNotes.value.findIndex((n) => n.id === response.id)
+      const row: SessionNoteRow = {
         id: response.id,
         createdAt: response.createdAt,
         content: savedContent,
-      })
+        sessionName: response.sessionName,
+        sessionNumber: response.sessionNumber,
+        appointmentId: response.appointmentId,
+        appointmentStartTime: selectedAppointment.value?.startTime ?? null,
+        kind: response.kind,
+        status: response.status,
+      }
+      if (existingIdx === -1) localSessionNotes.value.unshift(row)
+      else localSessionNotes.value[existingIdx] = row
 
       // Clear editor → fresh current note
       noteContent.value = ''
@@ -480,8 +912,52 @@
     editingNoteId.value = null
     editingSessionNoteId.value = null
     editingDate.value = ''
-    editReason.value = ''
-    signature.value = ''
+  }
+
+  function openApproveModal() {
+    if (!selectedSessionNoteId.value || !canAdminApproveSelected.value) return
+    approvingNoteId.value = selectedSessionNoteId.value
+    showApproveModal.value = true
+  }
+
+  async function onAdminApprove(payload: { signatureData: string; reasoning?: string }) {
+    if (!approvingNoteId.value) return
+    approving.value = true
+    try {
+      const res = (await $fetch(
+        `/api/clients/${props.client.id}/session-notes/${approvingNoteId.value}/approve`,
+        {
+          method: 'POST',
+          body: {
+            adminSignatureData: payload.signatureData,
+            approvalNote: payload.reasoning,
+          },
+        }
+      )) as {
+        id: string
+        status: NoteStatus
+        adminSignedAt: string | null
+      }
+      const idx = localSessionNotes.value.findIndex((n) => n.id === approvingNoteId.value)
+      if (idx !== -1) {
+        const row = localSessionNotes.value[idx]!
+        localSessionNotes.value[idx] = {
+          ...row,
+          status: res.status,
+          adminSignedAt: res.adminSignedAt ?? null,
+        }
+      }
+      showApproveModal.value = false
+      approvingNoteId.value = null
+    } catch (err) {
+      console.error('Approval failed:', err)
+      alert(
+        (err as { data?: { statusMessage?: string } })?.data?.statusMessage ??
+          'Failed to approve note – check console'
+      )
+    } finally {
+      approving.value = false
+    }
   }
 
   //Auto-save and status tracking
@@ -511,13 +987,33 @@
   })
 
   // Load draft when component mounts
-  onMounted(() => {
+  onMounted(async () => {
     const draft = localStorage.getItem(`note_draft_${props.client.id}`)
     if (draft !== null) {
       noteContent.value = draft
       lastSaved.value = new Date() // pretend it was just saved
       saveStatus.value = 'saved'
     }
+    // Prefetch scores for complete forms
+    for (const form of props.forms) {
+      if (form.status !== 'complete') continue
+      const key = FORM_LABEL_TO_KEY[form.label]
+      if (!key) continue
+      try {
+        const data = await $fetch<FormPreviewPayload>(
+          `/api/clients/${props.client.id}/forms/${key}`
+        )
+        if (data.score != null) {
+          formScores.value[form.label] = data.score
+        }
+        if (data.severity != null) {
+          formSeverities.value[form.label] = data.severity
+        } 
+      } catch {
+        // silently skip
+      }
+    }
+
   })
 
   function formatTime(date: Date) {
@@ -562,9 +1058,20 @@
           @click="sidebarOpen = false"
         />
         <!-- </div> -->
-        <div class="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
-          <UIcon name="i-heroicons-user-circle" class="h-5 w-5 text-gray-400" />
-          <span>{{ client.name }}</span>
+        <div
+          class="flex min-w-0 flex-1 items-center justify-center gap-2 px-2 text-lg font-semibold text-gray-900 dark:text-white"
+        >
+          <UIcon name="i-heroicons-user-circle" class="h-5 w-5 shrink-0 text-gray-400" />
+          <USelect
+            v-if="clientPickerOptions.length > 0"
+            v-model="selectedClientPickerId"
+            :items="clientPickerSelectItems"
+            value-key="value"
+            :placeholder="client.name"
+            size="md"
+            class="min-w-0 w-full max-w-xs"
+          />
+          <span v-else class="truncate">{{ client.name }}</span>
         </div>
         <UButton
           icon="i-heroicons-x-mark"
@@ -624,7 +1131,7 @@
 
           <!-- Notes Tab -->
           <template v-if="sidebarTab === 'notes'">
-            <div class="border-b border-gray-100 px-3 py-2 dark:border-gray-800">
+            <div class="space-y-2 border-b border-gray-100 px-3 py-2 dark:border-gray-800">
               <div
                 class="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-gray-700 dark:bg-gray-800"
               >
@@ -638,6 +1145,46 @@
                   placeholder="Search notes..."
                   class="w-full bg-transparent text-xs text-gray-700 placeholder-gray-400 focus:outline-none dark:text-gray-300"
                 />
+              </div>
+              <div
+                class="flex gap-1 rounded-lg border border-gray-200 bg-white p-0.5 text-[11px] font-medium dark:border-gray-700 dark:bg-gray-900"
+              >
+                <button
+                  type="button"
+                  class="flex-1 rounded-md px-1.5 py-1 transition-colors"
+                  :class="
+                    notesKindFilter === 'all'
+                      ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                      : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                  "
+                  @click="notesKindFilter = 'all'"
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 rounded-md px-1.5 py-1 transition-colors"
+                  :class="
+                    notesKindFilter === 'PROGRESS'
+                      ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                      : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                  "
+                  @click="notesKindFilter = 'PROGRESS'"
+                >
+                  Progress
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 rounded-md px-1.5 py-1 transition-colors"
+                  :class="
+                    notesKindFilter === 'PSYCHOTHERAPY'
+                      ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                      : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                  "
+                  @click="notesKindFilter = 'PSYCHOTHERAPY'"
+                >
+                  Psychotherapy
+                </button>
               </div>
             </div>
             <div class="flex-1 overflow-y-auto">
@@ -705,7 +1252,7 @@
                 >
                   <div class="flex items-center justify-between gap-1">
                     <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {{ new Date(sn.createdAt).toLocaleDateString('en-US') }}
+                      {{ sn.sessionName }}
                     </p>
                     <span v-if="hasPendingSessionEdit(sn.id)" title="Unsaved edit">
                       <svg
@@ -728,8 +1275,26 @@
                     </span>
                   </div>
                   <p class="mt-0.5 truncate text-xs text-gray-400">
+                    {{ new Date(sn.createdAt).toLocaleDateString('en-US') }} ·
                     {{ sn.content.slice(0, 60) }}{{ sn.content.length > 60 ? '...' : '' }}
                   </p>
+                  <div class="mt-1 flex flex-wrap items-center gap-1">
+                    <UBadge
+                      :color="statusColor(sn.status)"
+                      variant="subtle"
+                      size="xs"
+                    >
+                      {{ STATUS_LABELS[sn.status ?? 'DRAFT'] }}
+                    </UBadge>
+                    <UBadge
+                      v-if="sn.kind === 'PSYCHOTHERAPY'"
+                      color="secondary"
+                      variant="subtle"
+                      size="xs"
+                    >
+                      Psychotherapy
+                    </UBadge>
+                  </div>
                 </div>
               </template>
               <div
@@ -757,8 +1322,21 @@
               "
             >
               {{ form.label }}
-              <div class="mt-1 text-xs font-normal">{{ form.status }}</div>
+              <div class="mt-1 text-xs font-normal">
+                <template v-if="formScores[form.label] != null">
+                  Score: {{ formScores[form.label] }}
+                  <span v-if="formSeverities[form.label]"> · {{ formSeverities[form.label] }}</span>
+                </template>
+                <template v-else>{{ form.status }}</template>
+              </div>
             </div>
+
+            <button
+              @click.stop="openNewFormVersion"
+              class="mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-black-200 py-2.5 text-sm text-gray-400 transition-colors hover:border-primary-400 hover:text-primary-500 dark:border-gray-700 dark:hover:border-primary-500"
+            >
+              <span class="text-xl font-dark leading-none">+</span>
+            </button>
           </div>
         </div>
 
@@ -771,8 +1349,8 @@
           >
             <!-- Previous Note -->
             <div v-if="selectedNoteData" class="flex min-w-0 flex-col p-5 md:flex-1">
-              <div class="mb-3 flex items-center justify-between gap-2">
-                <div>
+              <div class="mb-3 flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
                   <p class="text-sm font-medium text-gray-400">{{ selectedNoteData.date }}</p>
                   <p
                     v-if="selectedNoteData.source === 'session'"
@@ -780,6 +1358,47 @@
                   >
                     Session log note
                   </p>
+                  <div
+                    v-if="selectedSessionNoteRow"
+                    class="mt-2 flex flex-wrap items-center gap-1.5"
+                  >
+                    <UBadge
+                      :color="statusColor(selectedSessionNoteRow.status)"
+                      variant="subtle"
+                      size="sm"
+                    >
+                      {{ STATUS_LABELS[selectedSessionNoteRow.status ?? 'DRAFT'] }}
+                    </UBadge>
+                    <UBadge
+                      :color="selectedSessionNoteRow.kind === 'PSYCHOTHERAPY' ? 'secondary' : 'primary'"
+                      variant="subtle"
+                      size="sm"
+                    >
+                      {{ KIND_LABELS[selectedSessionNoteRow.kind ?? 'PROGRESS'] }}
+                    </UBadge>
+                    <span
+                      v-if="selectedSessionNoteRow.clinicianSignedAt"
+                      class="text-[10px] text-gray-500 dark:text-gray-400"
+                    >
+                      Clinician signed {{ new Date(selectedSessionNoteRow.clinicianSignedAt).toLocaleString('en-US') }}
+                    </span>
+                    <span
+                      v-if="selectedSessionNoteRow.adminSignedAt"
+                      class="text-[10px] text-gray-500 dark:text-gray-400"
+                    >
+                      · Admin approved {{ new Date(selectedSessionNoteRow.adminSignedAt).toLocaleString('en-US') }}
+                    </span>
+                  </div>
+                  <UButton
+                    v-if="canAdminApproveSelected"
+                    class="mt-2"
+                    color="success"
+                    variant="solid"
+                    size="sm"
+                    icon="i-heroicons-check-badge"
+                    label="Approve & sign"
+                    @click="openApproveModal"
+                  />
                 </div>
                 <button
                   @click="closeSelectedNote"
@@ -853,19 +1472,99 @@
               <div class="mb-4 flex items-center justify-between">
                 <div>
                   <p class="text-sm font-medium text-gray-400">{{ currentNote.date }}</p>
-                  <span class="text-primary-500 text-xs font-semibold uppercase">Current</span>
+                  <div class="mt-2 max-w-sm">
+                    <label class="mb-1 block text-xs font-semibold tracking-wide text-gray-500 uppercase">
+                      Session
+                    </label>
+                    <select
+                      v-model="selectedAppointmentId"
+                      class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                    >
+                      <option value="" disabled>Select a session</option>
+                      <option v-for="opt in appointmentOptions" :key="opt.value" :value="opt.value">
+                        {{ opt.label }}
+                      </option>
+                    </select>
+                    <p v-if="appointmentOptions.length === 0" class="mt-1 text-xs text-gray-500">
+                      No sessions available yet for this client.
+                    </p>
+                  </div>
+                  <div class="mt-3 max-w-sm">
+                    <label class="mb-1 block text-xs font-semibold tracking-wide text-gray-500 uppercase">
+                      Note type
+                    </label>
+                    <div
+                      class="flex gap-1 rounded-lg border border-gray-200 bg-white p-0.5 text-xs font-medium dark:border-gray-700 dark:bg-gray-900"
+                    >
+                      <button
+                        type="button"
+                        class="flex-1 rounded-md px-2 py-1.5 transition-colors"
+                        :class="
+                          currentNoteKind === 'PROGRESS'
+                            ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                            : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                        "
+                        @click="currentNoteKind = 'PROGRESS'"
+                      >
+                        Progress note
+                      </button>
+                      <button
+                        type="button"
+                        class="flex-1 rounded-md px-2 py-1.5 transition-colors"
+                        :class="
+                          currentNoteKind === 'PSYCHOTHERAPY'
+                            ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                            : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                        "
+                        @click="currentNoteKind = 'PSYCHOTHERAPY'"
+                      >
+                        Psychotherapy note
+                      </button>
+                    </div>
+                    <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                      Psychotherapy (process) notes are stored separately and are not visible to
+                      the client.
+                    </p>
+                  </div>
+                  <span class="mt-3 inline-block text-primary-500 text-xs font-semibold uppercase">
+                    Current
+                  </span>
                   <!-- {{ isEditingPrevious ? `Editing note from ${editingDate}` : currentNote.date }} -->
                   <!-- <p v-if="isEditingPrevious" class="text-xs text-amber-600"> -->
                   <!-- Changes will be saved as a new version • Reason required -->
                   <!-- </p> -->
                 </div>
-                <!-- <span v-if="!isEditingPrevious" class="text-primary-500 text-xs font-semibold uppercase">Current</span> -->
+                <UButtonGroup v-if="!isEditingPreviousPanel">
+                  <UButton
+                    :color="!isAbsent ? 'success' : 'neutral'"
+                    :variant="!isAbsent ? 'solid' : 'outline'"
+                    label="Present"
+                    size="sm"
+                    :disabled="!canMarkAttendance"
+                    @click="isAbsent = false"
+                  />
+                  <UButton
+                    :color="isAbsent ? 'error' : 'neutral'"
+                    :variant="isAbsent ? 'solid' : 'outline'"
+                    label="Absent"
+                    size="sm"
+                    :disabled="!canMarkAttendance"
+                    @click="isAbsent = true"
+                  />
+                </UButtonGroup>
               </div>
 
               <NotesToolbar
+                v-if="canEditCurrentNote"
                 v-model="noteContent"
                 class="flex-1 overflow-hidden rounded-xl border bg-white dark:bg-gray-900"
               />
+              <div
+                v-else
+                class="flex min-h-[280px] items-center justify-center rounded-xl border border-amber-300 bg-amber-50/70 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300"
+              >
+                {{ currentNoteLockMessage }}
+              </div>
 
               <!-- Save button – show only when there's content or in edit mode -->
               <div class="mt-4 flex justify-end gap-2">
@@ -881,85 +1580,217 @@
                 </div>
 
                 <UButton
+                  v-if="noteContent.trim() && !isEditingPreviousPanel"
+                  color="neutral"
+                  variant="soft"
+                  label="Save draft"
+                  size="md"
+                  icon="i-heroicons-document"
+                  :disabled="!selectedAppointmentId || !canEditCurrentNote"
+                  @click="saveDraftNote"
+                  class="w-auto"
+                />
+                <UButton
                   v-if="noteContent.trim() || isEditingPreviousPanel"
                   color="primary"
-                  label="Save Note"
+                  :label="isEditingPreviousPanel ? 'Save Note' : 'Sign & submit'"
                   size="md"
+                  icon="i-heroicons-pencil-square"
+                  :disabled="
+                    !isEditingPreviousPanel &&
+                    (!selectedAppointmentId || !canEditCurrentNote || !canMarkAttendance)
+                  "
                   @click="showSaveModal = true"
                   class="w-auto"
                 />
-                <UButtonGroup v-if="!isEditingPreviousPanel">
-                  <UButton
-                    :color="!isAbsent ? 'success' : 'neutral'"
-                    :variant="!isAbsent ? 'solid' : 'outline'"
-                    label="Present"
-                    size="sm"
-                    @click="isAbsent = false"
-                  />
-                  <UButton
-                    :color="isAbsent ? 'error' : 'neutral'"
-                    :variant="isAbsent ? 'solid' : 'outline'"
-                    label="Absent"
-                    size="sm"
-                    @click="isAbsent = true"
-                  />
-                </UButtonGroup>
               </div>
+              <p v-if="!isEditingPreviousPanel && attendanceLockMessage" class="mt-2 text-xs text-amber-600">
+                {{ attendanceLockMessage }}
+              </p>
             </div>
           </div>
 
           <!-- Form Details -->
           <div
-            v-if="selectedForm"
-            class="w-64 flex-shrink-0 border-l border-gray-200 px-6 py-4 dark:border-gray-800"
+            v-if="selectedForm && sidebarTab === 'forms'"
+            class="flex w-full max-w-md min-w-0 flex-shrink-0 flex-col border-l border-gray-200 dark:border-gray-800 md:max-h-screen md:w-96"
           >
-            <div class="mb-3 flex items-center justify-between">
+            <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
               <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
                 {{ selectedForm }}
               </h2>
               <button
+                type="button"
                 @click="selectedForm = null"
-                class="text-lg font-bold text-gray-400 hover:text-gray-600"
+                class="text-lg leading-none font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                title="Close"
               >
                 ×
               </button>
             </div>
-            <p class="text-sm text-gray-500 dark:text-gray-400">Form details will appear here.</p>
+            <div
+              v-if="showFormHistoryTab"
+              class="flex gap-1 border-b border-gray-100 px-3 py-2 dark:border-gray-800"
+            >
+              <button
+                type="button"
+                class="flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors"
+                :class="
+                  formPanelSubTab === 'answers'
+                    ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                    : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                "
+                @click="formPanelSubTab = 'answers'"
+              >
+                Answers
+              </button>
+              <button
+                type="button"
+                class="flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors"
+                :class="
+                  formPanelSubTab === 'history'
+                    ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                    : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                "
+                @click="formPanelSubTab = 'history'"
+              >
+                History
+              </button>
+            </div>
+            <div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+              <template v-if="!showFormHistoryTab || formPanelSubTab === 'answers'">
+                <div v-if="formPreviewPending" class="flex justify-center py-8">
+                  <UIcon
+                    name="i-heroicons-arrow-path"
+                    class="h-8 w-8 animate-spin text-primary-500"
+                  />
+                </div>
+                <UAlert
+                  v-else-if="formPreviewError"
+                  color="error"
+                  variant="subtle"
+                  icon="i-heroicons-exclamation-triangle-20-solid"
+                  :title="formPreviewError"
+                  description="Try again or open the client profile to view form answers."
+                />
+                <div v-else-if="formPreviewData" class="space-y-3">
+                  <p
+                    v-if="formPreviewData.submitted != null"
+                    class="text-xs text-gray-500 dark:text-gray-400"
+                  >
+                    {{ formPreviewData.submitted ? 'Submitted' : 'Not submitted' }}
+                    <span
+                      v-if="formPreviewData.submittedAt || formPreviewData.completedAt"
+                      class="text-gray-400"
+                    >
+                      ·
+                      {{
+                        new Date(
+                          formPreviewData.completedAt ?? formPreviewData.submittedAt ?? ''
+                        ).toLocaleString('en-US')
+                      }}
+                    </span>
+                  </p>
+                  <div
+                    v-if="formPreviewData.score != null || formPreviewData.severity"
+                    class="flex flex-wrap gap-2 text-sm"
+                  >
+                    <span
+                      v-if="formPreviewData.score != null"
+                      class="font-medium text-gray-900 dark:text-white"
+                    >
+                      Score: {{ formPreviewData.score }}
+                    </span>
+                    <span v-if="formPreviewData.severity" :class="severityColor(selectedForm!)">
+                      {{ formPreviewData.severity }}
+                    </span>
+                  </div>
+                  <div v-if="formPreviewData.questions?.length" class="space-y-2">
+                    <div
+                      v-for="(q, i) in editableAnswers"
+                      :key="i"
+                      class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-800/80"
+                    >
+                      <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ q.label }}</p>
+                      <input
+                        v-if="isEditingForm"
+                        v-model="q.answer"
+                        class="mt-1 w-full rounded border border-gray-300 bg-white px-2 py-1 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                      />
+                      <p v-else class="mt-1 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+                        {{ q.answer || '—' }}
+                      </p>
+                    </div>
+                    <div class="mt-3 flex gap-2">
+                      <UButton
+                        v-if="!isEditingForm"
+                        label="Edit"
+                        size="xs"
+                        @click="isEditingForm = true"
+                      />
+                      <UButton
+                        v-if="isEditingForm"
+                        label="Save"
+                        size="xs"
+                        color="primary"
+                        @click="saveFormEdits"
+                      />
+                      <UButton
+                        v-if="isEditingForm"
+                        label="Cancel"
+                        size="xs"
+                        variant="ghost"
+                        @click="isEditingForm = false"
+                      />
+                    </div>
+                  </div>
+                  <p v-else class="text-sm text-gray-500 dark:text-gray-400">No answers yet.</p>
+                </div>
+              </template>
+              <ClinicalFormHistoryPanel
+                v-else-if="selectedFormKey"
+                :client-id="client.id"
+                :form-key="selectedFormKey"
+                ref="historyPanelRef"
+                class="max-h-[min(70vh,28rem)]"
+              />
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Save Note Modal -->
-  <Teleport to="body" v-if="showSaveModal">
-    <div
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-      @click.self="showSaveModal = false"
-    >
-      <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
-        <h2 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Save Note</h2>
-        <p class="mb-6 text-sm text-gray-500 dark:text-gray-400">
-          Are you sure you want to save this note?
-        </p>
-        <div class="flex justify-end gap-3">
-          <button
-            type="button"
-            @click.prevent="showSaveModal = false"
-            class="rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            @click.prevent="submitAndCloseModal"
-            class="bg-primary-500 hover:bg-primary-600 rounded-lg px-4 py-2 text-sm text-white"
-          >
-            Submit
-          </button>
-        </div>
-      </div>
-    </div>
+  <Teleport to="body">
+    <ChangeWithJustificationModal
+      :open="showSaveModal"
+      title="Clinician sign & submit"
+      :description="
+        isUpdatingSelectedSessionNote
+          ? 'This session already has a note. Enter why you are changing it, then sign. The admin will be notified to counter-sign.'
+          : 'Your signature submits this note for admin approval. An administrator will be notified to counter-sign.'
+      "
+      :submit-label="isUpdatingSelectedSessionNote ? 'Sign & resubmit for approval' : 'Sign & submit for approval'"
+      :loading="saveStatus === 'saving'"
+      :signature-only="!isUpdatingSelectedSessionNote"
+      :requires-edit-reason="isUpdatingSelectedSessionNote"
+      @close="showSaveModal = false"
+      @submit="onSaveSessionNoteSigned"
+    />
+  </Teleport>
+
+  <!-- Admin counter-sign modal -->
+  <Teleport to="body">
+    <ChangeWithJustificationModal
+      :open="showApproveModal"
+      title="Admin approval – final sign-off"
+      description="Sign below to fully approve this note. Clinician will be notified once you approve."
+      submit-label="Sign & approve"
+      :loading="approving"
+      signature-only
+      @close="showApproveModal = false"
+      @submit="onAdminApprove"
+    />
   </Teleport>
 
   <!-- Submit Changes Modal -->
@@ -993,55 +1824,68 @@
     </div>
   </Teleport>
 
-  <!-- Edit Modal -->
-  <Teleport to="body" v-if="showEditModal">
+  <Teleport to="body">
+    <ChangeWithJustificationModal
+      :open="showEditJustificationModal"
+      title="Edit session note"
+      description="Document why you are changing this note, then sign. You can edit the text next."
+      submit-label="Continue to editor"
+      requires-edit-reason
+      @close="showEditJustificationModal = false"
+      @submit="onEditNoteJustified"
+    />
+  </Teleport>
+  <!-- New Form Submission Modal -->
+  <Teleport to="body">
     <div
+      v-if="showNewFormModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-      @click.self="showEditModal = false"
+      @click.self="showNewFormModal = false"
     >
-      <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl md:max-w-md dark:bg-gray-900">
-        <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Edit Note</h2>
+      <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+        <h2 class="mb-1 text-lg font-semibold text-gray-900 dark:text-white">New Form Submission</h2>
+        <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+          Select a form to start a new submission. The current submission will move to History.
+        </p>
 
-        <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Reason for editing
-        </label>
-        <textarea
-          v-model="editReason"
-          rows="3"
-          placeholder="Describe why you are editing this note..."
-          class="focus:ring-primary-500 mb-4 w-full resize-none rounded-lg border border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 focus:ring-2 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-        ></textarea>
+        <!-- Form options -->
+        <div class="mb-5 flex flex-col gap-2">
+          <button
+            v-for="form in forms"
+            :key="form.label"
+            @click="newFormModalSelection = form.label"
+            class="flex items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors"
+            :class="
+              newFormModalSelection === form.label
+                ? 'border-primary-400 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
+                : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'
+            "
+          >
+            <span>{{ form.label }}</span>
+            <span
+              v-if="newFormModalSelection === form.label"
+              class="text-primary-500 text-base leading-none"
+            >✓</span>
+          </button>
+        </div>
 
-        <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Signature
-        </label>
-        <input
-          v-model="signature"
-          type="text"
-          placeholder="Sign here..."
-          class="focus:ring-primary-500 w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-gray-900 focus:ring-2 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          style="font-family: 'Brush Script MT', cursive; font-size: 1.25rem"
-        />
-
-        <div class="mt-6 flex justify-end gap-3">
+        <!-- Actions -->
+        <div class="flex gap-3">
           <button
             type="button"
-            @click.prevent="showEditModal = false"
-            class="rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+            @click="showNewFormModal = false"
+            class="flex-1 rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
           >
             Cancel
           </button>
           <button
             type="button"
-            @click.prevent="
-              () => {
-                showSubmitModal = false
-                submitPreviousEdit()
-              }
-            "
-            class="bg-primary-500 hover:bg-primary-600 rounded-lg px-4 py-2 text-sm text-white"
+            :disabled="!newFormModalSelection || newFormSubmitting"
+            @click="confirmNewFormVersion"
+            class="flex-1 rounded-lg px-4 py-2 text-sm text-white transition-colors disabled:opacity-40"
+            :class="newFormModalSelection ? 'bg-primary-500 hover:bg-primary-600' : 'bg-primary-300 cursor-not-allowed'"
           >
-            Submit
+            {{ newFormSubmitting ? 'Creating...' : 'Open Form' }}
           </button>
         </div>
       </div>

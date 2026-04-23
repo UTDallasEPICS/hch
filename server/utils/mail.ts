@@ -23,6 +23,11 @@ export function getAdminNotificationEmails(): string[] {
     .filter(Boolean)
 }
 
+/** True when outbound app email (Gmail) env is set (same check as send path). */
+export function isEmailConfigured(): boolean {
+  return Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS)
+}
+
 export async function sendAppEmail(opts: {
   to: string | string[]
   subject: string

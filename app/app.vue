@@ -5,13 +5,14 @@
   const colorMode = useColorMode()
   const { data: session } = await authClient.useSession(useFetch)
 
-  const { data: adminData, refresh: refreshAdminData } = await useFetch<{ isAdmin: boolean }>(
-    '/api/users/me/is-admin',
-    {
-      server: false,
-      default: () => ({ isAdmin: false }),
-    }
-  )
+  const { data: adminData, refresh: refreshAdminData } = await useFetch<{
+    isAdmin: boolean
+    isClinician: boolean
+    isStaff: boolean
+  }>('/api/users/me/is-admin', {
+    server: false,
+    default: () => ({ isAdmin: false, isClinician: false, isStaff: false }),
+  })
   const isAuthenticated = computed(() => Boolean(session.value?.user))
 
   watch(
@@ -30,6 +31,7 @@
   )
 
   const isAdmin = computed(() => adminData.value?.isAdmin ?? false)
+  const isStaff = computed(() => adminData.value?.isStaff ?? false)
 
   const isTasksPage = computed(() => route.path === '/taskPage')
   const isDashboardPage = computed(() => route.path === '/')
@@ -122,7 +124,7 @@
                   @click="goTo('/')"
                 />
                 <UButton
-                  v-if="!isAdmin"
+                  v-if="!isStaff"
                   label="Tasks"
                   color="primary"
                   class="shrink-0"
@@ -130,7 +132,7 @@
                   @click="goTo('/taskPage')"
                 />
                 <UButton
-                  v-if="isAdmin"
+                  v-if="isStaff"
                   label="Clients"
                   color="primary"
                   class="shrink-0"
@@ -145,7 +147,7 @@
                   @click="goTo('/calendar')"
                 />
                 <UButton
-                  v-if="isAdmin"
+                  v-if="isStaff"
                   label="Notes"
                   color="primary"
                   class="shrink-0"

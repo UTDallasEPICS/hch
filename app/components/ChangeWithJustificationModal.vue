@@ -25,8 +25,22 @@
       /** Callback to encode file to base64 before emit (optional) */
       submitLabel?: string
       loading?: boolean
+      /** When true, only a digital signature is required (no reasoning or upload). */
+      signatureOnly?: boolean
+      /**
+       * When true (and not signatureOnly), requires written reasoning and signature — no document upload.
+       * Use for session note edits and similar.
+       */
+      requiresEditReason?: boolean
     }>(),
-    { description: '', entityType: '', submitLabel: 'Confirm & Submit', loading: false }
+    {
+      description: '',
+      entityType: '',
+      submitLabel: 'Confirm & Submit',
+      loading: false,
+      signatureOnly: false,
+      requiresEditReason: false,
+    }
   )
 
   const emit = defineEmits<{
@@ -103,6 +117,8 @@
   }
 
   function hasJustification(): boolean {
+    if (props.signatureOnly) return true
+    if (props.requiresEditReason) return !!String(reasoning.value).trim()
     const hasReasoning = !!String(reasoning.value).trim()
     const hasDoc = !!documentationFile.value
     return hasReasoning || hasDoc
@@ -204,7 +220,11 @@
   }
 
   async function handleSubmit() {
-    if (!hasJustification()) {
+    if (props.requiresEditReason && !String(reasoning.value).trim()) {
+      toast.add({ title: 'Please provide a reason for this edit', color: 'error' })
+      return
+    }
+    if (!props.signatureOnly && !props.requiresEditReason && !hasJustification()) {
       toast.add({ title: 'Please provide reasoning or upload documentation', color: 'error' })
       return
     }
@@ -248,7 +268,16 @@
       <p v-if="description" class="mb-4 text-sm text-gray-500 dark:text-gray-400">
         {{ description }}
       </p>
-      <p class="mb-4 text-sm font-medium text-gray-700 dark:text-gray-300">
+      <p
+        v-if="!signatureOnly && requiresEditReason"
+        class="mb-4 text-sm font-medium text-gray-700 dark:text-gray-300"
+      >
+        Enter a reason for this edit and your digital signature below.
+      </p>
+      <p
+        v-else-if="!signatureOnly"
+        class="mb-4 text-sm font-medium text-gray-700 dark:text-gray-300"
+      >
         For {{ entityType || 'this change' }}, you must provide <strong>either</strong> written
         reasoning <strong>or</strong> valid documentation (PDF/Word), and sign below.
       </p>
@@ -258,66 +287,71 @@
         <slot />
       </div>
 
-      <!-- Reasoning -->
-      <div class="mb-4">
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Reasoning (required if no document)
-        </label>
-        <UTextarea
-          v-model="reasoning"
-          placeholder="Explain the reason for this change..."
-          :rows="4"
-          class="w-full"
-        />
-      </div>
-
-      <!-- Or separator -->
-      <p class="mb-3 text-center text-sm text-gray-500">— or —</p>
-
-      <!-- Documentation upload -->
-      <div class="mb-4">
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Documentation (required if no reasoning)
-        </label>
-        <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">
-          PDF or Word document (.pdf, .doc, .docx) — max 10MB
-        </p>
-        <input
-          ref="docUploadRef"
-          type="file"
-          accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          class="hidden"
-          @change="onFileChange"
-        />
-        <div class="flex flex-wrap items-center gap-2">
-          <UButton
-            variant="outline"
-            size="sm"
-            icon="i-heroicons-document-plus"
-            @click="docUploadRef?.click?.()"
-          >
-            Choose file
-          </UButton>
-          <span
-            v-if="documentationFile"
-            class="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
-          >
-            <UIcon name="i-heroicons-document" class="h-4 w-4 text-gray-500" />
-            {{ documentationFile.name }}
-            <button
-              type="button"
-              class="text-gray-400 hover:text-red-600"
-              aria-label="Remove file"
-              @click="clearDocumentation"
-            >
-              <UIcon name="i-heroicons-x-mark" class="h-4 w-4" />
-            </button>
-          </span>
+      <template v-if="!signatureOnly">
+        <!-- Reasoning -->
+        <div class="mb-4">
+          <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <template v-if="requiresEditReason">
+              Reason for edit <span class="text-red-500">*</span>
+            </template>
+            <template v-else> Reasoning (required if no document) </template>
+          </label>
+          <UTextarea
+            v-model="reasoning"
+            placeholder="Explain the reason for this change..."
+            :rows="4"
+            class="w-full"
+          />
         </div>
-        <p v-if="documentationError" class="mt-1 text-sm text-red-600 dark:text-red-400">
-          {{ documentationError }}
-        </p>
-      </div>
+
+        <!-- Or separator -->
+        <p v-if="!requiresEditReason" class="mb-3 text-center text-sm text-gray-500">— or —</p>
+
+        <!-- Documentation upload -->
+        <div v-if="!requiresEditReason" class="mb-4">
+          <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Documentation (required if no reasoning)
+          </label>
+          <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">
+            PDF or Word document (.pdf, .doc, .docx) — max 10MB
+          </p>
+          <input
+            ref="docUploadRef"
+            type="file"
+            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            class="hidden"
+            @change="onFileChange"
+          />
+          <div class="flex flex-wrap items-center gap-2">
+            <UButton
+              variant="outline"
+              size="sm"
+              icon="i-heroicons-document-plus"
+              @click="docUploadRef?.click?.()"
+            >
+              Choose file
+            </UButton>
+            <span
+              v-if="documentationFile"
+              class="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
+            >
+              <UIcon name="i-heroicons-document" class="h-4 w-4 text-gray-500" />
+              {{ documentationFile.name }}
+              <button
+                type="button"
+                class="text-gray-400 hover:text-red-600"
+                aria-label="Remove file"
+                @click="clearDocumentation"
+              >
+                <UIcon name="i-heroicons-x-mark" class="h-4 w-4" />
+              </button>
+            </span>
+          </div>
+          <p v-if="documentationError" class="mt-1 text-sm text-red-600 dark:text-red-400">
+            {{ documentationError }}
+          </p>
+        </div>
+      </template>
 
       <!-- Digital signature -->
       <div class="mb-6">
