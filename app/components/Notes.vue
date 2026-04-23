@@ -1333,10 +1333,9 @@
 
             <button
               @click.stop="openNewFormVersion"
-              class="mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-gray-200 py-2.5 text-sm text-gray-400 transition-colors hover:border-primary-400 hover:text-primary-500 dark:border-gray-700 dark:hover:border-primary-500"
+              class="mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-black-200 py-2.5 text-sm text-gray-400 transition-colors hover:border-primary-400 hover:text-primary-500 dark:border-gray-700 dark:hover:border-primary-500"
             >
-              <span class="text-xl font-light leading-none">+</span>
-              New Submission
+              <span class="text-xl font-dark leading-none">+</span>
             </button>
           </div>
         </div>
