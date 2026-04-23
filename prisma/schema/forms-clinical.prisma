@@ -34,7 +34,7 @@ model GadQuestion {
 
 model PhqForm {
   id          Int          @id @default(autoincrement())
-  userId      String       @unique
+  userId      String
   status      String       @default("IN_PROGRESS")
   totalScore  Int?
   severity    String?

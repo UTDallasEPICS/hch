@@ -283,6 +283,45 @@
   const selectedAppointmentId = ref<string>('')
   const sidebarTab = ref<'notes' | 'forms'>('notes')
 
+  const showNewFormModal = ref(false)
+  const newFormModalSelection = ref('')
+
+  function openNewFormVersion() {
+    newFormModalSelection.value = props.forms[0]?.label ?? ''
+    showNewFormModal.value = true
+  }
+
+  const newFormSubmitting = ref(false)
+  const historyPanelRef = ref<{ refresh: () => void } | null>(null)
+
+  async function confirmNewFormVersion() {
+    if (!newFormModalSelection.value) return
+    const formKey = FORM_LABEL_TO_KEY[newFormModalSelection.value]
+    if (!formKey) return
+
+    newFormSubmitting.value = true
+    try {
+      await $fetch(`/api/clients/${props.client.id}/forms/${formKey}`, {
+        method: 'POST',
+      })
+      sidebarTab.value = 'forms'
+      // Force the watcher to re-fetch by briefly clearing then resetting
+      const label = newFormModalSelection.value
+      selectedForm.value = null
+      await nextTick()
+      selectedForm.value = label
+      formPanelSubTab.value = 'answers'
+      showNewFormModal.value = false
+      await nextTick()
+      historyPanelRef.value?.refresh()
+    } catch (err) {
+      console.error('Failed to create new form version:', err)
+      alert('Could not create new submission – check console')
+    } finally {
+      newFormSubmitting.value = false
+    }
+  }
+
   /** Display labels from notes-editor-data `FORM_LABELS` — must stay in sync with that API. */
   const FORM_LABEL_TO_KEY: Record<string, string> = {
     Application: 'application',
@@ -1283,14 +1322,22 @@
               "
             >
               {{ form.label }}
-            <div class="mt-1 text-xs font-normal">
-              <template v-if="formScores[form.label] != null">
-                Score: {{ formScores[form.label] }}
-                <span v-if="formSeverities[form.label]"> · {{ formSeverities[form.label] }}</span>
-              </template>
-              <template v-else>{{ form.status }}</template>
+              <div class="mt-1 text-xs font-normal">
+                <template v-if="formScores[form.label] != null">
+                  Score: {{ formScores[form.label] }}
+                  <span v-if="formSeverities[form.label]"> · {{ formSeverities[form.label] }}</span>
+                </template>
+                <template v-else>{{ form.status }}</template>
+              </div>
             </div>
-            </div>
+
+            <button
+              @click.stop="openNewFormVersion"
+              class="mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-gray-200 py-2.5 text-sm text-gray-400 transition-colors hover:border-primary-400 hover:text-primary-500 dark:border-gray-700 dark:hover:border-primary-500"
+            >
+              <span class="text-xl font-light leading-none">+</span>
+              New Submission
+            </button>
           </div>
         </div>
 
@@ -1488,7 +1535,7 @@
                   <!-- Changes will be saved as a new version • Reason required -->
                   <!-- </p> -->
                 </div>
-                <UFieldGroup v-if="!isEditingPreviousPanel">
+                <UButtonGroup v-if="!isEditingPreviousPanel">
                   <UButton
                     :color="!isAbsent ? 'success' : 'neutral'"
                     :variant="!isAbsent ? 'solid' : 'outline'"
@@ -1505,7 +1552,7 @@
                     :disabled="!canMarkAttendance"
                     @click="isAbsent = true"
                   />
-                </UFieldGroup>
+                </UButtonGroup>
               </div>
 
               <NotesToolbar
@@ -1705,6 +1752,7 @@
                 v-else-if="selectedFormKey"
                 :client-id="client.id"
                 :form-key="selectedFormKey"
+                ref="historyPanelRef"
                 class="max-h-[min(70vh,28rem)]"
               />
             </div>
@@ -1787,5 +1835,61 @@
       @close="showEditJustificationModal = false"
       @submit="onEditNoteJustified"
     />
+  </Teleport>
+  <!-- New Form Submission Modal -->
+  <Teleport to="body">
+    <div
+      v-if="showNewFormModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      @click.self="showNewFormModal = false"
+    >
+      <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+        <h2 class="mb-1 text-lg font-semibold text-gray-900 dark:text-white">New Form Submission</h2>
+        <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+          Select a form to start a new submission. The current submission will move to History.
+        </p>
+
+        <!-- Form options -->
+        <div class="mb-5 flex flex-col gap-2">
+          <button
+            v-for="form in forms"
+            :key="form.label"
+            @click="newFormModalSelection = form.label"
+            class="flex items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors"
+            :class="
+              newFormModalSelection === form.label
+                ? 'border-primary-400 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
+                : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'
+            "
+          >
+            <span>{{ form.label }}</span>
+            <span
+              v-if="newFormModalSelection === form.label"
+              class="text-primary-500 text-base leading-none"
+            >✓</span>
+          </button>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex gap-3">
+          <button
+            type="button"
+            @click="showNewFormModal = false"
+            class="flex-1 rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            :disabled="!newFormModalSelection || newFormSubmitting"
+            @click="confirmNewFormVersion"
+            class="flex-1 rounded-lg px-4 py-2 text-sm text-white transition-colors disabled:opacity-40"
+            :class="newFormModalSelection ? 'bg-primary-500 hover:bg-primary-600' : 'bg-primary-300 cursor-not-allowed'"
+          >
+            {{ newFormSubmitting ? 'Creating...' : 'Open Form' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </Teleport>
 </template>
