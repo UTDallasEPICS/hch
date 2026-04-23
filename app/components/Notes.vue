@@ -6,7 +6,7 @@
   import DOMPurify from 'dompurify'
   import { useWindowSize } from '@vueuse/core'
 
-  type SessionNoteRow = { id: string; content: string; createdAt: string }
+  type SessionNoteRow = { id: string; content: string; createdAt: string; attendanceStatus?: string }
 
   type SelectedNote =
     | { source: 'editor'; id: number; date: string; content: string; preview: string }
@@ -367,6 +367,10 @@
       }
       editingSessionNoteId.value = sd.id
       editingNoteId.value = null
+
+      // Load current attendance status into the edit form
+      const sn = localSessionNotes.value.find(n => n.id === sd.id)
+      editingAttendanceStatus.value = sn?.attendanceStatus ?? 'show'
     } else {
       pendingMeta.value.set(sd.id, {
         reason: editReason.value,
@@ -440,6 +444,7 @@
             content: draft,
             reason: meta.reason,
             signature: meta.signature,
+            attendanceStatus: editingAttendanceStatus.value,
           },
         })
 
@@ -449,6 +454,7 @@
           localSessionNotes.value[idx] = {
             ...row,
             content: draft,
+            attendanceStatus: editingAttendanceStatus.value,
           }
         }
 
@@ -534,7 +540,15 @@
     showSaveModal.value = true
   }
 
-  const attendanceStatus = ref('show')
+  const attendanceStatus = ref('')
+
+  const selectedNoteAttendance = computed(() => {
+  if (!selectedNoteData.value || selectedNoteData.value.source !== 'session') return null
+  const sn = localSessionNotes.value.find(n => n.id === selectedNoteData.value?.id)
+  return sn?.attendanceStatus ?? null
+  })
+
+  const editingAttendanceStatus = ref('show')
 
   async function confirmSaveNote() {
     console.log('confirmSaveNote called - Debug log added')
@@ -899,6 +913,16 @@
                   >
                     Session log note
                   </p>
+                  <!-- Attendance badge -->
+                  <span
+                    v-if="selectedNoteAttendance"
+                    class="mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase"
+                    :class="selectedNoteAttendance === 'show'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'"
+                  >
+                    {{ selectedNoteAttendance.replace(/-/g, ' ') }}
+                  </span>
                 </div>
                 <button
                   @click="closeSelectedNote"
@@ -934,6 +958,13 @@
                 <p class="text-xs text-amber-600">
                   Editing previous note — save to confirm changes.
                 </p>
+
+                <!-- Attendance edit -->
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs text-gray-500">Attendance:</span>
+                    <AttendanceDropdown v-model="editingAttendanceStatus" />
+                  </div>
+
                 <!-- Make it expand and scrollable like the current note -->
                 <div
                   class="min-h-[400px] flex-1 overflow-hidden rounded-xl border border-gray-300 bg-white dark:bg-gray-900"
@@ -974,10 +1005,10 @@
                   <p class="text-sm font-medium text-gray-400">{{ currentNote.date }}</p>
                   <span class="text-primary-500 text-xs font-semibold uppercase">Current</span>
                 </div>
-              </div>
 
-              <!-- Attendance Dropdown -->
-              <AttendanceDropdown v-model="attendanceStatus" />
+                <!-- Attendance Dropdown -->
+                <AttendanceDropdown v-model="attendanceStatus" />
+              </div>
 
               <NotesToolbar
                 v-model="noteContent"
