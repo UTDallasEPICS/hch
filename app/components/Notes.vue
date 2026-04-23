@@ -370,7 +370,7 @@
 
       // Load current attendance status into the edit form
       const sn = localSessionNotes.value.find(n => n.id === sd.id)
-      editingAttendanceStatus.value = sn?.attendanceStatus ?? 'show'
+      editingAttendanceStatus.value = sn?.attendanceStatus ?? ''
     } else {
       pendingMeta.value.set(sd.id, {
         reason: editReason.value,
@@ -586,6 +586,7 @@
         id: response.id,
         createdAt: response.createdAt,
         content: savedContent,
+        attendanceStatus: attendanceStatus.value,
       })
 
       // Clear editor → fresh current note
