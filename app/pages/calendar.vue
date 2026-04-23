@@ -15,6 +15,9 @@
         | ({ id: string; role?: string } & Record<string, unknown>)
         | null) ?? null
   )
+  const deleteType = ref<'ONE' | 'FUTURE' | 'ALL' | null>(null)
+  const isDeleteTypeModalOpen = ref(false)
+  const isDeleteConfirmOpen = ref(false)
   const toast = useToast()
   const clients = ref<any[]>([])
   const events = ref<any[]>([])
@@ -273,6 +276,7 @@
       description:
         info.event.extendedProps?.description || info.event._def?.extendedProps?.description,
       status: info.event.extendedProps?.status || info.event._def?.extendedProps?.status,
+      seriesId: info.event.extendedProps.seriesId,
     }
 
     console.log('selectedEvent after click:', selectedEvent.value)
@@ -296,17 +300,21 @@
 
   async function saveEdit() {
     try {
-      await $fetch(`/api/appointments/${selectedEvent.value.id}`, {
-        method: 'PUT',
-        body: {
-          id: selectedEvent.value.id,
-          title: editForm.title,
-          description: editForm.description,
-          date: editForm.date,
-          startTime: editForm.startTime,
-          endTime: editForm.endTime,
-        },
-      })
+      async function saveEdit(type = 'ONE') {
+        await $fetch(`/api/appointments/${selectedEvent.value.id}`, {
+          method: 'PUT',
+          body: {
+            type,
+            seriesId: selectedEvent.value.seriesId,
+            startTime: selectedEvent.value.start, // IMPORTANT for FUTURE
+            title: editForm.title,
+            description: editForm.description,
+            date: editForm.date,
+            startTimeNew: editForm.startTime,
+            endTimeNew: editForm.endTime,
+          },
+        })
+      }
 
       toast.add({
         title: 'Session updated',
@@ -327,11 +335,38 @@
     }
   }
 
-  async function deleteEvent() {
+  function onDeleteClick() {
+    // CLOSE the current modal first
+    isViewModalOpen.value = false
+
+    setTimeout(() => {
+      if (selectedEvent.value?.seriesId) {
+        isDeleteTypeModalOpen.value = true
+      } else {
+        deleteType.value = 'ONE'
+        isDeleteConfirmOpen.value = true
+      }
+    }, 100) // small delay so UI updates cleanly
+  }
+
+  function selectDeleteType(type: 'ONE' | 'FUTURE' | 'ALL') {
+    deleteType.value = type
+    isDeleteTypeModalOpen.value = false
+
+    setTimeout(() => {
+      isDeleteConfirmOpen.value = true
+    }, 100)
+  }
+
+  async function confirmDelete() {
     try {
       await $fetch(`/api/appointments/${selectedEvent.value.id}`, {
         method: 'DELETE',
-        credentials: 'include',
+        body: {
+          type: deleteType.value || 'ONE', // fallback safety
+          startTime: selectedEvent.value.start?.toISOString(),
+          seriesId: selectedEvent.value.seriesId || null,
+        },
       })
 
       toast.add({
@@ -339,12 +374,14 @@
         color: 'success',
       })
 
-      isDeleteConfirming.value = false
+      // reset state
+      deleteType.value = null
+      isDeleteConfirmOpen.value = false
       isViewModalOpen.value = false
 
       await loadEvents()
     } catch (error) {
-      console.error('Delete error:', error)
+      console.error(error)
 
       toast.add({
         title: 'Failed to delete session',
@@ -362,6 +399,7 @@
     date: '',
     startTime: '',
     endTime: '',
+    recurrence: '',
   })
 
   const clientOptions = computed(() =>
@@ -405,6 +443,8 @@
           date: form.date,
           startTime: form.startTime,
           endTime: form.endTime,
+          isRecurring: !!form.recurrence,
+          recurrence: form.recurrence || null,
         },
       })
 
@@ -416,11 +456,20 @@
       closeCreateModal()
 
       await loadEvents()
-    } catch (error) {
-      console.error(error)
+      // } catch (error) {
+      //   console.error(error)
+
+      //   toast.add({
+      //     title: 'Failed to create session',
+      //     color: 'error',
+      //   })
+      // }
+    } catch (error: any) {
+      console.error('🔥 FULL ERROR:', error)
+      console.error('🔥 STACK:', error?.stack)
 
       toast.add({
-        title: 'Failed to create session',
+        title: error?.data?.statusMessage || error?.message || 'Failed to create session',
         color: 'error',
       })
     }
@@ -525,11 +574,45 @@
 
           <UInput v-model="form.endTime" type="time" />
         </div>
-
+        <select v-model="form.recurrence">
+          <option value="">Does not repeat</option>
+          <option value="DAILY">Daily</option>
+          <option value="WEEKLY">Weekly</option>
+          <option value="MONTHLY">Monthly</option>
+        </select>
         <div class="flex justify-end gap-3 pt-2">
           <UButton variant="outline" @click="closeCreateModal"> Cancel </UButton>
 
           <UButton color="primary" @click="createSession"> Create </UButton>
+        </div>
+      </div>
+    </template>
+  </UModal>
+  <!-- DELETE TYPE MODAL -->
+  <UModal v-model:open="isDeleteTypeModalOpen">
+    <template #title>Delete Recurring Session</template>
+
+    <template #content>
+      <div class="flex flex-col gap-3 p-4">
+        <UButton @click="selectDeleteType('ONE')">This event only</UButton>
+        <UButton @click="selectDeleteType('FUTURE')">This and future events</UButton>
+        <UButton @click="selectDeleteType('ALL')">All events in series</UButton>
+      </div>
+    </template>
+  </UModal>
+
+  <!-- DELETE CONFIRM MODAL -->
+  <UModal v-model:open="isDeleteConfirmOpen" :ui="{ content: 'max-w-md', body: 'p-0' }">
+    <template #title>Confirm Delete</template>
+
+    <template #content>
+      <div class="p-4">
+        <p>Are you sure you want to delete this session?</p>
+
+        <div class="mt-4 flex justify-end gap-2">
+          <UButton variant="outline" @click="isDeleteConfirmOpen = false"> Cancel </UButton>
+
+          <UButton color="error" @click="confirmDelete"> Delete </UButton>
         </div>
       </div>
     </template>
@@ -592,27 +675,13 @@
           </div>
         </div>
 
-        <!-- Delete confirmation -->
-        <div
-          v-if="isDeleteConfirming && !isEditMode"
-          class="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-900/20"
-        >
-          <p class="mb-3 font-medium text-red-900 dark:text-red-200">
-            Are you sure you want to delete this session?
-          </p>
-          <div class="flex justify-end gap-2">
-            <UButton variant="outline" @click="isDeleteConfirming = false"> Cancel </UButton>
-            <UButton color="error" @click="deleteEvent"> Delete </UButton>
-          </div>
-        </div>
-
         <!-- Buttons (same pattern as Create modal) -->
         <div v-if="!isDeleteConfirming" class="flex justify-end gap-3 pt-2">
           <UButton
             v-if="!isEditMode && isAdmin"
             color="error"
             variant="outline"
-            @click="isDeleteConfirming = true"
+            @click="onDeleteClick"
           >
             Delete
           </UButton>

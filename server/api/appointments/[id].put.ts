@@ -3,43 +3,39 @@ import { requireAdmin } from '../../utils/guard'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 
 export default defineEventHandler(async (event) => {
-  requireAdmin(event)
+  const id = getRouterParam(event, 'id')
+  const { type, startTime, seriesId, title, description, date, startTimeNew, endTimeNew } =
+    await readBody(event)
 
-  try {
-    const id = getRouterParam(event, 'id')
-    if (!id) throw createError({ statusCode: 400, statusMessage: 'Missing ID' })
-    const { title, description, date, startTime, endTime } = await readBody(event)
+  const newStart = new Date(`${date}T${startTimeNew}`)
+  const newEnd = new Date(`${date}T${endTimeNew}`)
 
-    const startTimeDate = new Date(`${date}T${startTime}`)
-    const endTimeDate = new Date(`${date}T${endTime}`)
-
+  // ONE
+  if (type === 'ONE' || !seriesId) {
     await prisma.appointment.update({
       where: { id },
-      data: {
-        title,
-        description,
-        startTime: startTimeDate,
-        endTime: endTimeDate,
-      },
-    })
-
-    return { success: true }
-  } catch (error: any) {
-    if (error?.code === 'P2025') {
-      throw createError({
-        statusCode: 404,
-        statusMessage: 'Appointment not found',
-      })
-    }
-
-    if (error && typeof error === 'object' && 'statusCode' in error) {
-      throw error
-    }
-
-    console.error('Error updating appointment:', error)
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'Failed to update appointment',
+      data: { title, description, startTime: newStart, endTime: newEnd },
     })
   }
+
+  // ALL
+  else if (type === 'ALL') {
+    await prisma.appointment.updateMany({
+      where: { seriesId },
+      data: { title, description },
+    })
+  }
+
+  // FUTURE
+  else if (type === 'FUTURE') {
+    await prisma.appointment.updateMany({
+      where: {
+        seriesId,
+        startTime: { gte: new Date(startTime) },
+      },
+      data: { title, description },
+    })
+  }
+
+  return { success: true }
 })

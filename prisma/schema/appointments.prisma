@@ -9,6 +9,10 @@ model Appointment {
   status      String   @default("SCHEDULED")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  seriesId    String?
+  recurrence  String
+  
   client      User     @relation("ClientAppointments", fields: [clientId], references: [id], onDelete: Restrict)
   admin       User     @relation("AdminAppointments", fields: [adminId], references: [id], onDelete: Restrict)
 
