@@ -418,7 +418,7 @@
 
   async function submitAndCloseModal() {
     showSubmitModal.value = false
-    await confirmSaveNote()
+    await submitPreviousEdit()
   }
 
   async function submitPreviousEdit() {
@@ -536,16 +536,14 @@
 
   const attendanceStatus = ref('show')
 
-  const fallbackClientId = 'cmnrxzc240002n0h8x692okwp'
-  const routeClientId = route.params.id as string | undefined
-
   async function confirmSaveNote() {
     console.log('confirmSaveNote called - Debug log added')
     console.log('noteContent:', noteContent.value)
     console.log('client:', props.client)
 
-    const clientId = routeClientId || props.client?.id || fallbackClientId
+    const clientId = props.client?.id 
     if (!clientId) {
+      console.error('No client ID found')
       alert('Client ID is missing. Cannot save note.')
       return
     }
@@ -1115,14 +1113,14 @@
         <div class="flex justify-end gap-3">
           <button
             type="button"
-            @click.prevent="confirmSaveNote"
+            @click.prevent="showSaveModal = false"
             class="rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
           >
             Cancel
           </button>
           <button
             type="button"
-            @click.prevent="submitAndCloseModal"
+            @click.prevent="confirmSaveNote"
             class="bg-primary-500 hover:bg-primary-600 rounded-lg px-4 py-2 text-sm text-white"
           >
             Submit
@@ -1203,15 +1201,10 @@
           </button>
           <button
             type="button"
-            @click.prevent="
-              () => {
-                showSubmitModal = false
-                submitPreviousEdit()
-              }
-            "
+            @click.prevent="confirmEdit"
             class="bg-primary-500 hover:bg-primary-600 rounded-lg px-4 py-2 text-sm text-white"
           >
-            Submit
+            Confirm Edit
           </button>
         </div>
       </div>
