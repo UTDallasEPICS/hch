@@ -18,6 +18,22 @@
     severity?: string | null
   }
 
+  type ClientProfile = {
+    id: string
+    fname?: string | null
+    lname?: string | null
+    name?: string | null
+    email?: string | null
+    status: ClientStatus
+    therapyWeek: number | null
+    missedSessions: number
+    tasks: Task[]
+    metrics?: Metric[]
+    permissions?: Permissions
+    sessionNotes?: SessionNote[]
+    plan?: ClientPlan
+  }
+
   type Permissions = {
     canViewScores: boolean
     canViewNotes: boolean
@@ -35,7 +51,7 @@
     pending,
     error,
     refresh,
-  } = await useFetch(() => `/api/clients/${clientId.value}/profile`, {
+  } = await useFetch<ClientProfile>(() => `/api/clients/${clientId.value}/profile`, {
     key: `client-profile-${clientId.value}`,
     watch: [clientId],
     getCachedData: () => undefined,
@@ -160,9 +176,6 @@
     default: () => ({ isAdmin: false }),
   })
   const isAdmin = computed(() => adminData.value?.isAdmin ?? false)
-
-  // Client metrics modal
-  const metricsModalOpen = ref(false)
 
   // Absences counter
   const absencesEditing = ref(false)
@@ -442,37 +455,9 @@
             color="neutral"
             variant="outline"
             icon="i-heroicons-chart-bar"
-            @click="metricsModalOpen = true"
+            :to="`/clients/metrics?clientId=${clientId}`"
           />
         </div>
-
-        <UModal v-model:open="metricsModalOpen" title="Client Metrics">
-          <template #body>
-            <div v-if="profile.metrics?.length" class="flex flex-wrap gap-4">
-              <div
-                v-for="m in profile.metrics"
-                :key="m.form"
-                class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800"
-              >
-                <span class="text-sm font-medium text-gray-600 dark:text-gray-400">{{
-                  m.form
-                }}</span>
-                <div class="mt-1 flex items-baseline gap-2">
-                  <span
-                    v-if="m.score != null"
-                    class="text-lg font-bold text-gray-900 dark:text-white"
-                  >
-                    {{ m.score }}
-                  </span>
-                  <span v-if="m.severity" class="text-sm text-gray-600 dark:text-gray-400">
-                    {{ m.severity }}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <p v-else class="text-sm text-gray-500 dark:text-gray-400">No metrics available.</p>
-          </template>
-        </UModal>
         <div v-if="profile.sessionNotes?.length" class="space-y-3">
           <div
             v-for="note in profile.sessionNotes"

@@ -256,8 +256,6 @@
     closeConfirmModal()
   }
 
-  const metricsModalOpen = ref(false)
-
   async function updateStatus(clientId: string, newStatus: ClientStatus) {
     if (updatingId.value) return
     try {
@@ -266,6 +264,7 @@
         method: 'PATCH',
         body: { status: newStatus },
       })
+      clearNuxtData('client-metrics')
       toast.add({
         title: 'Status Updated',
         description: `Client moved to ${statusLabel(newStatus)}`,
@@ -312,17 +311,9 @@
           variant="outline"
           size="sm"
           icon="i-heroicons-chart-bar"
-          @click="metricsModalOpen = true"
+          to="/clients/metrics"
         />
       </div>
-
-      <UModal v-model:open="metricsModalOpen" title="Client Metrics">
-        <template #body>
-          <div
-            class="min-h-40 rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
-          />
-        </template>
-      </UModal>
     </div>
 
     <div
