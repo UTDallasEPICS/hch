@@ -55,7 +55,7 @@
             class="flex min-w-0 flex-1 flex-col items-center gap-3"
           >
             <div class="flex h-56 w-full items-end justify-center gap-2">
-              <div class="flex w-5 flex-col items-center justify-end">
+              <div class="flex h-full w-5 flex-col items-center justify-end">
                 <span class="mb-2 text-xs font-medium text-gray-500 dark:text-gray-400">
                   {{ row.applied }}
                 </span>
@@ -64,7 +64,7 @@
                   :style="{ height: barHeight(row.applied) }"
                 />
               </div>
-              <div class="flex w-5 flex-col items-center justify-end">
+              <div class="flex h-full w-5 flex-col items-center justify-end">
                 <span class="mb-2 text-xs font-medium text-gray-500 dark:text-gray-400">
                   {{ row.served }}
                 </span>
