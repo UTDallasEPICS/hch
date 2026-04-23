@@ -325,6 +325,7 @@
         method: 'PATCH',
         body: { status: newStatus },
       })
+      clearNuxtData('client-metrics')
       toast.add({
         title: 'Status Updated',
         description: `Client moved to ${statusLabel(newStatus)}`,
@@ -371,7 +372,7 @@
     >
       <div class="mb-5 flex items-center gap-2.5">
         <div
-          class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-500/10 text-primary-600 dark:bg-primary-400/10 dark:text-primary-400"
+          class="bg-primary-500/10 text-primary-600 dark:bg-primary-400/10 dark:text-primary-400 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
         >
           <UIcon name="i-heroicons-user-group-20-solid" class="h-5 w-5" />
         </div>
@@ -389,7 +390,7 @@
           type="button"
           role="tab"
           :aria-selected="statusFilter === tab.value"
-          class="rounded-md px-3 py-1.5 text-sm tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/50 dark:focus-visible:ring-gray-500/50"
+          class="rounded-md px-3 py-1.5 text-sm tabular-nums transition-colors focus-visible:ring-2 focus-visible:ring-gray-400/50 focus-visible:outline-none dark:focus-visible:ring-gray-500/50"
           :class="
             statusFilter === tab.value
               ? 'bg-gray-100 font-semibold text-gray-950 dark:bg-gray-800 dark:text-white'
@@ -410,7 +411,10 @@
         :description="error.message"
       />
 
-      <div v-else class="mt-6 overflow-x-auto rounded-lg border border-gray-200/80 dark:border-gray-800">
+      <div
+        v-else
+        class="mt-6 overflow-x-auto rounded-lg border border-gray-200/80 dark:border-gray-800"
+      >
         <UTable
           :data="clients ?? []"
           :columns="columns"
@@ -425,23 +429,71 @@
           }"
           @select="onTableRowSelect"
         >
-        <template #status-cell="{ row }">
-          <div class="flex flex-col gap-1.5">
-            <UBadge
-              :color="row.original.status === 'Prospective' ? 'neutral' : statusColor(row.original.status)"
-              :variant="statusVariant(row.original.status)"
-              size="md"
-              :icon="statusIcon(row.original.status)"
-              leading
+          <template #status-cell="{ row }">
+            <div class="flex flex-col gap-1.5">
+              <UBadge
+                :color="
+                  row.original.status === 'Prospective'
+                    ? 'neutral'
+                    : statusColor(row.original.status)
+                "
+                :variant="statusVariant(row.original.status)"
+                size="md"
+                :icon="statusIcon(row.original.status)"
+                leading
+                :class="[
+                  'inline-flex w-fit font-medium',
+                  row.original.status === 'Prospective' ? PROSPECTIVE_BADGE_CLASS : '',
+                ]"
+              >
+                {{ statusLabel(row.original.status) }}
+              </UBadge>
+              <span v-if="statusHint(row.original)" :class="['text-sm', WARNING_TEXT_MUTED]">
+                {{ statusHint(row.original) }}
+              </span>
+            </div>
+          </template>
+          <template #name-cell="{ row }">
+            <span
               :class="[
-                'inline-flex w-fit font-medium',
-                row.original.status === 'Prospective' ? PROSPECTIVE_BADGE_CLASS : '',
+                'font-medium',
+                isPlaceholderDisplayName(row.original)
+                  ? 'text-muted italic'
+                  : 'text-gray-900 dark:text-white',
               ]"
             >
-              {{ statusLabel(row.original.status) }}
-            </UBadge>
-            <span v-if="statusHint(row.original)" :class="['text-sm', WARNING_TEXT_MUTED]">
-              {{ statusHint(row.original) }}
+              {{ displayName(row.original) }}
+            </span>
+          </template>
+          <template #email-cell="{ row }">
+            <span
+              class="text-muted block max-w-[14rem] truncate text-base sm:max-w-xs"
+              :title="row.original.email"
+            >
+              {{ row.original.email }}
+            </span>
+          </template>
+          <template #formsRemaining-cell="{ row }">
+            <span
+              :class="[
+                'text-base',
+                row.original.allFormsComplete
+                  ? 'text-green-600 dark:text-green-400'
+                  : WARNING_TEXT_MUTED,
+              ]"
+            >
+              {{ formatIncompleteForms(row.original) }}
+            </span>
+          </template>
+          <template #weekNo-cell="{ row }">
+            <span class="text-base text-gray-600 dark:text-gray-400">
+              {{
+                row.original.status === 'Active' && row.original.therapyWeek !== null
+                  ? `${row.original.therapyWeek} / 26`
+                  : row.original.status === 'Active'
+                    ? '—'
+                    : ''
+              }}
             </span>
           </div>
         </template>

@@ -134,18 +134,59 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  let waitlistedAt: Date | null | undefined
+  let archivedAt: Date | null | undefined
+
   const updateData: {
     status?: ClientStatus
     therapyWeek?: number | null
     missedSessions?: number
   } = {}
-  if (body.status !== undefined) updateData.status = toDbClientStatus(body.status)
+  if (body.status !== undefined) {
+    const nextStatus = toDbClientStatus(body.status)
+    updateData.status = nextStatus
+    if (nextStatus === 'WAITLIST') waitlistedAt = new Date()
+    else if (dbUser.client?.status === 'WAITLIST') waitlistedAt = null
+    if (nextStatus === 'ARCHIVED') archivedAt = new Date()
+    else if (dbUser.client?.status === 'ARCHIVED') archivedAt = null
+  }
   if (therapyWeek !== undefined) updateData.therapyWeek = therapyWeek
   if (missedSessions !== undefined) updateData.missedSessions = missedSessions
 
-  const updated = await prisma.client.update({
-    where: { id: client.id },
-    data: updateData,
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.client.update({
+      where: { id: client.id },
+      data: updateData,
+    })
+
+    if (waitlistedAt !== undefined || archivedAt !== undefined) {
+      await tx.$executeRaw`
+        UPDATE client
+        SET waitlistedAt = COALESCE(${waitlistedAt}, waitlistedAt),
+            archivedAt = COALESCE(${archivedAt}, archivedAt)
+        WHERE id = ${client.id}
+      `
+
+      if (waitlistedAt === null) {
+        await tx.$executeRaw`
+          UPDATE client
+          SET waitlistedAt = NULL
+          WHERE id = ${client.id}
+        `
+      }
+
+      if (archivedAt === null) {
+        await tx.$executeRaw`
+          UPDATE client
+          SET archivedAt = NULL
+          WHERE id = ${client.id}
+        `
+      }
+    }
+
+    return tx.client.findUniqueOrThrow({
+      where: { id: client.id },
+    })
   })
 
   return updated

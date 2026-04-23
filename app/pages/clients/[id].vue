@@ -38,7 +38,7 @@
     pending,
     error,
     refresh,
-  } = await useFetch(() => `/api/clients/${clientId.value}/profile`, {
+  } = await useFetch<ClientProfile>(() => `/api/clients/${clientId.value}/profile`, {
     key: `client-profile-${clientId.value}`,
     watch: [clientId],
     getCachedData: () => undefined,
@@ -595,6 +595,15 @@
             :loading="addingNote"
             :disabled="!newNoteContent.trim() || !selectedAppointmentId"
             @click="openAddNoteJustification"
+          />
+        </div>
+        <div v-if="isAdmin" class="mb-4">
+          <UButton
+            label="View client metrics"
+            color="neutral"
+            variant="outline"
+            icon="i-heroicons-chart-bar"
+            :to="`/clients/metrics?clientId=${clientId}`"
           />
         </div>
         <div v-if="profile.sessionNotes?.length" class="space-y-3">
