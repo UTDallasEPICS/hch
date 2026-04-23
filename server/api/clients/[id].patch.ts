@@ -1,4 +1,5 @@
 import { requireUser } from '../../utils/guard'
+import { assertStaffCanAccessClient } from '../../utils/clinician-access'
 import { createError, defineEventHandler, getHeaders, getRouterParam, readBody } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { isAllFormsComplete } from '../../utils/client-forms'
@@ -19,7 +20,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  if (user.id !== userId && !event.context.isAdmin) {
+  if (user.id !== userId && !event.context.isStaff) {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 
@@ -30,15 +31,19 @@ export default defineEventHandler(async (event) => {
   }>(event)
 
   if (
-    !event.context.isAdmin &&
+    !event.context.isStaff &&
     (body?.status !== undefined ||
       body?.therapyWeek !== undefined ||
       body?.missedSessions !== undefined)
   ) {
     throw createError({
       statusCode: 403,
-      statusMessage: 'Forbidden: Only admins can modify status, therapyWeek, and missedSessions',
+      statusMessage: 'Forbidden: Only staff can modify status, therapyWeek, and missedSessions',
     })
+  }
+
+  if (event.context.isStaff && user.id !== userId) {
+    await assertStaffCanAccessClient(event, userId)
   }
 
   if (!body?.status && body?.therapyWeek === undefined && body?.missedSessions === undefined) {

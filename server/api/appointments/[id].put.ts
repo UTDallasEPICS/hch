@@ -1,28 +1,30 @@
 import { prisma } from '../../utils/prisma'
-import { requireAdmin } from '../../utils/guard'
+import { requireStaff } from '../../utils/guard'
+import { assertStaffCanAccessClient } from '../../utils/clinician-access'
 import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/video-conference'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import type { VideoConferenceProvider } from '../../../prisma/generated/enums'
 
 export default defineEventHandler(async (event) => {
-  requireAdmin(event)
+  requireStaff(event)
 
   try {
     const id = getRouterParam(event, 'id')
     if (!id) throw createError({ statusCode: 400, statusMessage: 'Missing ID' })
     const body = await readBody(event)
-    const { title, description, date, startTime, endTime, videoProvider, videoJoinUrl } = body
+    const { description, date, startTime, endTime, videoProvider, videoJoinUrl } = body
 
     const startTimeDate = new Date(`${date}T${startTime}`)
     const endTimeDate = new Date(`${date}T${endTime}`)
 
     const existing = await prisma.appointment.findUnique({
       where: { id },
-      select: { videoProvider: true, videoJoinUrl: true },
+      select: { videoProvider: true, videoJoinUrl: true, clientId: true },
     })
     if (!existing) {
       throw createError({ statusCode: 404, statusMessage: 'Appointment not found' })
     }
+    await assertStaffCanAccessClient(event, existing.clientId)
 
     const parsedProvider =
       videoProvider !== undefined
@@ -45,7 +47,6 @@ export default defineEventHandler(async (event) => {
     await prisma.appointment.update({
       where: { id },
       data: {
-        title,
         description,
         startTime: startTimeDate,
         endTime: endTimeDate,

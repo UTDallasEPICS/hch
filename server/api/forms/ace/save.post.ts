@@ -1,5 +1,7 @@
 import { requireUser } from '../../../utils/guard'
 import { createError, defineEventHandler, getHeaders, readBody } from 'h3'
+import { loadClinicalFormQuestions } from '../../../utils/clinical-form-display'
+import { recordClientFormScoreSubmission } from '../../../utils/form-score-history'
 import { prisma } from '../../../utils/prisma'
 
 export default defineEventHandler(async (event) => {
@@ -54,6 +56,9 @@ export default defineEventHandler(async (event) => {
     data: dataToUpdate,
   })
 
+  /** ACE UI submits via this save handler with `isSubmit: true`, not `/api/forms/ace/submit`. */
+  const wasAlreadyComplete = form.status === 'COMPLETE'
+
   let status = form.status
   let submittedAt = form.submittedAt
   let totalScore = form.totalScore
@@ -87,6 +92,23 @@ export default defineEventHandler(async (event) => {
       severity
     }
   })
+
+  if (
+    body.isSubmit &&
+    answeredCount === 10 &&
+    !wasAlreadyComplete &&
+    status === 'COMPLETE'
+  ) {
+    const questions = await loadClinicalFormQuestions(prisma, userId, 'ace')
+    await recordClientFormScoreSubmission(prisma, {
+      userId,
+      formKey: 'ace',
+      score: totalScore ?? null,
+      severity: severity ?? null,
+      recordedAt: submittedAt ?? new Date(),
+      questions,
+    })
+  }
 
   return { success: true }
 })

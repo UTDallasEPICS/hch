@@ -1,17 +1,22 @@
-import { requireAdmin } from '../../utils/guard'
-import { createError, defineEventHandler, getHeaders } from 'h3'
+import { requireStaff } from '../../utils/guard'
+import { defineEventHandler } from 'h3'
 import { prisma } from '../../utils/prisma'
-import { isAdmin } from '../../utils/is-admin'
-import { ensureDefaultDeclarationTemplates } from '../../utils/declaration-templates'
+import {
+  ensureDefaultDeclarationTemplates,
+  RECORDS_REQUEST_APPROVAL_WINDOW_DAYS,
+} from '../../utils/declaration-templates'
 
 export default defineEventHandler(async (event) => {
-
-  const user = requireAdmin(event)
+  const user = requireStaff(event)
+  const isClinicianViewer = event.context.isClinician === true && !event.context.isAdmin
 
   await ensureDefaultDeclarationTemplates(prisma)
 
   const pending = await prisma.sessionNotesRequest.findMany({
-    where: { status: 'PENDING' },
+    where: {
+      status: 'PENDING',
+      ...(isClinicianViewer ? { client: { clinicianUserId: user.id } } : {}),
+    },
     include: {
       declarationTemplate: true,
       client: {
@@ -23,17 +28,26 @@ export default defineEventHandler(async (event) => {
     orderBy: { createdAt: 'asc' },
   })
 
-  return pending.map((r) => ({
-    id: r.id,
-    requestKind: r.requestKind,
-    status: r.status,
-    createdAt: r.createdAt.toISOString(),
-    declarationText: r.declarationTemplate.content,
-    declarationTemplateId: r.declarationTemplateId,
-    declarationVersion: r.declarationTemplate.version,
-    signatureData: r.signatureData,
-    clientUserId: r.client.userId,
-    clientName: r.client.user.name,
-    clientEmail: r.client.user.email,
-  }))
+  const windowMs = RECORDS_REQUEST_APPROVAL_WINDOW_DAYS * 24 * 60 * 60 * 1000
+
+  return pending.map((r) => {
+    const expiresAt = new Date(r.createdAt.getTime() + windowMs)
+    return {
+      id: r.id,
+      requestKind: r.requestKind,
+      status: r.status,
+      createdAt: r.createdAt.toISOString(),
+      startDate: r.startDate?.toISOString() ?? null,
+      endDate: r.endDate?.toISOString() ?? null,
+      declarationText: r.declarationTemplate.content,
+      declarationTemplateId: r.declarationTemplateId,
+      declarationVersion: r.declarationTemplate.version,
+      signatureData: r.signatureData,
+      clientUserId: r.client.userId,
+      clientName: r.client.user.name,
+      clientEmail: r.client.user.email,
+      approvalWindowDays: RECORDS_REQUEST_APPROVAL_WINDOW_DAYS,
+      approvalExpiresAt: expiresAt.toISOString(),
+    }
+  })
 })

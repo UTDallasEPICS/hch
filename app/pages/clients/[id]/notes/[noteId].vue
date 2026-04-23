@@ -75,7 +75,7 @@
       <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 class="text-xl font-semibold text-gray-900 dark:text-white">
-            Session Note — {{ displayName() }}
+            {{ note.sessionName }} — {{ displayName() }}
           </h1>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {{ new Date(note.createdAt).toLocaleString() }}

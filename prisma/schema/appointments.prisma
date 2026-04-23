@@ -10,6 +10,8 @@ model Appointment {
   clientId        String
   adminId         String
   title           String
+  sessionName     String
+  sessionNumber   Int
   description     String?
   startTime       DateTime
   endTime         DateTime
@@ -21,8 +23,10 @@ model Appointment {
   updatedAt       DateTime                 @updatedAt
   client          User                     @relation("ClientAppointments", fields: [clientId], references: [id], onDelete: Restrict)
   admin           User                     @relation("AdminAppointments", fields: [adminId], references: [id], onDelete: Restrict)
+  sessionNotes    SessionNote[]            @relation("AppointmentSessionNotes")
 
   @@index([clientId])
   @@index([adminId])
+  @@unique([clientId, sessionNumber])
   @@map("Appointment")
 }
