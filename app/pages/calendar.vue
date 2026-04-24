@@ -172,6 +172,32 @@
   const isEditMode = ref(false)
   const isDeleteConfirming = ref(false)
   const mobileView = ref('week')
+  const currentRangeLabel = ref('')
+
+  function formatShortDate(date: Date) {
+    return date.toLocaleDateString('en-US')
+  }
+
+  function updateRangeLabel(viewType: string, start: Date) {
+    if (viewType.includes('Week')) {
+      currentRangeLabel.value = `Week of ${formatShortDate(start)}`
+      return
+    }
+
+    if (viewType.includes('Month')) {
+      currentRangeLabel.value = start.toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric',
+      })
+      return
+    }
+
+    currentRangeLabel.value = start.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  }
 
   watch(mobileView, (view) => {
     changeView(view)
@@ -202,6 +228,7 @@
 
     datesSet(info) {
       const view = info.view.type
+      updateRangeLabel(view, info.view.currentStart)
 
       if (view.includes('Day')) mobileView.value = 'day'
       if (view.includes('Week')) mobileView.value = 'week'
@@ -485,15 +512,22 @@
         <UButton icon="i-heroicons-chevron-left" variant="ghost" @click="prev" />
         <UButton icon="i-heroicons-chevron-right" variant="ghost" @click="next" />
         <UButton label="Today" variant="outline" @click="today" />
+        <p class="ml-2 text-sm font-medium text-gray-600 dark:text-gray-300">
+          {{ currentRangeLabel }}
+        </p>
       </div>
 
       <div class="flex items-center gap-2">
-        <UButton
-          icon="i-heroicons-calendar-days"
-          variant="outline"
-          @click="$refs.datePicker.showPicker()"
-        />
-        <input ref="datePicker" type="date" class="hidden" @change="goToDate" />
+        <div class="relative">
+          <UButton icon="i-heroicons-calendar-days" variant="outline" />
+          <input
+            ref="datePicker"
+            type="date"
+            class="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+            aria-label="Choose calendar date"
+            @change="goToDate"
+          />
+        </div>
 
         <!-- Desktop buttons -->
         <div class="hidden items-center gap-2 md:flex">
