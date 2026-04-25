@@ -1,13 +1,22 @@
-import { prisma } from '../server/utils/prisma'
+import { Param } from '@prisma/client/runtime/client'
+import { PrismaClient } from "./generated/client"
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import "dotenv/config";
+const connectionString = `${process.env.DATABASE_URL}`;
+
+const adapter = new PrismaBetterSqlite3({ url: connectionString });
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log('Start seeding...')
 
   // Create a User
-  const user1 = await prisma.user.create({
-    data: {
-      name: "Sample Name", // modify this fit your needs
-      email: "email@example.com"
+  const user1 = await prisma.user.upsert({
+    where: {email: 'seeded-user@email.com'},
+    update: {},
+    create: {
+      email: 'seeded-user@email.com',
+      name: 'Sample Seeded User'
     }
   })
 
