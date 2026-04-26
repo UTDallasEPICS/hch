@@ -61,10 +61,8 @@ async function seedForms(userId: string) {
   })
 
   // 3. PHQ-9
-  const phqForm = await prisma.phqForm.upsert({
-    where: { userId },
-    update: {},
-    create: {
+  const phqForm = await prisma.phqForm.create({
+    data: {
       userId,
       status: 'COMPLETE',
       totalScore: 14,
@@ -73,10 +71,8 @@ async function seedForms(userId: string) {
     },
   })
 
-  await prisma.phqQuestion.upsert({
-    where: { formId: phqForm.id },
-    update: {},
-    create: {
+  await prisma.phqQuestion.create({
+    data: {
       formId: phqForm.id,
       userId,
       q1: 2,
@@ -130,11 +126,9 @@ async function seedForms(userId: string) {
     },
   })
 
-  // 5. ACE (Hardcoded Form)
-  const aceForm = await prisma.aceForm.upsert({
-    where: { userId },
-    update: {},
-    create: {
+  // 5. ACE
+  const aceForm = await prisma.aceForm.create({
+    data: {
       userId,
       status: 'COMPLETE',
       totalScore: 2,
@@ -143,10 +137,8 @@ async function seedForms(userId: string) {
     },
   })
 
-  await prisma.aceQuestion.upsert({
-    where: { formId: aceForm.id },
-    update: {},
-    create: {
+  await prisma.aceQuestion.create({
+    data: {
       formId: aceForm.id,
       userId,
       a01: 'Yes',
@@ -169,20 +161,16 @@ async function ensureBobBuilderSessionNotes(bobUserId: string, clinicianUserId: 
     update: { status: 'ACTIVE', clinicianUserId },
     create: { userId: bobUserId, status: 'ACTIVE', clinicianUserId },
   })
-  // Populate form dummy data if it doesn't exist
+
   const existingApp = await prisma.appForm.count({ where: { userId: bobUserId } })
   if (existingApp === 0) {
     await seedForms(bobUserId)
     console.log('Seeded clinical forms for Bob Builder.')
   }
+
   return bobClient
 }
 
-/**
- * Seed a representative note in each workflow state so the multi-tier approval
- * UI (draft / clinician-signed / fully-approved) has real data to exercise,
- * and across both kinds (progress vs psychotherapy).
- */
 async function seedApprovalWorkflowNotes(
   clientId: string,
   clinicianUserId: string,
@@ -199,7 +187,7 @@ async function seedApprovalWorkflowNotes(
 
   const now = new Date()
 
-  // 1. DRAFT progress note – still being written.
+  // 1. DRAFT progress note
   await prisma.sessionNote.create({
     data: {
       clientId,
@@ -213,7 +201,7 @@ async function seedApprovalWorkflowNotes(
     },
   })
 
-  // 2. CLINICIAN_SIGNED progress note – waiting for admin sign-off.
+  // 2. CLINICIAN_SIGNED progress note
   const pendingNote = await prisma.sessionNote.create({
     data: {
       clientId,
@@ -229,6 +217,7 @@ async function seedApprovalWorkflowNotes(
       clinicianSignatureData: PLACEHOLDER_SIG,
     },
   })
+
   await prisma.notification.create({
     data: {
       userId: adminUserId,
@@ -240,7 +229,7 @@ async function seedApprovalWorkflowNotes(
     },
   })
 
-  // 3. FULLY_APPROVED progress note.
+  // 3. FULLY_APPROVED progress note
   await prisma.sessionNote.create({
     data: {
       clientId,
@@ -261,7 +250,7 @@ async function seedApprovalWorkflowNotes(
     },
   })
 
-  // 4. PSYCHOTHERAPY draft – separately stored per HIPAA.
+  // 4. PSYCHOTHERAPY draft
   await prisma.sessionNote.create({
     data: {
       clientId,
@@ -275,7 +264,7 @@ async function seedApprovalWorkflowNotes(
     },
   })
 
-  // 5. PSYCHOTHERAPY fully approved – demonstrates tier-2 sign-off on process notes.
+  // 5. PSYCHOTHERAPY fully approved
   await prisma.sessionNote.create({
     data: {
       clientId,
@@ -305,7 +294,6 @@ async function main() {
   await ensureDefaultDeclarationTemplates(prisma)
   await backfillSessionNotesRequestTemplates(prisma)
 
-  // Create / Upsert Alice (Admin — default approver for the note workflow)
   const alice = await prisma.user.upsert({
     where: { email: 'alice@a.com' },
     update: { role: 'ADMIN', name: 'Alice Wonderland' },
@@ -319,7 +307,6 @@ async function main() {
   })
   console.log('Seeded Admin: alice@a.com')
 
-  // Create / Upsert Carl (Clinician)
   const carl = await prisma.user.upsert({
     where: { email: 'carl@c.com' },
     update: { role: 'CLINICIAN', name: 'Carl Karl' },
@@ -333,7 +320,6 @@ async function main() {
   })
   console.log('Seeded Clinician: carl@c.com')
 
-  // Create / Upsert Bob (Client)
   const bob = await prisma.user.upsert({
     where: { email: 'bob@b.com' },
     update: { role: 'CLIENT', name: 'Bob Builder' },
