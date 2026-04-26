@@ -7,12 +7,6 @@
   import listPlugin from '@fullcalendar/list'
   import { VIDEO_PROVIDER_LABEL } from '~/utils/video-conference'
 
-  const videoMeetingTypeOptions = [
-    { value: 'GOOGLE_MEET' as const, label: 'Google Meet' },
-    { value: 'ZOOM' as const, label: 'Zoom' },
-    { value: 'OTHER' as const, label: 'Other link' },
-  ]
-
   const isMobile = ref(process.client && window.innerWidth < 768)
   const calendarRef = ref()
   const session = authClient.useSession()
@@ -380,7 +374,7 @@
     )
     editForm.videoJoinUrl = selectedEvent.value.videoJoinUrl || ''
     editForm.videoProvider = editForm.includeVideo
-      ? (selectedEvent.value.videoProvider as typeof editForm.videoProvider) || 'GOOGLE_MEET'
+      ? (selectedEvent.value.videoProvider as typeof editForm.videoProvider) || 'OTHER'
       : ''
     editTimeRangeError.value = ''
   }
@@ -418,7 +412,7 @@
           date: editForm.date,
           startTime: editForm.startTime,
           endTime: editForm.endTime,
-          videoProvider: editForm.includeVideo ? editForm.videoProvider || 'GOOGLE_MEET' : null,
+          videoProvider: editForm.includeVideo ? editForm.videoProvider || 'OTHER' : null,
           videoJoinUrl: editForm.includeVideo ? editForm.videoJoinUrl.trim() || null : null,
         },
       })
@@ -493,7 +487,7 @@
         form.videoProvider = ''
         form.videoJoinUrl = ''
       } else if (!form.videoProvider) {
-        form.videoProvider = 'GOOGLE_MEET'
+        form.videoProvider = 'OTHER'
       }
     }
   )
@@ -505,7 +499,7 @@
         editForm.videoProvider = ''
         editForm.videoJoinUrl = ''
       } else if (!editForm.videoProvider) {
-        editForm.videoProvider = 'GOOGLE_MEET'
+        editForm.videoProvider = 'OTHER'
       }
     }
   )
@@ -570,7 +564,7 @@
           date: form.date,
           startTime: form.startTime,
           endTime: form.endTime,
-          videoProvider: form.includeVideo ? form.videoProvider || 'GOOGLE_MEET' : undefined,
+          videoProvider: form.includeVideo ? form.videoProvider || 'OTHER' : undefined,
           videoJoinUrl: form.includeVideo ? form.videoJoinUrl.trim() : undefined,
         },
       })
@@ -735,41 +729,22 @@
 
           <div
             v-if="form.includeVideo"
-            class="space-y-3 rounded-lg border border-gray-200 bg-gray-50/90 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/60"
+            class="space-y-2 rounded-lg border border-gray-200 bg-gray-50/90 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/60"
           >
-            <p class="text-xs font-medium text-gray-600 dark:text-gray-400">Meeting type</p>
-            <div class="flex flex-wrap gap-4">
-              <label
-                v-for="opt in videoMeetingTypeOptions"
-                :key="opt.value"
-                class="flex cursor-pointer items-center gap-2 text-sm text-gray-800 dark:text-gray-200"
-              >
-                <input
-                  v-model="form.videoProvider"
-                  type="radio"
-                  name="create-video-provider"
-                  :value="opt.value"
-                  class="text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600"
-                />
-                {{ opt.label }}
-              </label>
-            </div>
-            <div>
-              <label
-                class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                for="create-video-url"
-              >
-                Join link
-              </label>
-              <UInput
-                id="create-video-url"
-                v-model="form.videoJoinUrl"
-                placeholder="https://meet.google.com/..."
-              />
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Paste a secure https link so clients can join from the dashboard and calendar.
-              </p>
-            </div>
+            <label
+              class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+              for="create-video-url"
+            >
+              Join link
+            </label>
+            <UInput
+              id="create-video-url"
+              v-model="form.videoJoinUrl"
+              placeholder="https://meet.google.com/..."
+            />
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Paste a secure https link so clients can join from the dashboard and calendar.
+            </p>
           </div>
         </div>
 
@@ -885,38 +860,19 @@
 
             <div
               v-if="editForm.includeVideo"
-              class="space-y-3 rounded-lg border border-gray-200 bg-gray-50/90 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/60"
+              class="space-y-2 rounded-lg border border-gray-200 bg-gray-50/90 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/60"
             >
-              <p class="text-xs font-medium text-gray-600 dark:text-gray-400">Meeting type</p>
-              <div class="flex flex-wrap gap-4">
-                <label
-                  v-for="opt in videoMeetingTypeOptions"
-                  :key="opt.value"
-                  class="flex cursor-pointer items-center gap-2 text-sm text-gray-800 dark:text-gray-200"
-                >
-                  <input
-                    v-model="editForm.videoProvider"
-                    type="radio"
-                    name="edit-video-provider"
-                    :value="opt.value"
-                    class="text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600"
-                  />
-                  {{ opt.label }}
-                </label>
-              </div>
-              <div>
-                <label
-                  class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                  for="edit-video-url"
-                >
-                  Join link
-                </label>
-                <UInput
-                  id="edit-video-url"
-                  v-model="editForm.videoJoinUrl"
-                  placeholder="https://meet.google.com/..."
-                />
-              </div>
+              <label
+                class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                for="edit-video-url"
+              >
+                Join link
+              </label>
+              <UInput
+                id="edit-video-url"
+                v-model="editForm.videoJoinUrl"
+                placeholder="https://meet.google.com/..."
+              />
             </div>
           </div>
         </div>
