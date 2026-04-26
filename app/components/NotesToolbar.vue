@@ -61,7 +61,9 @@ const items: EditorToolbarItem[][] = [
 </script>
 
 <template>
-  <div class="flex h-full w-full min-h-[300px] flex-col border rounded-xl overflow-hidden bg-white dark:bg-gray-900">
+  <div
+    class="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border bg-white dark:bg-gray-900"
+  >
     <!-- Editor -->
     <ClientOnly>
       <UEditor
@@ -69,7 +71,7 @@ const items: EditorToolbarItem[][] = [
         v-model="localContent"
         :content-type="contentType || 'markdown'"
         placeholder="Start typing your clinical notes here..."
-        class="flex-1 prose prose-sm sm:prose text-left dark:prose-invert"
+        class="flex min-h-0 flex-1 flex-col overflow-hidden prose prose-sm sm:prose text-left dark:prose-invert"
         :class="sizeClassMap[selectedSize]"
       >
         <UEditorToolbar
@@ -92,3 +94,13 @@ const items: EditorToolbarItem[][] = [
     </ClientOnly>
   </div>
 </template>
+
+<style scoped>
+/* Let the note body scroll inside a height-limited flex parent (toolbar stays fixed) */
+:deep(.ProseMirror) {
+  min-height: 0;
+  flex: 1 1 0;
+  max-height: 100%;
+  overflow-y: auto;
+}
+</style>
