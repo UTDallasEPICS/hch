@@ -61,10 +61,8 @@ async function seedForms(userId: string) {
   })
 
   // 3. PHQ-9
-  const phqForm = await prisma.phqForm.upsert({
-    where: { userId },
-    update: {},
-    create: {
+  const phqForm = await prisma.phqForm.create({
+    data: {
       userId,
       status: 'COMPLETE',
       totalScore: 14,
@@ -131,10 +129,8 @@ async function seedForms(userId: string) {
   })
 
   // 5. ACE (Hardcoded Form)
-  const aceForm = await prisma.aceForm.upsert({
-    where: { userId },
-    update: {},
-    create: {
+  const aceForm = await prisma.aceForm.create({
+    data: {
       userId,
       status: 'COMPLETE',
       totalScore: 2,
@@ -179,11 +175,15 @@ async function ensureBobBuilderSessionNotes(bobUserId: string) {
       data: [
         {
           clientId: client.id,
+          sessionName: 'Intake / Week 1',
+          sessionNumber: 1,
           content:
             'Intake / Week 1 — Rapport established. Bob reviewed clinic policies and confidentiality. Reported primary stressors related to work deadlines and sleep disruption. PHQ-9 and GAD-7 administered; safety screen negative. Plan: sleep hygiene handout, begin weekly CBT skills.',
         },
         {
           clientId: client.id,
+          sessionName: 'Session 2',
+          sessionNumber: 2,
           content:
             'Session 2 — Focus on thought challenging around catastrophic predictions at work. Homework: thought record for 3 situations. Bob engaged well; identified one automatic thought pattern to monitor between sessions.',
         },
