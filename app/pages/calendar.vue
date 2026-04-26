@@ -692,14 +692,36 @@
           Session name will be auto-generated as <strong>Firstname_Lastname_##</strong>.
         </p>
 
-        <UTextarea v-model="form.description" placeholder="Description" />
+        <div>
+          <label class="mb-2 block text-sm font-medium" for="create-session-description">
+            Description
+          </label>
+          <UTextarea
+            id="create-session-description"
+            v-model="form.description"
+            placeholder="Optional notes for this session"
+          />
+        </div>
 
         <div class="grid grid-cols-3 gap-4">
-          <UInput v-model="form.date" type="date" />
+          <div>
+            <label class="mb-2 block text-sm font-medium" for="create-session-date">Date</label>
+            <UInput id="create-session-date" v-model="form.date" type="date" />
+          </div>
 
-          <UInput v-model="form.startTime" type="time" />
+          <div>
+            <label class="mb-2 block text-sm font-medium" for="create-session-start">
+              Start time
+            </label>
+            <UInput id="create-session-start" v-model="form.startTime" type="time" />
+          </div>
 
-          <UInput v-model="form.endTime" type="time" />
+          <div>
+            <label class="mb-2 block text-sm font-medium" for="create-session-end">
+              End time
+            </label>
+            <UInput id="create-session-end" v-model="form.endTime" type="time" />
+          </div>
         </div>
         <p v-if="createTimeRangeError" class="text-sm text-red-500">
           {{ createTimeRangeError }}
