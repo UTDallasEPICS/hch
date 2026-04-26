@@ -31,6 +31,14 @@
     return clientPickerOptions.value[0]?.id ?? ''
   })
 
+  type NotesEditorData = {
+  client: { id: string; name: string }
+  currentNote: { id: number; date: string; content: string }
+  previousNotes: { id: number; date: string; preview: string; content: string }[]
+  sessionNotes: { id: string; content: string; createdAt: string }[]
+  forms: { label?: string; status: 'complete' | 'pending' }[]
+  }
+
   const { data, pending, error } = await useFetch(
     () => `/api/clients/${clientId.value}/notes-editor-data`,
     {

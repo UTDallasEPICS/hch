@@ -1,6 +1,8 @@
 <script setup lang="ts">
   import NotesToolbar from '~/components/NotesToolbar.vue'
   import AttendanceDropdown from '~/components/AttendanceDropdown.vue'
+  import ChangeWithJustificationModal from '~/components/ChangeWithJustificationModal.vue'
+  import type { ChangeJustificationPayload } from '~/components/ChangeWithJustificationModal.vue'
   import { useDebounceFn } from '@vueuse/core'
   import { marked } from 'marked'
   import DOMPurify from 'dompurify'
@@ -338,29 +340,25 @@
     } else {
       editingSessionNoteId.value = sd.id
       editingNoteId.value = null
+      const sn = localSessionNotes.value.find(n => n.id === sd.id)
+      editingAttendanceStatus.value = sn?.attendanceStatus ?? 'show'
     }
     editingDate.value = sd.date
     isEditingPreviousPanel.value = false
-    const meta =
-      sd.source === 'editor' ? pendingMeta.value.get(sd.id) : pendingSessionMeta.value.get(sd.id)
-    editReason.value = meta?.reason ?? ''
-    signature.value = meta?.signature ?? ''
     showEditModal.value = true
   }
 
-  function confirmEdit() {
+  async function confirmEdit(payload: ChangeJustificationPayload) {
     const sd = selectedNoteData.value
     if (!sd) return
 
-    if (!editReason.value.trim() || !signature.value.trim()) {
-      alert('Please provide reason and signature')
-      return
-    }
+    editReason.value = payload.reasoning ?? ''
+    signature.value = payload.signatureData
 
     if (sd.source === 'session') {
       pendingSessionMeta.value.set(sd.id, {
-        reason: editReason.value,
-        signature: signature.value,
+        reason: payload.reasoning ?? '',
+        signature: payload.signatureData,
       })
       if (!pendingSessionEdits.value.has(sd.id)) {
         pendingSessionEdits.value.set(sd.id, sd.content)
@@ -373,8 +371,8 @@
       editingAttendanceStatus.value = sn?.attendanceStatus ?? ''
     } else {
       pendingMeta.value.set(sd.id, {
-        reason: editReason.value,
-        signature: signature.value,
+        reason: payload.reasoning ?? '',
+        signature: payload.signatureData,
       })
       if (!pendingEdits.value.has(sd.id)) {
         pendingEdits.value.set(sd.id, sd.content)
@@ -1000,7 +998,7 @@
             </div>
 
             <!-- Dynamic Editor Area (handles both current and previous/edit mode) -->
-            <div class="flex min-w-0 flex-col overflow-y-auto p-5 md:max-h-screen md:flex-1">
+            <div class="flex min-w-0 flex-col p-5 md:flex-1 md:min-h-0 md:overflow-hidden">
               <div class="mb-4 flex items-center justify-between">
                 <div>
                   <p class="text-sm font-medium text-gray-400">{{ currentNote.date }}</p>
@@ -1010,11 +1008,16 @@
                 <!-- Attendance Dropdown -->
                 <AttendanceDropdown v-model="attendanceStatus" />
               </div>
-
-              <NotesToolbar
-                v-model="noteContent"
-                class="flex-1 overflow-hidden rounded-xl border bg-white dark:bg-gray-900"
-              />
+              
+              <!-- Notes Toolbar -->
+              <div class="flex-1 min-h-0 overflow-hidden flex flex-col">
+                <ClientOnly>
+                  <NotesToolbar
+                    v-model="noteContent"
+                    class="h-full overflow-hidden rounded-xl border bg-white dark:bg-gray-900"
+                  />
+                </ClientOnly>
+              </div>
 
               <!-- Save button – show only when there's content or in edit mode -->
               <div class="mt-4 flex justify-end gap-2">
@@ -1194,52 +1197,13 @@
   </Teleport>
 
   <!-- Edit Modal -->
-  <Teleport to="body" v-if="showEditModal">
-    <div
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-      @click.self="showEditModal = false"
-    >
-      <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl md:max-w-md dark:bg-gray-900">
-        <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Edit Note</h2>
-
-        <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Reason for editing
-        </label>
-        <textarea
-          v-model="editReason"
-          rows="3"
-          placeholder="Describe why you are editing this note..."
-          class="focus:ring-primary-500 mb-4 w-full resize-none rounded-lg border border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 focus:ring-2 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-        ></textarea>
-
-        <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Signature
-        </label>
-        <input
-          v-model="signature"
-          type="text"
-          placeholder="Sign here..."
-          class="focus:ring-primary-500 w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-gray-900 focus:ring-2 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          style="font-family: 'Brush Script MT', cursive; font-size: 1.25rem"
-        />
-
-        <div class="mt-6 flex justify-end gap-3">
-          <button
-            type="button"
-            @click.prevent="showEditModal = false"
-            class="rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            @click.prevent="confirmEdit"
-            class="bg-primary-500 hover:bg-primary-600 rounded-lg px-4 py-2 text-sm text-white"
-          >
-            Confirm Edit
-          </button>
-        </div>
-      </div>
-    </div>
-  </Teleport>
+  <ChangeWithJustificationModal
+    :open="showEditModal"
+    title="Edit Note"
+    description="Please provide a reason for editing this note."
+    entity-type="note edit"
+    submit-label="Confirm Edit"
+    @close="showEditModal = false"
+    @submit="confirmEdit"
+/>
 </template>

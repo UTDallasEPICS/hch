@@ -41,5 +41,13 @@ export default defineNuxtConfig({
         'prosemirror-transform',
       ],
     },
+    optimizeDeps: {
+    include: [
+      '@vue/devtools-core',
+      '@vue/devtools-kit',
+      'better-auth/vue',
+      'better-auth/client/plugins',
+    ]
+   },
   },
 })
