@@ -1,5 +1,6 @@
 <script setup lang="ts">
 //import type { EditorToolbarItem } from '@nuxt/ui'
+
 type EditorToolbarItem = any;
 
 const props = defineProps<{
@@ -44,7 +45,7 @@ const items: EditorToolbarItem[][] = [
   [
     { kind: 'bulletList', icon: 'i-lucide-list', tooltip: { text: 'Bullet List' } },
     { kind: 'orderedList', icon: 'i-lucide-list-ordered', tooltip: { text: 'Ordered List' } },
-    { kind: 'taskList', icon: 'i-lucide-list-checks', tooltip: { text: 'Checkbox List' } },
+    { slot: 'taskList' },
   ]
 ]
 </script>
@@ -66,6 +67,17 @@ const items: EditorToolbarItem[][] = [
           layout="fixed"
           class="w-full border-b bg-gray-50 dark:bg-gray-800 flex-shrink-0 sticky top-0 z-10"
         >
+         <template #taskList>
+          <button
+            type="button"
+            class="p-1.5 rounded transition-colors"
+            :class="editor?.isActive('taskList') ? 'bg-gray-200 dark:bg-gray-600' : 'hover:bg-gray-200 dark:hover:bg-gray-600'"
+            title="Checkbox List"
+            @click="editor?.chain().focus().toggleTaskList().run()"
+          >
+            <UIcon name="i-lucide-list-checks" class="w-4 h-4" />
+          </button>
+        </template>
         </UEditorToolbar>
       </UEditor>
     </ClientOnly>
