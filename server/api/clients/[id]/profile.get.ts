@@ -1,7 +1,7 @@
 import { requireUser } from '../../../utils/guard'
 import { createError, defineEventHandler, getHeaders, getRouterParam } from 'h3'
 import { prisma } from '../../../utils/prisma'
-import { isAdmin } from '../../../utils/is-admin'
+import { isAdmin, isClinician } from '../../../utils/is-admin'
 import { isClinicalClient } from '../../../utils/is-clinical-client'
 import { getIncompleteForms, FORM_LABELS } from '../../../utils/client-forms'
 import { parseName } from '../../../utils/name'
@@ -25,14 +25,16 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing client id' })
   }
 
-  // Allow admin to view any client, or client to view their own (limited)
+  // Allow admin to view any client, clinician to view their assigned clients,
+  // or a client to view their own (limited).
   const currentUser = await prisma.user.findUnique({
     where: { id: user.id },
     select: { role: true, email: true },
   })
   const isOwnProfile = user.id === clientUserId
   const hasAdminAccess = isAdmin(currentUser?.role ?? null, currentUser?.email ?? null)
-  if (!isOwnProfile && !hasAdminAccess) {
+  const isClinicianViewer = isClinician(currentUser?.role ?? null) && !hasAdminAccess
+  if (!isOwnProfile && !hasAdminAccess && !isClinicianViewer) {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 
@@ -54,6 +56,13 @@ export default defineEventHandler(async (event) => {
 
   if (!dbUser) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
+  }
+
+  // Clinicians may only read profiles for clients assigned to them.
+  if (isClinicianViewer && !isOwnProfile) {
+    if (dbUser.client?.clinicianUserId !== user.id) {
+      throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
+    }
   }
 
   if (!isClinicalClient(dbUser.role, dbUser.email)) {
@@ -298,7 +307,7 @@ export default defineEventHandler(async (event) => {
     hasPendingRequest: hasPendingRequest,
   }
 
-  if (hasAdminAccess || (isOwnProfile && legacyNotes)) {
+  if (hasAdminAccess || isClinicianViewer || (isOwnProfile && legacyNotes)) {
     sessionNotesAccess = {
       hasAccess: true,
       mode: 'full',
@@ -325,6 +334,7 @@ export default defineEventHandler(async (event) => {
 
   const showRawSessionNotes =
     hasAdminAccess ||
+    isClinicianViewer ||
     (isOwnProfile && legacyNotes) ||
     (isOwnProfile && latestApproved?.status === 'APPROVED' && latestApproved.requestKind === 'FULL')
 
@@ -334,16 +344,19 @@ export default defineEventHandler(async (event) => {
     status: r.status,
     createdAt: r.createdAt.toISOString(),
     decidedAt: r.decidedAt?.toISOString() ?? null,
+    startDate: r.startDate?.toISOString() ?? null,
+    endDate: r.endDate?.toISOString() ?? null,
     declarationText: r.declarationTemplate.content,
     declarationTemplateId: r.declarationTemplateId,
     declarationVersion: r.declarationTemplate.version,
     signatureData: r.signatureData,
+    approvalReason: r.approvalReason,
     rejectionReason: r.rejectionReason,
     approvedSummaryText: r.approvedSummaryText,
   }))
 
   const canViewScores =
-    hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewScores)
+    hasAdminAccess || isClinicianViewer || (isOwnProfile && clientProfile?.permissions?.canViewScores)
   const metrics = canViewScores
     ? tasks
         .filter((t) => t.submitted && (t.score != null || t.severity != null))
@@ -354,31 +367,105 @@ export default defineEventHandler(async (event) => {
     isOwnProfile && !canViewScores ? tasks.map(({ score: _s, severity: _v, ...t }) => t) : tasks
 
   // Session notes: always scoped by canonical Client.id
-  let sessionNotesPayload: { id: string; content: string; createdAt: string }[] = []
+  let sessionNotesPayload: {
+    id: string
+    content: string
+    createdAt: string
+    sessionName: string
+    sessionNumber: number
+    appointmentId: string | null
+    appointmentStartTime: string | null
+  }[] = []
   if (showRawSessionNotes && resolvedClientRowId) {
-    let sessionRows: { id: string; content: string; createdAt: Date }[] = []
+    let sessionRows: {
+      id: string
+      content: string
+      createdAt: Date
+      sessionName: string
+      sessionNumber: number
+      appointmentId: string | null
+      appointment: { startTime: Date } | null
+      kind: 'PROGRESS' | 'PSYCHOTHERAPY'
+      status: 'DRAFT' | 'CLINICIAN_SIGNED' | 'FULLY_APPROVED'
+    }[] = []
+
+    // Clients viewing via an approved FULL records request see only notes within the
+    // date range they asked for (compared against the session's clinical timestamp:
+    // appointment.startTime when available, else the note's createdAt).
+    // Admins and legacy-permission views are unfiltered.
+    const restrictByRequestRange =
+      isOwnProfile &&
+      !hasAdminAccess &&
+      !legacyNotes &&
+      latestApproved?.status === 'APPROVED' &&
+      latestApproved.requestKind === 'FULL'
+    const rangeStart = restrictByRequestRange ? latestApproved?.startDate ?? null : null
+    const rangeEnd = restrictByRequestRange ? latestApproved?.endDate ?? null : null
+
     try {
       sessionRows = await prisma.sessionNote.findMany({
         where: { clientId: resolvedClientRowId },
         orderBy: { createdAt: 'desc' },
+        include: {
+          appointment: {
+            select: { startTime: true },
+          },
+        },
       })
     } catch {
       sessionRows = []
     }
-    const fromSession = sessionRows.map((s) => ({
+
+    if (rangeStart || rangeEnd) {
+      const endExclusive = rangeEnd
+        ? new Date(rangeEnd.getTime() + 24 * 60 * 60 * 1000)
+        : null
+      sessionRows = sessionRows.filter((s) => {
+        const ts = s.appointment?.startTime ?? s.createdAt
+        if (rangeStart && ts < rangeStart) return false
+        if (endExclusive && ts >= endExclusive) return false
+        return true
+      })
+    }
+    // Clients never see psychotherapy (process) notes; only staff can.
+    const filteredForClient =
+      isOwnProfile && !hasAdminAccess && !isClinicianViewer
+        ? sessionRows.filter((s) => s.kind !== 'PSYCHOTHERAPY')
+        : sessionRows
+    const fromSession = filteredForClient.map((s) => ({
       id: s.id,
       content: s.content,
       createdAt: s.createdAt.toISOString(),
+      sessionName: s.sessionName,
+      sessionNumber: s.sessionNumber,
+      appointmentId: s.appointmentId,
+      appointmentStartTime: s.appointment?.startTime?.toISOString() ?? null,
+      kind: s.kind,
+      status: s.status,
     }))
     sessionNotesPayload = fromSession
   }
 
+  const appointments = resolvedClientRowId
+    ? await prisma.appointment.findMany({
+        where: { clientId: clientUserId },
+        orderBy: [{ startTime: 'desc' }],
+        select: {
+          id: true,
+          sessionName: true,
+          sessionNumber: true,
+          startTime: true,
+          status: true,
+        },
+      })
+    : []
+
   return {
-    id: user.id,
+    id: dbUser.id,
     fname,
     lname,
     name: dbUser.name,
-    email: user.email,
+    email: dbUser.email,
     status: (clientProfile?.status ?? 'INCOMPLETE') as ClientStatus,
     therapyWeek: clientProfile?.therapyWeek ?? null,
     missedSessions: clientProfile?.missedSessions ?? 0,
@@ -396,9 +483,17 @@ export default defineEventHandler(async (event) => {
     sessionNotesAccess,
     sessionNotesRequests: sessionNotesRequestsPayload,
     sessionNotes: sessionNotesPayload,
+    appointments: appointments.map((a) => ({
+      id: a.id,
+      sessionName: a.sessionName,
+      sessionNumber: a.sessionNumber,
+      startTime: a.startTime.toISOString(),
+      status: a.status,
+    })),
     plan:
-      hasAdminAccess || (isOwnProfile && clientProfile?.permissions?.canViewPlan)
+      hasAdminAccess || isClinicianViewer || (isOwnProfile && clientProfile?.permissions?.canViewPlan)
         ? clientProfile?.plan
         : null,
+    clinicianUserId: clientProfile?.clinicianUserId ?? null,
   }
 })

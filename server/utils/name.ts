@@ -39,3 +39,21 @@ export function formatStoredUserNameForDisplay(stored: string): string {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ')
 }
+
+/**
+ * Initials from stored `user.name` (e.g. "john||doe" → "J.D.") for use in email bodies where full names must be avoided.
+ */
+export function formatStoredUserNameInitials(stored: string): string {
+  const { fname, lname } = parseName(stored)
+  const f = fname.trim()
+  const l = lname.trim()
+  const parts: string[] = []
+  if (f.length) parts.push(f.charAt(0).toUpperCase())
+  if (l.length) parts.push(l.charAt(0).toUpperCase())
+  if (parts.length === 0) {
+    const raw = stored.trim()
+    if (raw.length) return `${raw.charAt(0).toUpperCase()}.`
+    return ''
+  }
+  return parts.map((c) => `${c}.`).join('')
+}

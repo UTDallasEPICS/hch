@@ -1,7 +1,9 @@
 import { requireUser } from '../../../utils/guard'
 import { createError, defineEventHandler, getHeaders } from 'h3'
+import { loadClinicalFormQuestions } from '../../../utils/clinical-form-display'
 import { prisma } from '../../../utils/prisma'
 import { calculatePhqScore } from '../../../utils/scoring'
+import { recordClientFormScoreSubmission } from '../../../utils/form-score-history'
 
 const TOTAL_ITEMS = 10
 
@@ -63,17 +65,28 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const { score: totalScore } = calculatePhqScore(form.questions)
+  const { score: totalScore, severity: phqSeverity } = calculatePhqScore(form.questions)
 
+  const submittedAt = new Date()
   await prisma.phqForm.update({
     where: {
       id: form.id,
     },
     data: {
       status: 'COMPLETE',
-      submittedAt: new Date(),
+      submittedAt,
       totalScore,
     },
+  })
+
+  const questions = await loadClinicalFormQuestions(prisma, userId, 'phq')
+  await recordClientFormScoreSubmission(prisma, {
+    userId,
+    formKey: 'phq',
+    score: totalScore,
+    severity: phqSeverity,
+    recordedAt: submittedAt,
+    questions,
   })
 
   return {

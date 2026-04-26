@@ -1,4 +1,6 @@
 <script setup lang="ts">
+  import { capitalizeName } from '~/utils/name'
+
   definePageMeta({ middleware: 'clients-admin' })
 
   const route = useRoute()
@@ -16,6 +18,24 @@
       getCachedData: () => undefined,
     }
   )
+
+  const { data: clientsList } = await useFetch<
+    { id: string; fname: string; lname: string; name: string }[]
+  >('/api/clients', {
+    getCachedData: () => undefined,
+  })
+
+  const clientPickerOptions = computed(() => {
+    const list = clientsList.value
+    if (!list?.length) return []
+    return [...list]
+      .map((c) => {
+        const raw = c.lname ? `${c.fname} ${c.lname}` : c.fname || c.name || ''
+        const label = capitalizeName(raw) || c.name?.trim() || 'Client'
+        return { id: c.id, label }
+      })
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }))
+  })
 </script>
 
 <template>
@@ -37,11 +57,14 @@
   </UAlert>
   <Notes
     v-else-if="data"
+    :key="data.client.id"
     :client="data.client"
     :current-note="data.currentNote"
     :previous-notes="data.previousNotes"
     :session-notes="data.sessionNotes"
+    :appointments="data.appointments"
     :forms="data.forms"
+    :client-picker-options="clientPickerOptions"
     back-href="/clients"
     :initial-focus-note-id="focusNoteId"
   />

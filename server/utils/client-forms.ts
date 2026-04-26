@@ -20,6 +20,72 @@ export const FORM_LABELS: Record<string, string> = {
   pcl: 'PCL-5',
 }
 
+/**
+ * Clinical assessments only — same keys we clear server-side when emailing a fresh form link.
+ * Not used for application, physician statement, or ROI (those are not emailed / reset this way).
+ */
+export const SENDABLE_EMAIL_FORM_KEYS = ['ace', 'gad', 'phq', 'pcl'] as const
+
+export type SendableEmailFormKey = (typeof SENDABLE_EMAIL_FORM_KEYS)[number]
+
+const SENDABLE_SET = new Set<string>(SENDABLE_EMAIL_FORM_KEYS)
+
+export function isSendableEmailFormKey(k: string): k is SendableEmailFormKey {
+  return SENDABLE_SET.has(k)
+}
+
+const CLINICAL_FORM_PATHS: Record<SendableEmailFormKey, string> = {
+  ace: '/forms/ace-form',
+  gad: '/forms/gad',
+  phq: '/forms/phq',
+  pcl: '/forms/pcl',
+}
+
+/**
+ * Resolves absolute URLs for reminder emails (entry pages; ACE always questionnaire, not results).
+ */
+export async function resolveClientFormLinkEntries(
+  _prisma: PrismaClient,
+  _userId: string,
+  keys: string[]
+): Promise<{ key: string; label: string; href: string }[]> {
+  const unique = [...new Set(keys)]
+  const invalid = unique.filter((k) => !SENDABLE_SET.has(k))
+  if (invalid.length) {
+    throw new Error(`Invalid form key(s): ${invalid.join(', ')}`)
+  }
+
+  const base = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/, '')
+  const out: { key: string; label: string; href: string }[] = []
+  for (const key of unique as SendableEmailFormKey[]) {
+    const label = FORM_LABELS[key] ?? key
+    out.push({ key, label, href: `${base}${CLINICAL_FORM_PATHS[key]}` })
+  }
+  return out
+}
+
+/** Deletes stored form data so the client sees an empty assessment when they open the link. */
+export async function resetClientFormDataForEmail(
+  db: PrismaClient,
+  userId: string,
+  key: SendableEmailFormKey
+): Promise<void> {
+  switch (key) {
+    case 'ace':
+      await db.aceForm.deleteMany({ where: { userId } })
+      return
+    case 'gad':
+      await db.gadForm.deleteMany({ where: { userId } })
+      return
+    case 'phq':
+      await db.phqForm.deleteMany({ where: { userId } })
+      return
+    case 'pcl':
+      await db.pclForm.deleteMany({ where: { userId } })
+      return
+  }
+}
+
 export async function getIncompleteForms(
   prisma: PrismaClient,
   userId: string,

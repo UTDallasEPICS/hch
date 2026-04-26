@@ -8,9 +8,12 @@
     fname?: string | null
     lname?: string | null
     name?: string | null
+    email?: string | null
     status: ClientStatus
     therapyWeek: number | null
     missedSessions: number
+    incompleteForms?: string[]
+    clinicianUserId?: string | null
     permissions: {
       canViewScores: boolean
       canViewNotes: boolean
@@ -32,7 +35,14 @@
       status: string
       createdAt: string
     }[]
-    sessionNotes: { id: string; content: string; createdAt: string }[]
+    sessionNotes: {
+      id: string
+      content: string
+      createdAt: string
+      sessionName: string
+      sessionNumber: number
+      appointmentId: string | null
+    }[]
   }
 
   const props = defineProps<{
@@ -49,6 +59,49 @@
   const pending = ref(false)
   const error = ref<Error | null>(null)
   let profileLoadSeq = 0
+
+  type ClinicianOption = { id: string; name: string; email: string }
+  const { data: roleData } = await useFetch<{
+    isAdmin: boolean
+    isClinician: boolean
+    isStaff: boolean
+  }>('/api/users/me/is-admin', {
+    getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
+  })
+  const isAdminViewer = computed(() => roleData.value?.isAdmin === true)
+
+  const { data: clinicians } = await useFetch<ClinicianOption[]>('/api/clinicians', {
+    getCachedData: () => undefined,
+  })
+
+  const selectedClinicianId = ref<string | null>(null)
+  watch(
+    () => profile.value?.clinicianUserId,
+    (v) => {
+      selectedClinicianId.value = v ?? null
+    },
+    { immediate: true }
+  )
+
+  const clinicianSaving = ref(false)
+  const clinicianSelectItems = computed(() => {
+    const base = [{ label: 'Unassigned', value: '__none__' }]
+    for (const c of clinicians.value ?? []) {
+      base.push({ label: c.name ? `${c.name} (${c.email})` : c.email, value: c.id })
+    }
+    return base
+  })
+  const clinicianSelectValue = computed({
+    get() {
+      return selectedClinicianId.value ?? '__none__'
+    },
+    set(v: string) {
+      selectedClinicianId.value = v === '__none__' ? null : v
+    },
+  })
+  const clinicianHasChanged = computed(() => {
+    return (profile.value?.clinicianUserId ?? null) !== (selectedClinicianId.value ?? null)
+  })
 
   async function loadProfile() {
     if (!props.clientId) return
@@ -104,7 +157,20 @@
   const toast = useToast()
 
   const absencesEditing = ref(false)
+
+  /** Forms with persisted submission history (scores + answer snapshots). */
+  const CLINICAL_FORM_KEYS = new Set(['ace', 'gad', 'phq', 'pcl'])
+  const expandedFormSubTab = ref<'answers' | 'history'>('answers')
+
+  function isClinicalFormKey(key: string) {
+    return CLINICAL_FORM_KEYS.has(key)
+  }
+
   const expandedFormKey = ref<string | null>(null)
+
+  watch(expandedFormKey, () => {
+    expandedFormSubTab.value = 'answers'
+  })
   const formAnswers = ref<{
     formKey: string
     formName: string
@@ -114,6 +180,70 @@
     severity?: string | null
   } | null>(null)
   const formAnswersLoading = ref(false)
+  const sendingFormKey = ref<string | null>(null)
+  const sendingIncompleteLinks = ref(false)
+
+  /** ACE, GAD-7, PHQ-9, PCL-5 only — matches server send-form-links (resets answers when emailing). */
+  const SENDABLE_EMAIL_TASK_KEYS = new Set(['ace', 'gad', 'phq', 'pcl'])
+
+  function canSendFormEmail(key: string) {
+    return SENDABLE_EMAIL_TASK_KEYS.has(key)
+  }
+
+  const incompleteSendableKeys = computed(() =>
+    (profile.value?.incompleteForms ?? []).filter((k) => SENDABLE_EMAIL_TASK_KEYS.has(k))
+  )
+
+  async function sendFormLink(formKey: string) {
+    if (!props.clientId || !canSendFormEmail(formKey)) return
+    sendingFormKey.value = formKey
+    try {
+      await $fetch(`/api/clients/${props.clientId}/send-form-links`, {
+        method: 'POST',
+        body: { formKeys: [formKey] },
+      })
+      toast.add({
+        title: 'Email sent',
+        description: profile.value?.email
+          ? `Link sent to ${profile.value.email}. Their saved answers for this assessment were cleared.`
+          : 'Form link sent; saved answers for this assessment were cleared.',
+        color: 'success',
+      })
+      await refresh()
+      emit('refreshed')
+    } catch (e: unknown) {
+      const msg =
+        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to send email'
+      toast.add({ title: 'Error', description: msg, color: 'error' })
+    } finally {
+      sendingFormKey.value = null
+    }
+  }
+
+  async function sendIncompleteFormLinks() {
+    const keys = incompleteSendableKeys.value
+    if (!props.clientId || !keys.length) return
+    sendingIncompleteLinks.value = true
+    try {
+      await $fetch(`/api/clients/${props.clientId}/send-form-links`, {
+        method: 'POST',
+        body: { formKeys: keys },
+      })
+      toast.add({
+        title: 'Email sent',
+        description: `Sent ${keys.length} link(s)${profile.value?.email ? ` to ${profile.value.email}` : ''}. Saved answers for those assessments were cleared.`,
+        color: 'success',
+      })
+      await refresh()
+      emit('refreshed')
+    } catch (e: unknown) {
+      const msg =
+        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to send email'
+      toast.add({ title: 'Error', description: msg, color: 'error' })
+    } finally {
+      sendingIncompleteLinks.value = false
+    }
+  }
 
   async function toggleFormAnswers(formKey: string) {
     if (expandedFormKey.value === formKey) {
@@ -122,6 +252,7 @@
       return
     }
     if (!props.clientId) return
+    expandedFormSubTab.value = 'answers'
     formAnswersLoading.value = true
     expandedFormKey.value = formKey
     try {
@@ -172,6 +303,30 @@
     { immediate: true }
   )
   const permsSaving = ref(false)
+
+  async function saveClinician() {
+    if (!props.clientId || clinicianSaving.value) return
+    try {
+      clinicianSaving.value = true
+      const res = await $fetch<{ clinicianUserId: string | null }>(
+        `/api/clients/${props.clientId}/clinician`,
+        {
+          method: 'PATCH',
+          body: { clinicianUserId: selectedClinicianId.value },
+        }
+      )
+      if (profile.value) profile.value.clinicianUserId = res.clinicianUserId
+      toast.add({ title: 'Clinician updated', color: 'success' })
+      emit('refreshed')
+    } catch (e: unknown) {
+      const msg =
+        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ??
+        'Failed to update clinician'
+      toast.add({ title: 'Error', description: msg, color: 'error' })
+    } finally {
+      clinicianSaving.value = false
+    }
+  }
 
   async function savePermissions() {
     if (!props.clientId || permsSaving.value) return
@@ -352,6 +507,50 @@
           </div>
         </div>
 
+        <!-- Clinician assignment (admin only) -->
+        <section v-if="isAdminViewer">
+          <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
+            <UIcon name="i-heroicons-user-circle" class="h-4 w-4" />
+            Assigned Clinician
+          </h3>
+          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+            The assigned clinician can see and edit this client's information. Unassign to limit
+            visibility to admins only.
+          </p>
+          <div class="flex flex-wrap items-center gap-2">
+            <USelect
+              v-model="clinicianSelectValue"
+              :items="clinicianSelectItems"
+              placeholder="Select a clinician"
+              class="min-w-[18rem]"
+            />
+            <UButton
+              size="sm"
+              color="primary"
+              variant="soft"
+              :loading="clinicianSaving"
+              :disabled="!clinicianHasChanged"
+              @click="saveClinician"
+            >
+              Save Clinician
+            </UButton>
+          </div>
+        </section>
+
+        <!-- Clinician view of assignment (read-only) -->
+        <section v-else-if="profile.clinicianUserId">
+          <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
+            <UIcon name="i-heroicons-user-circle" class="h-4 w-4" />
+            Assigned Clinician
+          </h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            <template v-if="(clinicians ?? []).find((c) => c.id === profile.clinicianUserId)">
+              {{ (clinicians ?? []).find((c) => c.id === profile.clinicianUserId)?.name }}
+            </template>
+            <template v-else>Assigned</template>
+          </p>
+        </section>
+
         <!-- Permissions -->
         <section>
           <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
@@ -383,11 +582,12 @@
             Save Permissions
           </UButton>
           <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-            Clients can also request notes via the dashboard; those requests are reviewed on the
+            Clients can also submit records requests via the dashboard; those requests are reviewed
+            on the
             <NuxtLink
               to="/clients/session-notes-requests"
               class="text-primary-600 dark:text-primary-400 font-medium underline"
-              >session note requests</NuxtLink
+              >records requests</NuxtLink
             >
             page.
           </p>
@@ -396,7 +596,7 @@
         <section v-if="profile.sessionNotesRequests?.length">
           <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold">
             <UIcon name="i-heroicons-clipboard-document-list" class="h-4 w-4" />
-            Session note request log
+            Records request log
           </h3>
           <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
             <li
@@ -430,70 +630,151 @@
             Client Tasks
           </h3>
           <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-            Click a form to view the client's answers.
+            Click a form to view the client's answers. For ACE, GAD-7, PHQ-9, and PCL-5, use Email link
+            to send a portal link and clear their saved answers so they start fresh. Application,
+            physician statement, and ROI cannot be sent from here.
           </p>
+          <div
+            v-if="incompleteSendableKeys.length"
+            class="mb-3 flex flex-wrap items-center gap-2"
+          >
+            <UButton
+              size="xs"
+              color="primary"
+              variant="soft"
+              icon="i-heroicons-envelope"
+              label="Email links for incomplete clinical assessments"
+              :loading="sendingIncompleteLinks"
+              :disabled="!!sendingFormKey"
+              @click="sendIncompleteFormLinks()"
+            />
+          </div>
           <div class="space-y-1">
             <div
               v-for="task in profile.tasks"
               :key="task.key"
               class="rounded border border-gray-200 dark:border-gray-700"
             >
-              <button
-                type="button"
-                class="flex w-full items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                @click="toggleFormAnswers(task.key)"
+              <div
+                class="flex w-full flex-wrap items-center gap-2 border-b border-gray-100 px-3 py-2 dark:border-gray-800 sm:flex-nowrap sm:justify-between"
               >
-                <span class="font-medium">{{ task.name }}</span>
-                <span class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                  {{ task.submitted ? 'Submitted' : `${task.answered}/${task.total}` }}
-                  <span v-if="task.submitted && task.score != null"> • {{ task.score }}</span>
-                  <span v-if="task.submitted && task.severity"> • {{ task.severity }}</span>
-                  <UIcon
-                    :name="
-                      expandedFormKey === task.key
-                        ? 'i-heroicons-chevron-up'
-                        : 'i-heroicons-chevron-down'
-                    "
-                    class="h-4 w-4 shrink-0"
+                <button
+                  type="button"
+                  class="min-w-0 flex-1 text-left transition-colors hover:opacity-90"
+                  @click="toggleFormAnswers(task.key)"
+                >
+                  <span class="font-medium">{{ task.name }}</span>
+                  <span
+                    class="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+                  >
+                    {{ task.submitted ? 'Submitted' : `${task.answered}/${task.total}` }}
+                    <span v-if="task.submitted && task.score != null"> • {{ task.score }}</span>
+                    <span v-if="task.submitted && task.severity"> • {{ task.severity }}</span>
+                  </span>
+                </button>
+                <div class="flex shrink-0 items-center gap-2">
+                  <UButton
+                    v-if="canSendFormEmail(task.key)"
+                    size="xs"
+                    color="neutral"
+                    variant="soft"
+                    icon="i-heroicons-envelope"
+                    label="Email link"
+                    :loading="sendingFormKey === task.key"
+                    :disabled="sendingIncompleteLinks || (sendingFormKey !== null && sendingFormKey !== task.key)"
+                    @click.stop="sendFormLink(task.key)"
                   />
-                </span>
-              </button>
+                  <button
+                    type="button"
+                    class="rounded p-1 text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+                    :aria-expanded="expandedFormKey === task.key"
+                    aria-label="Expand answers"
+                    @click="toggleFormAnswers(task.key)"
+                  >
+                    <UIcon
+                      :name="
+                        expandedFormKey === task.key
+                          ? 'i-heroicons-chevron-up'
+                          : 'i-heroicons-chevron-down'
+                      "
+                      class="h-4 w-4 shrink-0"
+                    />
+                  </button>
+                </div>
+              </div>
               <div
                 v-if="expandedFormKey === task.key"
                 class="border-t border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
               >
-                <div v-if="formAnswersLoading" class="flex justify-center py-4">
-                  <UIcon name="i-heroicons-arrow-path" class="h-6 w-6 animate-spin text-gray-400" />
+                <div
+                  v-if="isClinicalFormKey(task.key)"
+                  class="mb-3 flex gap-1 rounded-lg border border-gray-200 bg-white p-0.5 dark:border-gray-600 dark:bg-gray-900"
+                >
+                  <button
+                    type="button"
+                    class="flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors"
+                    :class="
+                      expandedFormSubTab === 'answers'
+                        ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                        : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                    "
+                    @click="expandedFormSubTab = 'answers'"
+                  >
+                    Answers
+                  </button>
+                  <button
+                    type="button"
+                    class="flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors"
+                    :class="
+                      expandedFormSubTab === 'history'
+                        ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                        : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                    "
+                    @click="expandedFormSubTab = 'history'"
+                  >
+                    History
+                  </button>
                 </div>
-                <div v-else-if="formAnswers" class="space-y-3">
-                  <div
-                    v-if="formAnswers.score != null || formAnswers.severity"
-                    class="mb-3 flex gap-3 text-sm"
-                  >
-                    <span v-if="formAnswers.score != null" class="font-medium">
-                      Score: {{ formAnswers.score }}
-                    </span>
-                    <span v-if="formAnswers.severity" class="text-gray-600 dark:text-gray-400">
-                      {{ formAnswers.severity }}
-                    </span>
+                <template v-if="!isClinicalFormKey(task.key) || expandedFormSubTab === 'answers'">
+                  <div v-if="formAnswersLoading" class="flex justify-center py-4">
+                    <UIcon name="i-heroicons-arrow-path" class="h-6 w-6 animate-spin text-gray-400" />
                   </div>
-                  <div
-                    v-if="formAnswers.questions?.length"
-                    class="max-h-64 space-y-2 overflow-y-auto"
-                  >
+                  <div v-else-if="formAnswers" class="space-y-3">
                     <div
-                      v-for="(q, i) in formAnswers.questions"
-                      :key="i"
-                      class="rounded border border-gray-200 bg-white p-3 text-sm dark:border-gray-700 dark:bg-gray-900"
+                      v-if="formAnswers.score != null || formAnswers.severity"
+                      class="mb-3 flex gap-3 text-sm"
                     >
-                      <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        {{ q.label }}
-                      </p>
-                      <p class="mt-1 text-gray-900 dark:text-gray-100">{{ q.answer || '—' }}</p>
+                      <span v-if="formAnswers.score != null" class="font-medium">
+                        Score: {{ formAnswers.score }}
+                      </span>
+                      <span v-if="formAnswers.severity" class="text-gray-600 dark:text-gray-400">
+                        {{ formAnswers.severity }}
+                      </span>
                     </div>
+                    <div
+                      v-if="formAnswers.questions?.length"
+                      class="max-h-64 space-y-2 overflow-y-auto"
+                    >
+                      <div
+                        v-for="(q, i) in formAnswers.questions"
+                        :key="i"
+                        class="rounded border border-gray-200 bg-white p-3 text-sm dark:border-gray-700 dark:bg-gray-900"
+                      >
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                          {{ q.label }}
+                        </p>
+                        <p class="mt-1 text-gray-900 dark:text-gray-100">{{ q.answer || '—' }}</p>
+                      </div>
+                    </div>
+                    <p v-else class="text-sm text-gray-500">No answers yet.</p>
                   </div>
-                  <p v-else class="text-sm text-gray-500">No answers yet.</p>
-                </div>
+                </template>
+                <ClinicalFormHistoryPanel
+                  v-else-if="clientId && expandedFormSubTab === 'history'"
+                  :client-id="clientId"
+                  :form-key="task.key"
+                  class="max-h-72"
+                />
               </div>
             </div>
           </div>
@@ -513,7 +794,12 @@
             >
               <p class="text-sm whitespace-pre-wrap">{{ note.content }}</p>
               <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
-                <p class="text-xs text-gray-500">{{ new Date(note.createdAt).toLocaleString() }}</p>
+                <div>
+                  <p class="text-xs font-semibold text-primary-600 dark:text-primary-400">
+                    {{ note.sessionName }}
+                  </p>
+                  <p class="text-xs text-gray-500">{{ new Date(note.createdAt).toLocaleString() }}</p>
+                </div>
                 <div class="flex flex-wrap items-center gap-3">
                   <NuxtLink
                     :to="`/clients/${clientId}/notes/${note.id}`"
