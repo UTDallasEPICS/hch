@@ -27,6 +27,29 @@ export const PHQ_LABELS = [
   'If you checked any problems, how difficult have they made it?',
 ]
 
+export const PCL_LABELS = [
+  'Repeated, disturbing, and unwanted memories of the stressful experience?',
+  'Repeated, disturbing dreams of the stressful experience?',
+  'Suddenly feeling or acting as if the stressful experience were actually happening again?',
+  'Feeling very upset when something reminded you of the stressful experience?',
+  'Having strong physical reactions when something reminded you of the stressful experience?',
+  'Avoiding memories, thoughts, or feelings related to the stressful experience?',
+  'Avoiding external reminders of the stressful experience?',
+  'Trouble remembering important parts of the stressful experience?',
+  'Having strong negative beliefs about yourself, other people, or the world?',
+  'Blaming yourself or someone else for the stressful experience or what happened after it?',
+  'Having strong negative feelings such as fear, horror, anger, guilt, or shame?',
+  'Loss of interest in activities that you used to enjoy?',
+  'Feeling distant or cut off from other people?',
+  'Trouble experiencing positive feelings?',
+  'Irritable behavior, angry outbursts, or acting aggressively?',
+  'Taking too many risks or doing things that could cause you harm?',
+  'Being "superalert" or watchful or on guard?',
+  'Feeling jumpy or easily startled?',
+  'Having difficulty concentrating?',
+  'Trouble falling or staying asleep?',
+]
+
 export const PHQ_OPTIONS: Record<number, string> = {
   0: 'Not at all',
   1: 'Several days',
@@ -39,6 +62,14 @@ export const GAD_OPTIONS: Record<number, string> = {
   1: 'Several days',
   2: 'More than half the days',
   3: 'Nearly every day',
+}
+
+export const PCL_OPTIONS: Record<number, string> = {
+  0: 'Not at all',
+  1: 'A little bit',
+  2: 'Moderately',
+  3: 'Quite a bit',
+  4: 'Extremely',
 }
 
 const ACE_QUESTIONS_TEXT = [
@@ -136,7 +167,7 @@ export async function loadClinicalFormQuestions(
     const val = q[key]
     const numVal = typeof val === 'number' ? val : null
     if (numVal != null && numVal >= 0) {
-      questions.push({ label: `Item ${i}`, answer: String(numVal) })
+      questions.push({ label: `Item ${i}`, answer: PCL_OPTIONS[numVal] ?? String(numVal) })
     }
   }
   return questions

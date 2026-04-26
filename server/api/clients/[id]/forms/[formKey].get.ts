@@ -115,7 +115,18 @@ export default defineEventHandler(async (event) => {
       if (!trimmed) return ''
       try {
         const parsed = JSON.parse(trimmed) as unknown
-        if (Array.isArray(parsed)) return parsed.join(', ')
+        if (Array.isArray(parsed)) {
+          return parsed.map((item: unknown) => {
+            if (item && typeof item === 'object') {
+              const r = item as Record<string, unknown>
+              if (typeof r.firstName === 'string') {
+                return [r.firstName, r.middleInitial, r.lastName, r.age ? `(age ${r.age})` : '', r.relationship].filter(Boolean).join(' ')
+              }
+              return Object.values(r).filter(Boolean).join(' ')
+            }
+            return String(item)
+          }).join(', ')
+        }
         if (parsed && typeof parsed === 'object') {
           const r = parsed as Record<string, unknown>
           if (Array.isArray(r.values)) {
@@ -194,6 +205,7 @@ export default defineEventHandler(async (event) => {
       questions,
       submitted: phqForm?.status === 'COMPLETE',
       score: phqForm?.totalScore,
+      severity: phqForm?.severity,
     }
   }
 

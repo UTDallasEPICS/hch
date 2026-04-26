@@ -247,6 +247,12 @@
   }
 
   async function selectSessionNote(sn: SessionNoteRow) {
+    if (sn.status === 'DRAFT' && sn.appointmentId) {
+      selectedAppointmentId.value = sn.appointmentId
+      noteContent.value = sn.content
+      currentNoteKind.value = sn.kind ?? 'PROGRESS'
+      return
+    }
     selectedPreviousNote.value = null
     editingNoteId.value = null
     selectedSessionNoteId.value = sn.id
@@ -287,7 +293,7 @@
   const newFormModalSelection = ref('')
 
   function openNewFormVersion() {
-    newFormModalSelection.value = props.forms[0]?.label ?? ''
+    newFormModalSelection.value = props.forms.filter(f => f.label !== 'Application')[0]?.label ?? ''
     showNewFormModal.value = true
   }
 
@@ -438,6 +444,25 @@
   const formPreviewError = ref<string | null>(null)
   const isEditingForm = ref(false)
   const editableAnswers = ref<{ label: string; answer: string }[]>([])
+
+  const viewerStep = ref(1)
+
+  const APP_STEP_RANGES = [
+    [0, 6],
+    [7, 17],
+    [18, 35],
+    [36, 45],
+    [46, 49],
+  ]
+
+  const viewerStepLabels = ['Profile', 'Child', 'Guardian', 'Treatment', 'Therapy']
+
+  const viewerStepAnswers = computed(() => {
+    const range = APP_STEP_RANGES[viewerStep.value - 1]
+    if (!range) return editableAnswers.value
+    return editableAnswers.value.slice(range[0] ?? 0, (range[1] ?? 0) + 1)
+  })
+
   let formPreviewSeq = 0
 
   function severityColor(label: string): string {
@@ -502,18 +527,24 @@
     }
   })
 
-  async function saveFormEdits() {
+  async function onFormEditSave(answers: { label: string; answer: string }[]) {
     const key = FORM_LABEL_TO_KEY[selectedForm.value!]
     await $fetch(`/api/clients/${props.client.id}/forms/${key}`, {
       method: 'PATCH',
-      body: { answers: editableAnswers.value }
+      body: { answers },
     })
-    if (formPreviewData.value) {
-      formPreviewData.value.questions = [...editableAnswers.value]
-    }
+    
+    // Re-fetch to get updated score/severity
+    const data = await $fetch<FormPreviewPayload>(
+      `/api/clients/${props.client.id}/forms/${key}`
+    )
+    formPreviewData.value = data
+    editableAnswers.value = data.questions.map((q) => ({ ...q }))
+    if (data.score != null) formScores.value[selectedForm.value!] = data.score
+    if (data.severity != null) formSeverities.value[selectedForm.value!] = data.severity
+    
     isEditingForm.value = false
   }
-
   const isEditingPreviousPanel = ref(false)
   const editingNoteId = ref<number | null>(null)
   const editingSessionNoteId = ref<string | null>(null)
@@ -1021,6 +1052,35 @@
     const diff = Math.floor((now.getTime() - date.getTime()) / 60000)
     return diff < 1 ? 'just now' : `${diff} min ago`
   }
+
+  function formatAppAnswer(val: string): string {
+    if (!val) return '—'
+    if (val.includes('|||')) {
+      return val.split('|||').filter(Boolean).join(', ')
+    }
+    try {
+      const parsed = JSON.parse(val)
+      if (Array.isArray(parsed)) {
+        return parsed.map((item: any) =>
+          typeof item === 'object'
+            ? Object.values(item).filter(Boolean).join(' ')
+            : String(item)
+        ).join(', ')
+      }
+      if (parsed && typeof parsed === 'object') {
+        if (Array.isArray(parsed.values)) {
+          return [...parsed.values, parsed.other].filter(Boolean).join(', ')
+        }
+        if (typeof parsed.value === 'string') return parsed.value
+        if (typeof parsed.firstName === 'string') {
+          return [parsed.firstName, parsed.middleInitial, parsed.lastName, parsed.age ? `(age ${parsed.age})` : '', parsed.relationship].filter(Boolean).join(' ')
+        }
+      }
+    } catch {
+      // plain text
+    }
+    return val.replace(/_/g, ' ')
+  }
 </script>
 
 <template>
@@ -1280,11 +1340,19 @@
                   </p>
                   <div class="mt-1 flex flex-wrap items-center gap-1">
                     <UBadge
-                      :color="statusColor(sn.status)"
+                      :color="
+                        sn.status === 'DRAFT' && !sn.content && sn.appointmentStartTime && new Date(sn.appointmentStartTime) > new Date()
+                          ? 'error'
+                          : statusColor(sn.status)
+                      "
                       variant="subtle"
                       size="xs"
                     >
-                      {{ STATUS_LABELS[sn.status ?? 'DRAFT'] }}
+                      {{ 
+                        sn.status === 'DRAFT' && !sn.content && sn.appointmentStartTime && new Date(sn.appointmentStartTime) > new Date()
+                          ? 'Upcoming'
+                          : STATUS_LABELS[sn.status ?? 'DRAFT']
+                      }}
                     </UBadge>
                     <UBadge
                       v-if="sn.kind === 'PSYCHOTHERAPY'"
@@ -1351,6 +1419,7 @@
             <div v-if="selectedNoteData" class="flex min-w-0 flex-col p-5 md:flex-1">
               <div class="mb-3 flex items-start justify-between gap-2">
                 <div class="min-w-0 flex-1">
+                  <p v-if="selectedSessionNoteRow" class="text-sm font-semibold text-gray-900 dark:text-white">{{ selectedSessionNoteRow.sessionName }}</p>
                   <p class="text-sm font-medium text-gray-400">{{ selectedNoteData.date }}</p>
                   <p
                     v-if="selectedNoteData.source === 'session'"
@@ -1471,24 +1540,8 @@
             <div class="flex min-w-0 flex-col overflow-y-auto p-5 md:max-h-screen md:flex-1">
               <div class="mb-4 flex items-center justify-between">
                 <div>
+                  <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ selectedAppointment?.sessionName }}</p>
                   <p class="text-sm font-medium text-gray-400">{{ currentNote.date }}</p>
-                  <div class="mt-2 max-w-sm">
-                    <label class="mb-1 block text-xs font-semibold tracking-wide text-gray-500 uppercase">
-                      Session
-                    </label>
-                    <select
-                      v-model="selectedAppointmentId"
-                      class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                    >
-                      <option value="" disabled>Select a session</option>
-                      <option v-for="opt in appointmentOptions" :key="opt.value" :value="opt.value">
-                        {{ opt.label }}
-                      </option>
-                    </select>
-                    <p v-if="appointmentOptions.length === 0" class="mt-1 text-xs text-gray-500">
-                      No sessions available yet for this client.
-                    </p>
-                  </div>
                   <div class="mt-3 max-w-sm">
                     <label class="mb-1 block text-xs font-semibold tracking-wide text-gray-500 uppercase">
                       Note type
@@ -1526,15 +1579,31 @@
                       the client.
                     </p>
                   </div>
-                  <span class="mt-3 inline-block text-primary-500 text-xs font-semibold uppercase">
-                    Current
-                  </span>
+                  <div class="mt-3">
+                    <span class="text-primary-500 text-xs font-semibold uppercase">Current</span>
+                    <div v-if="selectedAppointment" class="mt-1 flex flex-wrap items-center gap-1.5">
+                      <UBadge
+                        :color="new Date(selectedAppointment.startTime) > new Date() ? 'error' : 'neutral'"
+                        variant="subtle"
+                        size="sm"
+                      >
+                        {{ new Date(selectedAppointment.startTime) > new Date() ? 'Upcoming' : 'Draft' }}
+                      </UBadge>
+                      <UBadge
+                        :color="currentNoteKind === 'PSYCHOTHERAPY' ? 'secondary' : 'primary'"
+                        variant="subtle"
+                        size="sm"
+                      >
+                        {{ currentNoteKind === 'PSYCHOTHERAPY' ? 'Psychotherapy note' : 'Progress note' }}
+                      </UBadge>
+                    </div>
+                  </div>
                   <!-- {{ isEditingPrevious ? `Editing note from ${editingDate}` : currentNote.date }} -->
                   <!-- <p v-if="isEditingPrevious" class="text-xs text-amber-600"> -->
                   <!-- Changes will be saved as a new version • Reason required -->
                   <!-- </p> -->
                 </div>
-                <UButtonGroup v-if="!isEditingPreviousPanel">
+                <UButton v-if="!isEditingPreviousPanel" class="flex">
                   <UButton
                     :color="!isAbsent ? 'success' : 'neutral'"
                     :variant="!isAbsent ? 'solid' : 'outline'"
@@ -1551,7 +1620,7 @@
                     :disabled="!canMarkAttendance"
                     @click="isAbsent = true"
                   />
-                </UButtonGroup>
+                </UButton>
               </div>
 
               <NotesToolbar
@@ -1693,56 +1762,73 @@
                   </p>
                   <div
                     v-if="formPreviewData.score != null || formPreviewData.severity"
-                    class="flex flex-wrap gap-2 text-sm"
+                    class="flex flex-wrap items-center justify-between gap-2 text-sm"
                   >
-                    <span
-                      v-if="formPreviewData.score != null"
-                      class="font-medium text-gray-900 dark:text-white"
-                    >
-                      Score: {{ formPreviewData.score }}
-                    </span>
-                    <span v-if="formPreviewData.severity" :class="severityColor(selectedForm!)">
-                      {{ formPreviewData.severity }}
-                    </span>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span
+                        v-if="formPreviewData.score != null"
+                        class="font-medium text-gray-900 dark:text-white"
+                      >
+                        Score: {{ formPreviewData.score }}
+                      </span>
+                      <span v-if="formPreviewData.severity" :class="severityColor(selectedForm!)">
+                        {{ formPreviewData.severity }}
+                      </span>
+                    </div>
+                    <UButton
+                      v-if="!isEditingForm"
+                      label="Edit"
+                      size="xs"
+                      @click="isEditingForm = true"
+                    />
                   </div>
-                  <div v-if="formPreviewData.questions?.length" class="space-y-2">
-                    <div
-                      v-for="(q, i) in editableAnswers"
-                      :key="i"
-                      class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-800/80"
-                    >
-                      <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ q.label }}</p>
-                      <input
-                        v-if="isEditingForm"
-                        v-model="q.answer"
-                        class="mt-1 w-full rounded border border-gray-300 bg-white px-2 py-1 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                      />
-                      <p v-else class="mt-1 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
-                        {{ q.answer || '—' }}
-                      </p>
-                    </div>
-                    <div class="mt-3 flex gap-2">
-                      <UButton
-                        v-if="!isEditingForm"
-                        label="Edit"
-                        size="xs"
-                        @click="isEditingForm = true"
-                      />
-                      <UButton
-                        v-if="isEditingForm"
-                        label="Save"
-                        size="xs"
-                        color="primary"
-                        @click="saveFormEdits"
-                      />
-                      <UButton
-                        v-if="isEditingForm"
-                        label="Cancel"
-                        size="xs"
-                        variant="ghost"
-                        @click="isEditingForm = false"
-                      />
-                    </div>
+                  <div v-if="formPreviewData.questions?.length">
+                    <!-- Edit mode -->
+                    <FormEditPanel
+                      v-if="isEditingForm && selectedFormKey"
+                      :form-key="selectedFormKey"
+                      :client-id="client.id"
+                      :editable-answers="editableAnswers"
+                      @save="onFormEditSave"
+                      @cancel="isEditingForm = false"
+                    />
+
+                    <!-- Read-only mode -->
+                    <template v-else>
+                      <!-- Step tabs for application form -->
+                      <div v-if="selectedFormKey === 'application'" class="mb-3 flex gap-1 overflow-x-auto border-b border-gray-200 pb-2 dark:border-gray-700">
+                        <button
+                          v-for="(label, i) in viewerStepLabels"
+                          :key="i"
+                          type="button"
+                          class="shrink-0 rounded-md px-2 py-1 text-xs font-medium transition-colors"
+                          :class="
+                            viewerStep === i + 1
+                              ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                              : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
+                          "
+                          @click="viewerStep = i + 1"
+                        >
+                          {{ label }}
+                        </button>
+                      </div>
+
+                      <div class="space-y-2">
+                        <div
+                          v-for="(q, i) in selectedFormKey === 'application' ? viewerStepAnswers : editableAnswers"
+                          :key="i"
+                          class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-800/80"
+                        >
+                          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ q.label }}</p>
+                          <p class="mt-1 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+                            {{ selectedFormKey === 'application' ? formatAppAnswer(q.answer) : (q.answer || '—') }}
+                          </p>
+                        </div>
+                      </div>
+                      <div class="mt-3 flex gap-2">
+                        <UButton label="Edit" size="xs" @click="isEditingForm = true" />
+                      </div>
+                    </template>
                   </div>
                   <p v-else class="text-sm text-gray-500 dark:text-gray-400">No answers yet.</p>
                 </div>
@@ -1851,7 +1937,7 @@
         <!-- Form options -->
         <div class="mb-5 flex flex-col gap-2">
           <button
-            v-for="form in forms"
+            v-for="form in forms.filter(f => f.label !== 'Application')"
             :key="form.label"
             @click="newFormModalSelection = form.label"
             class="flex items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors"
