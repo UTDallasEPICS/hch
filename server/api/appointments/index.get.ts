@@ -1,5 +1,6 @@
 import { requireUser } from '../../utils/guard'
 import { defineEventHandler, getHeaders, createError } from 'h3'
+import { isAppointmentTableMissingError } from '../../utils/is-appointment-table-error'
 import { prisma } from '../../utils/prisma'
 
 export default defineEventHandler(async (event) => {
@@ -21,44 +22,66 @@ export default defineEventHandler(async (event) => {
     select: { role: true },
   })
 
-  if (!user) {
+  if (!dbUser) {
     throw createError({ statusCode: 403 })
   }
 
-  let appointments
+  let appointments: Awaited<ReturnType<typeof prisma.appointment.findMany>> = []
 
-  // ADMIN → see all
-  if (event.context.isAdmin) {
-    appointments = await prisma.appointment.findMany({
-      include: {
-        client: {
-          select: { name: true },
+  try {
+    if (event.context.isAdmin) {
+      appointments = await prisma.appointment.findMany({
+        include: {
+          client: {
+            select: { name: true },
+          },
         },
-      },
-    })
-  }
-
-  // CLIENT → see only their own
-  else {
-    appointments = await prisma.appointment.findMany({
-      where: {
-        clientId: userId,
-      },
-      include: {
-        client: {
-          select: { name: true },
+      })
+    } else if (event.context.isClinician) {
+      // CLINICIAN → only appointments whose client is assigned to them
+      appointments = await prisma.appointment.findMany({
+        where: {
+          client: {
+            client: { clinicianUserId: userId },
+          },
         },
-      },
-    })
+        include: {
+          client: {
+            select: { name: true },
+          },
+        },
+      })
+    } else {
+      appointments = await prisma.appointment.findMany({
+        where: {
+          clientId: userId,
+        },
+        include: {
+          client: {
+            select: { name: true },
+          },
+        },
+      })
+    }
+  } catch (e: unknown) {
+    if (isAppointmentTableMissingError(e)) {
+      appointments = []
+    } else {
+      throw e
+    }
   }
 
   return appointments.map((a) => ({
     id: a.id,
     title: a.title,
+    sessionName: a.sessionName,
+    sessionNumber: a.sessionNumber,
     start: a.startTime,
     end: a.endTime,
     clientName: a.client.name,
     description: a.description,
     status: a.status,
+    videoProvider: a.videoProvider,
+    videoJoinUrl: a.videoJoinUrl,
   }))
 })

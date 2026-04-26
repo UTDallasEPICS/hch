@@ -1,5 +1,6 @@
 enum Role {
   ADMIN
+  CLINICIAN
   CLIENT
 }
 
@@ -30,12 +31,19 @@ model User {
 
   // Relations to other entities
   client                                Client?
+  assignedClients                       Client[]                               @relation("ClinicianClients")
   changeAudits                          ChangeAudit[]
   sessionNotesRequestsDecided           SessionNotesRequest[]
   appointmentsAsClient                  Appointment[]                          @relation("ClientAppointments")
   appointmentsAsAdmin                   Appointment[]                          @relation("AdminAppointments")
   physicianStatementForm                PhysicianStatementForm?
   releaseOfInformationAuthorizationForm ReleaseOfInformationAuthorizationForm?
+  clientFormScoreHistory              ClientFormScoreHistory[]
+
+  // Multi-tier session-note approval
+  clinicianSignedNotes SessionNote[] @relation("ClinicianSignedNotes")
+  adminSignedNotes     SessionNote[] @relation("AdminSignedNotes")
+  notifications        Notification[] @relation("UserNotifications")
 
   @@unique([email])
   @@map("user")

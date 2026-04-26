@@ -14,3 +14,16 @@ export function requireAdmin(event: H3Event) {
   }
   return user
 }
+
+/**
+ * Staff = Admin OR Clinician. Use this on endpoints that both admins and
+ * clinicians should be able to call. Clinician-scoped filtering is the caller's
+ * responsibility (use event.context.isClinician + event.context.user.id).
+ */
+export function requireStaff(event: H3Event) {
+  const user = requireUser(event)
+  if (!event.context.isStaff) {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden: Staff access required' })
+  }
+  return user
+}

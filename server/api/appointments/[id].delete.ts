@@ -1,4 +1,5 @@
-import { requireAdmin } from '../../utils/guard'
+import { requireStaff } from '../../utils/guard'
+import { assertStaffCanAccessClient } from '../../utils/clinician-access'
 import { prisma } from '../../utils/prisma'
 import { createError, defineEventHandler, getHeaders, getRouterParam } from 'h3'
 
@@ -12,8 +13,17 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    const user = requireAdmin(event)
+    const user = requireStaff(event)
     const adminId = user.id
+
+    const existing = await prisma.appointment.findUnique({
+      where: { id },
+      select: { clientId: true },
+    })
+    if (!existing) {
+      throw createError({ statusCode: 404, statusMessage: 'Appointment not found' })
+    }
+    await assertStaffCanAccessClient(event, existing.clientId)
 
     await prisma.appointment.delete({
       where: { id },

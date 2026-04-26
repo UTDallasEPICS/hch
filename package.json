@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "nuxt build",
-    "dev": "concurrently \"nuxt dev\" \"prisma studio\"",
+    "dev": "concurrently \"nuxt dev\" \"prisma studio --port 51512\"",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",

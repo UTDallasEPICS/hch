@@ -1,6 +1,8 @@
 import { requireUser } from '../../../utils/guard'
 import { createError, defineEventHandler } from 'h3'
+import { loadClinicalFormQuestions } from '../../../utils/clinical-form-display'
 import { prisma } from '../../../utils/prisma'
+import { recordClientFormScoreSubmission } from '../../../utils/form-score-history'
 
 export default defineEventHandler(async (event) => {
   const user = requireUser(event)
@@ -48,14 +50,25 @@ export default defineEventHandler(async (event) => {
   if (score > 0 && score <= 3) severity = 'Intermediate risk'
   else if (score > 3) severity = 'High risk'
 
+  const submittedAt = new Date()
   await prisma.aceForm.update({
     where: { id: form.id },
     data: {
       status: 'COMPLETE',
-      submittedAt: new Date(),
+      submittedAt,
       totalScore: score,
       severity,
     },
+  })
+
+  const questions = await loadClinicalFormQuestions(prisma, userId, 'ace')
+  await recordClientFormScoreSubmission(prisma, {
+    userId,
+    formKey: 'ace',
+    score,
+    severity,
+    recordedAt: submittedAt,
+    questions,
   })
 
   return { submitted: true }
