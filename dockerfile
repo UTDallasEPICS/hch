@@ -19,6 +19,7 @@ COPY --from=builder /package.json /
 COPY --from=builder /pnpm-lock.yaml /
 COPY --from=builder /prisma.config.ts /
 COPY --from=builder /prisma /prisma
+COPY --from=builder /server/utils /server/utils
 COPY --from=builder /node_modules /node_modules
 RUN npm i -g pnpm
 COPY ./entrypoint.sh /entrypoint.sh

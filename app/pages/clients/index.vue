@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
   import type { TableColumn, TableRow } from '@nuxt/ui'
   import { capitalizeName } from '~/utils/name'
 
@@ -495,52 +495,8 @@
                     : ''
               }}
             </span>
-          </div>
-        </template>
-        <template #name-cell="{ row }">
-          <span
-            :class="[
-              'font-medium',
-              isPlaceholderDisplayName(row.original)
-                ? 'text-muted italic'
-                : 'text-gray-900 dark:text-white',
-            ]"
-          >
-            {{ displayName(row.original) }}
-          </span>
-        </template>
-        <template #email-cell="{ row }">
-          <span
-            class="text-muted block max-w-[14rem] truncate text-base sm:max-w-xs"
-            :title="row.original.email"
-          >
-            {{ row.original.email }}
-          </span>
-        </template>
-        <template #formsRemaining-cell="{ row }">
-          <span
-            :class="[
-              'text-base',
-              row.original.allFormsComplete
-                ? 'text-green-600 dark:text-green-400'
-                : WARNING_TEXT_MUTED,
-            ]"
-          >
-            {{ formatIncompleteForms(row.original) }}
-          </span>
-        </template>
-        <template #weekNo-cell="{ row }">
-          <span class="text-base text-gray-600 dark:text-gray-400">
-            {{
-              row.original.status === 'Active' && row.original.therapyWeek !== null
-                ? `${row.original.therapyWeek} / 26`
-                : row.original.status === 'Active'
-                  ? '—'
-                  : ''
-            }}
-          </span>
-        </template>
-        <template #recordsRequest-cell="{ row }">
+          </template>
+          <template #recordsRequest-cell="{ row }">
           <template v-if="pendingByClient.get(row.original.id)">
             <NuxtLink
               to="/clients/session-notes-requests"

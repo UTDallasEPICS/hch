@@ -10,6 +10,122 @@ const connectionString = process.env.DATABASE_URL ?? 'file:./dev.db'
 const adapter = new PrismaBetterSqlite3({ url: connectionString })
 const prisma = new PrismaClient({ adapter })
 
+async function ensureLatestGadForm(userId: string) {
+  const existing = await prisma.gadForm.findFirst({
+    where: { userId },
+    orderBy: { id: 'desc' },
+  })
+
+  if (existing) {
+    return prisma.gadForm.update({
+      where: { id: existing.id },
+      data: {
+        status: 'COMPLETE',
+        totalScore: 12,
+        severity: 'Moderate',
+        submittedAt: new Date(),
+      },
+    })
+  }
+
+  return prisma.gadForm.create({
+    data: {
+      userId,
+      status: 'COMPLETE',
+      totalScore: 12,
+      severity: 'Moderate',
+      submittedAt: new Date(),
+    },
+  })
+}
+
+async function ensureLatestPhqForm(userId: string) {
+  const existing = await prisma.phqForm.findFirst({
+    where: { userId },
+    orderBy: { id: 'desc' },
+  })
+
+  if (existing) {
+    return prisma.phqForm.update({
+      where: { id: existing.id },
+      data: {
+        status: 'COMPLETE',
+        totalScore: 14,
+        severity: 'Moderate depression',
+        submittedAt: new Date(),
+      },
+    })
+  }
+
+  return prisma.phqForm.create({
+    data: {
+      userId,
+      status: 'COMPLETE',
+      totalScore: 14,
+      severity: 'Moderate depression',
+      submittedAt: new Date(),
+    },
+  })
+}
+
+async function ensureLatestPclForm(userId: string) {
+  const existing = await prisma.pclForm.findFirst({
+    where: { userId },
+    orderBy: { id: 'desc' },
+  })
+
+  if (existing) {
+    return prisma.pclForm.update({
+      where: { id: existing.id },
+      data: {
+        status: 'COMPLETE',
+        totalScore: 45,
+        severity: 'Moderate',
+        submittedAt: new Date(),
+      },
+    })
+  }
+
+  return prisma.pclForm.create({
+    data: {
+      userId,
+      status: 'COMPLETE',
+      totalScore: 45,
+      severity: 'Moderate',
+      submittedAt: new Date(),
+    },
+  })
+}
+
+async function ensureLatestAceForm(userId: string) {
+  const existing = await prisma.aceForm.findFirst({
+    where: { userId },
+    orderBy: { id: 'desc' },
+  })
+
+  if (existing) {
+    return prisma.aceForm.update({
+      where: { id: existing.id },
+      data: {
+        status: 'COMPLETE',
+        totalScore: 2,
+        severity: 'Low',
+        submittedAt: new Date(),
+      },
+    })
+  }
+
+  return prisma.aceForm.create({
+    data: {
+      userId,
+      status: 'COMPLETE',
+      totalScore: 2,
+      severity: 'Low',
+      submittedAt: new Date(),
+    },
+  })
+}
+
 async function seedForms(userId: string) {
   // 1. AppForm (Application)
   const appForm = await prisma.appForm.upsert({
@@ -35,18 +151,22 @@ async function seedForms(userId: string) {
   })
 
   // 2. GAD-7
-  const gadForm = await prisma.gadForm.create({
-    data: {
-      userId,
-      status: 'COMPLETE',
-      totalScore: 12,
-      severity: 'Moderate',
-      submittedAt: new Date(),
-    },
-  })
+  const gadForm = await ensureLatestGadForm(userId)
 
-  await prisma.gadQuestion.create({
-    data: {
+  await prisma.gadQuestion.upsert({
+    where: { formId: gadForm.id },
+    update: {
+      userId,
+      g01: 2,
+      g02: 1,
+      g03: 2,
+      g04: 1,
+      g05: 2,
+      g06: 2,
+      g07: 2,
+      g08: 1,
+    },
+    create: {
       formId: gadForm.id,
       userId,
       g01: 2,
@@ -61,21 +181,23 @@ async function seedForms(userId: string) {
   })
 
   // 3. PHQ-9
-  const phqForm = await prisma.phqForm.upsert({
-    where: { userId },
-    update: {},
-    create: {
-      userId,
-      status: 'COMPLETE',
-      totalScore: 14,
-      severity: 'Moderate depression',
-      submittedAt: new Date(),
-    },
-  })
+  const phqForm = await ensureLatestPhqForm(userId)
 
   await prisma.phqQuestion.upsert({
     where: { formId: phqForm.id },
-    update: {},
+    update: {
+      userId,
+      q1: 2,
+      q2: 1,
+      q3: 2,
+      q4: 1,
+      q5: 2,
+      q6: 2,
+      q7: 2,
+      q8: 1,
+      q9: 1,
+      q10: 1,
+    },
     create: {
       formId: phqForm.id,
       userId,
@@ -93,18 +215,34 @@ async function seedForms(userId: string) {
   })
 
   // 4. PCL-5
-  const pclForm = await prisma.pclForm.create({
-    data: {
-      userId,
-      status: 'COMPLETE',
-      totalScore: 45,
-      severity: 'Moderate',
-      submittedAt: new Date(),
-    },
-  })
+  const pclForm = await ensureLatestPclForm(userId)
 
-  await prisma.pclQuestion.create({
-    data: {
+  await prisma.pclQuestion.upsert({
+    where: { formId: pclForm.id },
+    update: {
+      userId,
+      q01: 3,
+      q02: 2,
+      q03: 3,
+      q04: 2,
+      q05: 2,
+      q06: 3,
+      q07: 2,
+      q08: 2,
+      q09: 2,
+      q10: 2,
+      q11: 2,
+      q12: 2,
+      q13: 2,
+      q14: 2,
+      q15: 2,
+      q16: 2,
+      q17: 2,
+      q18: 2,
+      q19: 2,
+      q20: 2,
+    },
+    create: {
       formId: pclForm.id,
       userId,
       q01: 3,
@@ -131,21 +269,23 @@ async function seedForms(userId: string) {
   })
 
   // 5. ACE (Hardcoded Form)
-  const aceForm = await prisma.aceForm.upsert({
-    where: { userId },
-    update: {},
-    create: {
-      userId,
-      status: 'COMPLETE',
-      totalScore: 2,
-      severity: 'Low',
-      submittedAt: new Date(),
-    },
-  })
+  const aceForm = await ensureLatestAceForm(userId)
 
   await prisma.aceQuestion.upsert({
     where: { formId: aceForm.id },
-    update: {},
+    update: {
+      userId,
+      a01: 'Yes',
+      a02: 'Yes',
+      a03: 'No',
+      a04: 'No',
+      a05: 'No',
+      a06: 'No',
+      a07: 'No',
+      a08: 'No',
+      a09: 'No',
+      a10: 'No',
+    },
     create: {
       formId: aceForm.id,
       userId,
@@ -234,8 +374,7 @@ async function seedApprovalWorkflowNotes(
       userId: adminUserId,
       type: 'NOTE_READY_FOR_APPROVAL',
       title: 'Note awaiting approval',
-      message:
-        'Carl Karl signed a progress note for Bob Builder. Please review and countersign.',
+      message: 'Carl Karl signed a progress note for Bob Builder. Please review and countersign.',
       sessionNoteId: pendingNote.id,
     },
   })
