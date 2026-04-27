@@ -247,6 +247,10 @@
   }
 
   async function selectSessionNote(sn: SessionNoteRow) {
+    if (sn.appointmentId && sn.appointmentId === selectedAppointmentId.value) {
+      alert('This session is already open in the current note editor.')
+      return
+    }
     selectedPreviousNote.value = null
     editingNoteId.value = null
     selectedSessionNoteId.value = sn.id
