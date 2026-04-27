@@ -1,5 +1,7 @@
 <script setup lang="ts">
   import NotesToolbar from '~/components/NotesToolbar.vue'
+  import AttendanceDropdown from '~/components/AttendanceDropdown.vue'
+  import ChangeWithJustificationModal from '~/components/ChangeWithJustificationModal.vue'
   import type { ChangeJustificationPayload } from '~/components/ChangeWithJustificationModal.vue'
   import { useDebounceFn } from '@vueuse/core'
   import { marked } from 'marked'
@@ -15,6 +17,7 @@
     createdAt: string
     sessionName: string
     sessionNumber: number
+    attendanceStatus?: string 
     appointmentId: string | null
     appointmentStartTime: string | null
     kind?: NoteKind
@@ -579,6 +582,28 @@
       : ''
   )
 
+  async function saveDraftNote() {
+  if (!noteContent.value.trim() || !selectedAppointmentId.value) return
+  saveStatus.value = 'saving'
+  try {
+    await $fetch(`/api/clients/${props.client.id}/notes`, {
+      method: 'POST',
+      body: {
+        content: noteContent.value,
+        appointmentId: selectedAppointmentId.value,
+        kind: currentNoteKind.value,
+        action: 'draft',
+      },
+    })
+    localStorage.setItem(`note_draft_${props.client.id}`, noteContent.value)
+    lastSaved.value = new Date()
+    saveStatus.value = 'saved'
+  } catch (err) {
+    console.error('Draft save failed:', err)
+    saveStatus.value = 'error'
+  }
+ }
+
   function startEditPrevious() {
     const sd = selectedNoteData.value
     if (!sd) return
@@ -598,6 +623,8 @@
       }
       editingSessionNoteId.value = sd.id
       editingNoteId.value = null
+      const sn = localSessionNotes.value.find(n => n.id === sd.id)
+      editingAttendanceStatus.value = sn?.attendanceStatus ?? 'show'
     }
     editingDate.value = sd.date
     isEditingPreviousPanel.value = false
@@ -618,8 +645,15 @@
       }
       editingSessionNoteId.value = sd.id
       editingNoteId.value = null
+
+      // Load current attendance status into the edit form
+      const sn = localSessionNotes.value.find(n => n.id === sd.id)
+      editingAttendanceStatus.value = sn?.attendanceStatus ?? ''
     } else {
-      pendingMeta.value.set(sd.id, { reason, signature: signatureData })
+      pendingMeta.value.set(sd.id, {
+        reason: payload.reasoning ?? '',
+        signature: payload.signatureData,
+      })
       if (!pendingEdits.value.has(sd.id)) {
         pendingEdits.value.set(sd.id, sd.content)
       }
@@ -696,7 +730,12 @@
       try {
         await $fetch(`/api/clients/${props.client.id}/session-notes/${sid}`, {
           method: 'PATCH',
-          body: patchBody,
+          body: {
+            content: draft,
+            reason: meta.reason,
+            signature: meta.signature,
+            attendanceStatus: editingAttendanceStatus.value,
+          },
         })
 
         const idx = localSessionNotes.value.findIndex((n) => n.id === sid)
@@ -705,6 +744,7 @@
           localSessionNotes.value[idx] = {
             ...row,
             content: draft,
+            attendanceStatus: editingAttendanceStatus.value,
           }
         }
 
@@ -787,56 +827,15 @@
     showSaveModal.value = true
   }
 
-  /** Persist the current-note content as a DRAFT (no signature, no admin notification). */
-  async function saveDraftNote() {
-    if (!noteContent.value.trim()) return
-    if (!selectedAppointmentId.value) {
-      alert('Please select a session before saving this draft.')
-      return
-    }
-    saveStatus.value = 'saving'
-    try {
-      const response = (await $fetch(`/api/clients/${props.client.id}/notes`, {
-        method: 'POST',
-        body: {
-          content: noteContent.value,
-          attended: !isAbsent.value,
-          appointmentId: selectedAppointmentId.value,
-          kind: currentNoteKind.value,
-          action: 'save-draft',
-        },
-      })) as {
-        id: string
-        createdAt: string
-        sessionName: string
-        sessionNumber: number
-        appointmentId: string | null
-        kind: NoteKind
-        status: NoteStatus
-      }
-      localStorage.removeItem(`note_draft_${props.client.id}`)
-      const existingIdx = localSessionNotes.value.findIndex((n) => n.id === response.id)
-      const row: SessionNoteRow = {
-        id: response.id,
-        createdAt: response.createdAt,
-        content: noteContent.value,
-        sessionName: response.sessionName,
-        sessionNumber: response.sessionNumber,
-        appointmentId: response.appointmentId,
-        appointmentStartTime: selectedAppointment.value?.startTime ?? null,
-        kind: response.kind,
-        status: response.status,
-      }
-      if (existingIdx === -1) localSessionNotes.value.unshift(row)
-      else localSessionNotes.value[existingIdx] = row
-      lastSaved.value = new Date()
-      saveStatus.value = 'saved'
-    } catch (err) {
-      console.error('Draft save failed:', err)
-      saveStatus.value = 'error'
-      alert('Failed to save draft – check console')
-    }
-  }
+  const attendanceStatus = ref('')
+
+  const selectedNoteAttendance = computed(() => {
+  if (!selectedNoteData.value || selectedNoteData.value.source !== 'session') return null
+  const sn = localSessionNotes.value.find(n => n.id === selectedNoteData.value?.id)
+  return sn?.attendanceStatus ?? null
+  })
+
+  const editingAttendanceStatus = ref('show')
 
   async function confirmSaveNote(signatureData: string, editReason?: string) {
     saveStatus.value = 'saving'
@@ -866,7 +865,7 @@
         method: 'POST',
         body: {
           content: savedContent,
-          attended: !isAbsent.value,
+          attendanceStatus: attendanceStatus.value,
           appointmentId: selectedAppointmentId.value,
           kind: currentNoteKind.value,
           action: 'clinician-sign',
@@ -894,6 +893,7 @@
         id: response.id,
         createdAt: response.createdAt,
         content: savedContent,
+        attendanceStatus: attendanceStatus.value,
         sessionName: response.sessionName,
         sessionNumber: response.sessionNumber,
         appointmentId: response.appointmentId,
@@ -969,7 +969,6 @@
 
   //Auto-save and status tracking
   const saveStatus = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const isAbsent = ref(false)
   const lastSaved = ref<Date | null>(null)
 
   //Auto-save and status tracking for previous notes
@@ -1076,7 +1075,7 @@
             value-key="value"
             :placeholder="client.name"
             size="md"
-            class="min-w-0 w-full max-w-xs"
+            class="w-full max-w-xs min-w-0"
           />
           <span v-else class="truncate">{{ client.name }}</span>
         </div>
@@ -1371,6 +1370,16 @@
                   >
                     Session log note
                   </p>
+                  <!-- Attendance badge -->
+                  <span
+                    v-if="selectedNoteAttendance"
+                    class="mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase"
+                    :class="selectedNoteAttendance === 'show'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'"
+                  >
+                    {{ selectedNoteAttendance.replace(/-/g, ' ') }}
+                  </span>
                   <div
                     v-if="selectedSessionNoteRow"
                     class="mt-2 flex flex-wrap items-center gap-1.5"
@@ -1447,6 +1456,13 @@
                 <p class="shrink-0 text-xs text-amber-600">
                   Editing previous note — save to confirm changes.
                 </p>
+
+                <!-- Attendance edit -->
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs text-gray-500">Attendance:</span>
+                    <AttendanceDropdown v-model="editingAttendanceStatus" />
+                  </div>
+
                 <!-- Make it expand and scrollable like the current note -->
                 <div
                   class="min-h-0 flex-1 overflow-hidden rounded-xl border border-gray-300 bg-white dark:bg-gray-900"
@@ -1484,9 +1500,29 @@
             </div>
 
             <!-- Dynamic Editor Area (handles both current and previous/edit mode) -->
-            <div
-              class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-5 md:max-h-screen"
-            >
+            <div class="flex min-w-0 flex-col p-5 md:flex-1 md:min-h-0 md:overflow-hidden">
+              <div class="mb-4 flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-gray-400">{{ currentNote.date }}</p>
+                  <span class="text-primary-500 text-xs font-semibold uppercase">Current</span>
+                </div>
+
+                <!-- Attendance Dropdown -->
+                  <AttendanceDropdown v-model="attendanceStatus" />
+                  </div>
+              
+              <!-- Notes Toolbar -->
+              <div class="flex-1 min-h-0 overflow-hidden flex flex-col">
+                <ClientOnly>
+                  <NotesToolbar
+                    v-model="noteContent"
+                    class="h-full overflow-hidden rounded-xl border bg-white dark:bg-gray-900"
+                  />
+                </ClientOnly>
+              </div>
+              <div
+                class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-5 md:max-h-screen"
+              >
               <div class="mb-4 shrink-0 flex items-center justify-between">
                 <div>
                   <p class="text-sm font-medium text-gray-400">{{ currentNote.date }}</p>
@@ -1530,29 +1566,7 @@
                   <span class="mt-3 inline-block text-primary-500 text-xs font-semibold uppercase">
                     Current
                   </span>
-                  <!-- {{ isEditingPrevious ? `Editing note from ${editingDate}` : currentNote.date }} -->
-                  <!-- <p v-if="isEditingPrevious" class="text-xs text-amber-600"> -->
-                  <!-- Changes will be saved as a new version • Reason required -->
-                  <!-- </p> -->
                 </div>
-                <UButtonGroup v-if="!isEditingPreviousPanel">
-                  <UButton
-                    :color="!isAbsent ? 'success' : 'neutral'"
-                    :variant="!isAbsent ? 'solid' : 'outline'"
-                    label="Present"
-                    size="sm"
-                    :disabled="!canMarkAttendance"
-                    @click="isAbsent = false"
-                  />
-                  <UButton
-                    :color="isAbsent ? 'error' : 'neutral'"
-                    :variant="isAbsent ? 'solid' : 'outline'"
-                    label="Absent"
-                    size="sm"
-                    :disabled="!canMarkAttendance"
-                    @click="isAbsent = true"
-                  />
-                </UButtonGroup>
               </div>
 
               <div class="min-h-0 flex-1 flex flex-col">
@@ -1596,7 +1610,7 @@
                 <UButton
                   v-if="noteContent.trim() || isEditingPreviousPanel"
                   color="primary"
-                  :label="isEditingPreviousPanel ? 'Save Note' : 'Sign & submit'"
+                  label="Submit Note"
                   size="md"
                   icon="i-heroicons-pencil-square"
                   :disabled="
@@ -1615,13 +1629,16 @@
               </p>
             </div>
           </div>
+        </div>
 
           <!-- Form Details -->
           <div
             v-if="selectedForm && sidebarTab === 'forms'"
             class="flex w-full max-w-md min-h-0 min-w-0 flex-shrink-0 flex-col border-l border-gray-200 dark:border-gray-800 md:max-h-screen md:w-96"
           >
-            <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+            <div
+              class="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800"
+            >
               <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
                 {{ selectedForm }}
               </h2>
