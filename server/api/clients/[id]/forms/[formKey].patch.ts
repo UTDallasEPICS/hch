@@ -11,6 +11,13 @@ const PHQ_OPTIONS: Record<string, number> = {
   'Nearly every day': 3,
 }
 
+const PHQ_DIFFICULTY_OPTIONS: Record<string, number> = {
+  'Not difficult at all': 0,
+  'Somewhat difficult': 1,
+  'Very difficult': 2,
+  'Extremely difficult': 3,
+}
+
 const GAD_OPTIONS: Record<string, number> = {
   'Not at all': 0,
   'Several days': 1,
@@ -100,8 +107,13 @@ export default defineEventHandler(async (event) => {
     if (!form) throw createError({ statusCode: 404, statusMessage: 'Form not found' })
     const keys = ['q1','q2','q3','q4','q5','q6','q7','q8','q9','q10']
     const data: Record<string, number | null> = {}
-    answers.forEach((a, i) => { if (keys[i]) data[keys[i]!] = toInt(a.answer, PHQ_OPTIONS) })
-    await prisma.phqQuestion.update({ where: { formId: form.id }, data })
+    answers.forEach((a, i) => {
+      if (!keys[i]) return
+      // q10 uses different options than q1-q9
+      const map = keys[i] === 'q10' ? PHQ_DIFFICULTY_OPTIONS : PHQ_OPTIONS
+      data[keys[i]!] = toInt(a.answer, map)
+    })
+      await prisma.phqQuestion.update({ where: { formId: form.id }, data })
 
     // Recalculate score (q1-q9 only, q10 is difficulty)
     const total = ['q1','q2','q3','q4','q5','q6','q7','q8','q9'].reduce((sum, k) => sum + (data[k] ?? 0), 0)
@@ -110,23 +122,41 @@ export default defineEventHandler(async (event) => {
     return { ok: true }
   }
 
-  // ── PCL-5 ─────────────────────────────────────────────────
-  if (formKey === 'pcl') {
-    const form = await prisma.pclForm.findFirst({ where: { userId: clientUserId }, orderBy: { id: 'desc' } })
-    if (!form) throw createError({ statusCode: 404, statusMessage: 'Form not found' })
-    const data: Record<string, number | null> = {}
-    answers.forEach((a, i) => {
-      const key = `q${String(i + 1).padStart(2, '0')}`
-      data[key] = toInt(a.answer, PCL_OPTIONS)
-    })
-    await prisma.pclQuestion.update({ where: { formId: form.id }, data })
+// ── PCL-5 ─────────────────────────────────────────────────
+if (formKey === 'pcl') {
+  const form = await prisma.pclForm.findFirst({ where: { userId: clientUserId }, orderBy: { id: 'desc' } })
+  if (!form) throw createError({ statusCode: 404, statusMessage: 'Form not found' })
 
-    // Recalculate score
-    const total = Object.values(data).reduce((sum, v) => sum + (v ?? 0), 0)
-    const severity = total <= 20 ? 'Minimal' : total <= 40 ? 'Mild' : total <= 60 ? 'Moderate' : 'Severe'
-    await prisma.pclForm.update({ where: { id: form.id }, data: { totalScore: total, severity } })
-    return { ok: true }
+  const worstEventAnswer = answers.find(a => a.label === 'Worst event')
+  const questionAnswers = answers.filter(a => a.label !== 'Worst event')
+
+  const data: Record<string, number | null | string> = {}
+
+  if (worstEventAnswer !== undefined) {
+    data.worstEvent = worstEventAnswer.answer
   }
+
+  questionAnswers.forEach((a, i) => {
+    const key = `q${String(i + 1).padStart(2, '0')}`
+    data[key] = toInt(a.answer, PCL_OPTIONS)
+  })
+
+  await prisma.pclQuestion.update({ where: { formId: form.id }, data })
+
+  // Recalculate score (only scored questions, not worstEvent)
+  const total = questionAnswers.reduce((sum, a) => sum + (PCL_OPTIONS[a.answer] ?? 0), 0)
+  const severity = total <= 20 ? 'Minimal' : total <= 40 ? 'Mild' : total <= 60 ? 'Moderate' : 'Severe'
+  await prisma.pclForm.update({
+    where: { id: form.id }, 
+    data: { 
+      totalScore: total, 
+      severity,
+      status: 'COMPLETE',      // ← add
+      submittedAt: new Date(), // ← add
+    } 
+  })
+  return { ok: true }
+}
 
   throw createError({ statusCode: 400, statusMessage: 'Invalid form key' })
 })

@@ -83,7 +83,11 @@ function getQuestionOptions(index: number): string[] | null {
   if (props.formKey === 'ace') return ['Yes', 'No']
   if (props.formKey === 'gad') return index < 7 ? FREQUENCY_OPTIONS : DIFFICULTY_OPTIONS
   if (props.formKey === 'phq') return index < 9 ? FREQUENCY_OPTIONS : DIFFICULTY_OPTIONS
-  if (props.formKey === 'pcl') return PCL_OPTIONS
+  if (props.formKey === 'pcl') {
+    // worstEvent is a free-text field, not a radio group
+    if (localAnswers.value[index]?.label === 'Worst event') return null
+    return PCL_OPTIONS
+  }
   return null
 }
 
@@ -162,7 +166,7 @@ async function handleSave() {
               {{ opt }}
             </label>
           </div>
-          <UTextarea v-else v-model="q.answer" class="mt-1" :rows="2" autoresize />
+          <UTextarea v-else v-model="q.answer" class="mt-1 w-full" :rows="2" autoresize />
         </div>
       </div>
       <div class="mt-4 flex justify-end gap-2">
