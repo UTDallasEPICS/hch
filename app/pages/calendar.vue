@@ -52,6 +52,7 @@
       const data = await $fetch<
         {
           id: string
+          clientId: string
           title: string
           sessionName: string
           sessionNumber: number
@@ -73,6 +74,7 @@
         start: e.start,
         end: e.end,
         extendedProps: {
+          clientId: e.clientId,
           sessionName: e.sessionName,
           sessionNumber: e.sessionNumber,
           clientName: e.clientName,
@@ -354,6 +356,7 @@
     const ext = info.event.extendedProps || info.event._def?.extendedProps || {}
     selectedEvent.value = {
       ...ext,
+      clientId: ext.clientId ?? null,
       clientName: clientName, // Make sure clientName is included
       id: info.event.id,
       title: info.event.title,
@@ -839,6 +842,15 @@
               "
             />
           </div>
+          <UButton
+            v-if="selectedEvent?.clientId"
+            class="mt-3"
+            color="primary"
+            variant="outline"
+            icon="i-heroicons-document-text"
+            :to="{ path: '/notes-test', query: { client: selectedEvent.clientId } }"
+            label="Open Notes"
+          />
         </div>
 
         <div v-else class="flex flex-col gap-4">
