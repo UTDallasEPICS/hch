@@ -1487,23 +1487,6 @@
               <div class="mb-4 shrink-0 flex items-center justify-between">
                 <div>
                   <p class="text-sm font-medium text-gray-400">{{ currentNote.date }}</p>
-                  <div class="mt-2 max-w-sm">
-                    <label class="mb-1 block text-xs font-semibold tracking-wide text-gray-500 uppercase">
-                      Session
-                    </label>
-                    <select
-                      v-model="selectedAppointmentId"
-                      class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                    >
-                      <option value="" disabled>Select a session</option>
-                      <option v-for="opt in appointmentOptions" :key="opt.value" :value="opt.value">
-                        {{ opt.label }}
-                      </option>
-                    </select>
-                    <p v-if="appointmentOptions.length === 0" class="mt-1 text-xs text-gray-500">
-                      No sessions available yet for this client.
-                    </p>
-                  </div>
                   <div class="mt-3 max-w-sm">
                     <label class="mb-1 block text-xs font-semibold tracking-wide text-gray-500 uppercase">
                       Note type
