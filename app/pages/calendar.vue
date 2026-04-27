@@ -237,6 +237,16 @@
   })
   const createTimeRangeError = ref('')
   const editTimeRangeError = ref('')
+  const createModalError = ref('')
+  const editModalError = ref('')
+
+  function setCreateModalError(message: string) {
+    createModalError.value = message
+  }
+
+  function setEditModalError(message: string) {
+    editModalError.value = message
+  }
 
   function getTimeRangeError(
     date: string,
@@ -377,19 +387,19 @@
       ? (selectedEvent.value.videoProvider as typeof editForm.videoProvider) || 'OTHER'
       : ''
     editTimeRangeError.value = ''
+    editModalError.value = ''
   }
 
   function cancelEdit() {
     isEditMode.value = false
     editTimeRangeError.value = ''
+    editModalError.value = ''
   }
 
   async function saveEdit() {
+    editModalError.value = ''
     if (editForm.includeVideo && !editForm.videoJoinUrl?.trim()) {
-      toast.add({
-        title: 'Add a video link or uncheck Video',
-        color: 'warning',
-      })
+      setEditModalError('Add a video link or uncheck Video.')
       return
     }
     editTimeRangeError.value = getTimeRangeError(editForm.date, editForm.startTime, editForm.endTime, {
@@ -529,20 +539,20 @@
     form.videoProvider = ''
     form.videoJoinUrl = ''
     createTimeRangeError.value = ''
+    createModalError.value = ''
     isCreateModalOpen.value = true
   }
 
   function closeCreateModal() {
     isCreateModalOpen.value = false
     createTimeRangeError.value = ''
+    createModalError.value = ''
   }
 
   async function createSession() {
+    createModalError.value = ''
     if (form.includeVideo && !form.videoJoinUrl?.trim()) {
-      toast.add({
-        title: 'Add a video link or uncheck Video',
-        color: 'warning',
-      })
+      setCreateModalError('Add a video link or uncheck Video.')
       return
     }
     createTimeRangeError.value = getTimeRangeError(form.date, form.startTime, form.endTime)
@@ -669,6 +679,12 @@
 
     <template #content>
       <div class="flex flex-col gap-4 p-4">
+        <div
+          v-if="createModalError"
+          class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-900/20 dark:text-red-200"
+        >
+          {{ createModalError }}
+        </div>
         <div>
           <label class="mb-2 block text-sm font-medium" for="client">Client</label>
           <select id="client" v-model="form.clientId" class="w-full rounded border px-2 py-1">
@@ -823,6 +839,12 @@
         </div>
 
         <div v-else class="flex flex-col gap-4">
+          <div
+            v-if="editModalError"
+            class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-900/20 dark:text-red-200"
+          >
+            {{ editModalError }}
+          </div>
           <p class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
             Session name is auto-generated and cannot be edited.
           </p>
