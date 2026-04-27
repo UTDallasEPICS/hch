@@ -32,11 +32,12 @@
   })
 
   type NotesEditorData = {
-  client: { id: string; name: string }
-  currentNote: { id: number; date: string; content: string }
-  previousNotes: { id: number; date: string; preview: string; content: string }[]
-  sessionNotes: { id: string; content: string; createdAt: string }[]
-  forms: { label?: string; status: 'complete' | 'pending' }[]
+    client: { id: string; name: string }
+    currentNote: { id: number; date: string; content: string }
+    previousNotes: { id: number; date: string; preview: string; content: string }[]
+    sessionNotes: { id: string; content: string; createdAt: string }[]
+    forms: { label?: string; status: 'complete' | 'pending' }[]
+    appointments?: { id: string; sessionName: string; sessionNumber: number; startTime: string; status: string }[]
   }
 
   const { data, pending, error } = await useFetch(
@@ -91,7 +92,8 @@
     :current-note="data.currentNote"
     :previous-notes="data.previousNotes"
     :session-notes="data.sessionNotes"
-    :forms="data.forms.filter((f): f is { label: string; status: 'complete' | 'pending' } => !!f.label)"
+    :appointments="data.appointments"
+    :forms="(data.forms as { label: string; status: 'complete' | 'pending' }[]).filter(f => !!f.label)"
     :client-picker-options="clientPickerOptions"
     client-picker-mode="notes-test"
     back-href="/"

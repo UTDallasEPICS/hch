@@ -1,0 +1,17 @@
+/// Append-only log of completed clinical assessment scores (ACE, GAD-7, PHQ-9, PCL-5).
+/// Survives form resets when admins email fresh links.
+model ClientFormScoreHistory {
+  id         String   @id @default(cuid())
+  userId     String
+  formKey    String
+  score      Int?
+  severity   String?
+  recordedAt DateTime
+  /** JSON: { "questions": [ { "label", "answer" } ] } — snapshot at submission */
+  answersJson String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, recordedAt])
+  @@map("client_form_score_history")
+}

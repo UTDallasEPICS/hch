@@ -1,286 +1,348 @@
 <script setup lang="ts">
-  import type { TableColumn, TableRow } from '@nuxt/ui'
-  import { capitalizeName } from '~/utils/name'
+    import type { TableColumn, TableRow } from '@nuxt/ui'
+    import { capitalizeName } from '~/utils/name'
 
-  definePageMeta({ middleware: 'clients-admin' })
+    definePageMeta({ middleware: 'clients-admin' })
 
-  type ClientStatus = 'Prospective' | 'Waitlist' | 'Active' | 'Archived'
+    type ClientStatus = 'Prospective' | 'Waitlist' | 'Active' | 'Archived'
 
-  const FORM_LABELS: Record<string, string> = {
-    application: 'Application',
-    physicianStatement: 'Physician Statement (PDF Upload)',
-    releaseOfInformationAuthorization: 'ROI Authorization (PDF Upload)',
-    ace: 'ACE',
-    gad: 'GAD-7',
-    phq: 'PHQ-9',
-    pcl: 'PCL-5',
-  }
+    const FORM_LABELS: Record<string, string> = {
+      application: 'Application',
+      physicianStatement: 'Physician Statement (PDF Upload)',
+      releaseOfInformationAuthorization: 'ROI Authorization (PDF Upload)',
+      ace: 'ACE',
+      gad: 'GAD-7',
+      phq: 'PHQ-9',
+      pcl: 'PCL-5',
+    }
 
-  type Client = {
-    id: string
-    fname: string
-    lname: string
-    name: string
-    email: string
-    status: ClientStatus
-    allFormsComplete: boolean
-    therapyWeek: number | null
-    missedSessions: number
-    incompleteForms: string[]
-  }
+    type Client = {
+      id: string
+      fname: string
+      lname: string
+      name: string
+      email: string
+      status: ClientStatus
+      allFormsComplete: boolean
+      therapyWeek: number | null
+      missedSessions: number
+      incompleteForms: string[]
+    }
 
-  const ALL_STATUS = '__all__'
-  const statusFilter = ref<string>(ALL_STATUS)
+    const ALL_STATUS = '__all__'
+    const statusFilter = ref<string>(ALL_STATUS)
 
-  type ClientTabCounts = {
-    __all__: number
-    Prospective: number
-    Waitlist: number
-    Active: number
-    Archived: number
-  }
+    type ClientTabCounts = {
+      __all__: number
+      Prospective: number
+      Waitlist: number
+      Active: number
+      Archived: number
+    }
 
-  const { data: clientCounts, refresh: refreshCounts } = await useFetch<ClientTabCounts>(
-    '/api/clients/counts',
-    {
+    const { data: clientCounts, refresh: refreshCounts } = await useFetch<ClientTabCounts>(
+      '/api/clients/counts',
+      {
+        getCachedData: () => undefined,
+      }
+    )
+
+    const statusTabs = computed(() => {
+      const c = clientCounts.value
+      const n = (key: keyof ClientTabCounts) => c?.[key] ?? 0
+      return [
+        { value: ALL_STATUS, label: 'All', count: n('__all__') },
+        { value: 'Prospective', label: 'Prospective', count: n('Prospective') },
+        { value: 'Waitlist', label: 'Waitlist', count: n('Waitlist') },
+        { value: 'Active', label: 'Active', count: n('Active') },
+        { value: 'Archived', label: 'Archived', count: n('Archived') },
+      ] as const
+    })
+
+    const queryParams = computed(() => {
+      const params: Record<string, string> = {}
+      if (statusFilter.value && statusFilter.value !== ALL_STATUS) params.status = statusFilter.value
+      return params
+    })
+
+    const {
+      data: clients,
+      pending,
+      error,
+      refresh: refreshClients,
+    } = await useFetch<Client[]>('/api/clients', {
+      query: queryParams,
+      watch: [queryParams],
       getCachedData: () => undefined,
+    })
+
+    type PendingNoteRequest = {
+      id: string
+      clientUserId: string
+      approvalWindowDays: number
+      approvalExpiresAt: string
     }
-  )
 
-  const statusTabs = computed(() => {
-    const c = clientCounts.value
-    const n = (key: keyof ClientTabCounts) => c?.[key] ?? 0
-    return [
-      { value: ALL_STATUS, label: 'All', count: n('__all__') },
-      { value: 'Prospective', label: 'Prospective', count: n('Prospective') },
-      { value: 'Waitlist', label: 'Waitlist', count: n('Waitlist') },
-      { value: 'Active', label: 'Active', count: n('Active') },
-      { value: 'Archived', label: 'Archived', count: n('Archived') },
-    ] as const
-  })
+    const { data: pendingNoteRequests } = await useFetch<PendingNoteRequest[]>(
+      '/api/session-notes-requests',
+      {
+        getCachedData: () => undefined,
+      }
+    )
+    const pendingNoteRequestCount = computed(() => pendingNoteRequests.value?.length ?? 0)
 
-  const queryParams = computed(() => {
-    const params: Record<string, string> = {}
-    if (statusFilter.value && statusFilter.value !== ALL_STATUS) params.status = statusFilter.value
-    return params
-  })
+    /** Per-client most-urgent pending records request (earliest expiry wins). */
+    const pendingByClient = computed(() => {
+      const map = new Map<string, PendingNoteRequest>()
+      for (const r of pendingNoteRequests.value ?? []) {
+        const existing = map.get(r.clientUserId)
+        if (!existing || new Date(r.approvalExpiresAt) < new Date(existing.approvalExpiresAt)) {
+          map.set(r.clientUserId, r)
+        }
+      }
+      return map
+    })
 
-  const {
-    data: clients,
-    pending,
-    error,
-    refresh: refreshClients,
-  } = await useFetch<Client[]>('/api/clients', {
-    query: queryParams,
-    watch: [queryParams],
-    getCachedData: () => undefined,
-  })
+    const showRecordsRequestColumn = computed(() => (pendingNoteRequests.value?.length ?? 0) > 0)
 
-  const { data: pendingNoteRequests } = await useFetch<{ id: string }[]>(
-    '/api/session-notes-requests',
-    {
-      getCachedData: () => undefined,
+    /** Ticking "now" so the Time-Left countdowns update live. */
+    const nowMs = ref(Date.now())
+    let recordsRequestTickTimer: ReturnType<typeof setInterval> | null = null
+    onMounted(() => {
+      recordsRequestTickTimer = setInterval(() => {
+        nowMs.value = Date.now()
+      }, 1000)
+    })
+    onBeforeUnmount(() => {
+      if (recordsRequestTickTimer) clearInterval(recordsRequestTickTimer)
+    })
+
+    function recordsMsLeft(r: PendingNoteRequest): number {
+      return new Date(r.approvalExpiresAt).getTime() - nowMs.value
     }
-  )
-  const pendingNoteRequestCount = computed(() => pendingNoteRequests.value?.length ?? 0)
 
-  async function refreshClientsAndCounts() {
-    await Promise.all([refreshClients(), refreshCounts()])
-  }
-
-  function displayName(c: Client) {
-    const raw = c.lname ? `${c.fname} ${c.lname}` : c.fname || c.name || ''
-    const trimmed = raw.trim()
-    if (!trimmed) {
-      return c.status === 'Prospective' ? 'New inquiry' : 'Unknown name'
+    /** e.g. "12d 03:47:12" or "Expired" */
+    function formatRecordsCountdown(r: PendingNoteRequest): string {
+      const ms = recordsMsLeft(r)
+      if (ms <= 0) return 'Expired'
+      const totalSec = Math.floor(ms / 1000)
+      const days = Math.floor(totalSec / 86400)
+      const hours = Math.floor((totalSec % 86400) / 3600)
+      const mins = Math.floor((totalSec % 3600) / 60)
+      const secs = totalSec % 60
+      const pad = (n: number) => String(n).padStart(2, '0')
+      return `${days}d ${pad(hours)}:${pad(mins)}:${pad(secs)}`
     }
-    return capitalizeName(trimmed)
-  }
 
-  function isPlaceholderDisplayName(c: Client) {
-    const raw = c.lname ? `${c.fname} ${c.lname}` : c.fname || c.name || ''
-    return raw.trim().length === 0
-  }
-
-  function statusLabel(status: ClientStatus): string {
-    const labels: Record<ClientStatus, string> = {
-      Prospective: 'Prospective',
-      Waitlist: 'Waitlist',
-      Active: 'Active',
-      Archived: 'Archived',
+    function recordsCountdownColor(r: PendingNoteRequest): 'success' | 'warning' | 'error' {
+      const ms = recordsMsLeft(r)
+      if (ms <= 0) return 'error'
+      const dayMs = 24 * 60 * 60 * 1000
+      if (ms < 3 * dayMs) return 'warning'
+      return 'success'
     }
-    return labels[status]
-  }
 
-  function statusColor(status: ClientStatus): 'warning' | 'primary' | 'success' | 'neutral' {
-    const colors: Record<ClientStatus, 'warning' | 'primary' | 'success' | 'neutral'> = {
-      Prospective: 'warning',
-      Waitlist: 'primary',
-      Active: 'success',
-      Archived: 'neutral',
+    async function refreshClientsAndCounts() {
+      await Promise.all([refreshClients(), refreshCounts()])
     }
-    return colors[status]
-  }
 
-  function statusVariant(status: ClientStatus): 'soft' | 'outline' {
-    return status === 'Archived' ? 'outline' : 'soft'
-  }
-
-  function statusIcon(status: ClientStatus): string {
-    const icons: Record<ClientStatus, string> = {
-      Prospective: 'i-heroicons-clock',
-      Waitlist: 'i-heroicons-queue-list',
-      Active: 'i-heroicons-check-circle',
-      Archived: 'i-heroicons-archive-box',
+    function displayName(c: Client) {
+      const raw = c.lname ? `${c.fname} ${c.lname}` : c.fname || c.name || ''
+      const trimmed = raw.trim()
+      if (!trimmed) {
+        return c.status === 'Prospective' ? 'New inquiry' : 'Unknown name'
+      }
+      return capitalizeName(trimmed)
     }
-    return icons[status]
-  }
+
+    function isPlaceholderDisplayName(c: Client) {
+      const raw = c.lname ? `${c.fname} ${c.lname}` : c.fname || c.name || ''
+      return raw.trim().length === 0
+    }
+
+    function statusLabel(status: ClientStatus): string {
+      const labels: Record<ClientStatus, string> = {
+        Prospective: 'Prospective',
+        Waitlist: 'Waitlist',
+        Active: 'Active',
+        Archived: 'Archived',
+      }
+      return labels[status]
+    }
+
+    function statusColor(status: ClientStatus): 'warning' | 'primary' | 'success' | 'neutral' {
+      const colors: Record<ClientStatus, 'warning' | 'primary' | 'success' | 'neutral'> = {
+        Prospective: 'warning',
+        Waitlist: 'primary',
+        Active: 'success',
+        Archived: 'neutral',
+      }
+      return colors[status]
+    }
+
+    function statusVariant(status: ClientStatus): 'soft' | 'outline' {
+      return status === 'Archived' ? 'outline' : 'soft'
+    }
+
+    function statusIcon(status: ClientStatus): string {
+      const icons: Record<ClientStatus, string> = {
+        Prospective: 'i-heroicons-clock',
+        Waitlist: 'i-heroicons-queue-list',
+        Active: 'i-heroicons-check-circle',
+        Archived: 'i-heroicons-archive-box',
+      }
+      return icons[status]
+    }
 
   /** Muted warning text — easier on dark UIs than default amber-400 */
-  const WARNING_TEXT_MUTED = 'text-amber-700 dark:text-amber-500/75'
+    const WARNING_TEXT_MUTED = 'text-amber-700 dark:text-amber-500/75'
 
-  /** Prospective badge: softer than UBadge `warning` on dark backgrounds */
-  const PROSPECTIVE_BADGE_CLASS =
-    '!bg-amber-500/10 !text-amber-900 !ring-1 !ring-inset !ring-amber-600/15 dark:!bg-amber-950/40 dark:!text-amber-400/85 dark:!ring-amber-500/25 dark:[&_svg]:text-amber-400/80'
+    /** Prospective badge: softer than UBadge `warning` on dark backgrounds */
+    const PROSPECTIVE_BADGE_CLASS =
+      '!bg-amber-500/10 !text-amber-900 !ring-1 !ring-inset !ring-amber-600/15 dark:!bg-amber-950/40 dark:!text-amber-400/85 dark:!ring-amber-500/25 dark:[&_svg]:text-amber-400/80'
 
-  function statusHint(c: Client): string {
-    if (c.status === 'Prospective' && !c.allFormsComplete) {
-      return 'To move to waitlist, the client needs to complete all forms'
-    }
-    return ''
-  }
-
-  const showFormsRemainingColumn = computed(
-    () => clients.value?.some((c) => c.status === 'Prospective' || c.status === 'Waitlist') ?? false
-  )
-
-  const showWeekNoColumn = computed(
-    () => clients.value?.some((c) => c.status === 'Active') ?? false
-  )
-
-  function formatIncompleteForms(c: Client): string {
-    if (c.status !== 'Prospective' && c.status !== 'Waitlist') return ''
-    if (!c.incompleteForms?.length || c.allFormsComplete) {
-      return 'User has completed all forms'
-    }
-    const count = c.incompleteForms.length
-    const names = c.incompleteForms.map((k) => FORM_LABELS[k] ?? k).join(', ')
-    return `${count} remaining: ${names}`
-  }
-
-  const toast = useToast()
-  const updatingId = ref<string | null>(null)
-
-  type StatusTransition = { from: ClientStatus; to: ClientStatus; label: string }
-
-  const STATUS_TRANSITIONS: StatusTransition[] = [
-    { from: 'Prospective', to: 'Waitlist', label: '-> Waitlist' },
-    { from: 'Waitlist', to: 'Prospective', label: '-> Prospective' },
-    { from: 'Waitlist', to: 'Active', label: '-> Active' },
-    { from: 'Active', to: 'Archived', label: '-> Archive' },
-    { from: 'Archived', to: 'Active', label: '-> Active' },
-  ]
-
-  function getAvailableTransitions(client: Client): StatusTransition[] {
-    return STATUS_TRANSITIONS.filter((t) => {
-      if (t.from !== client.status) return false
-      if (t.from === 'Prospective' && t.to === 'Waitlist' && !client.allFormsComplete) {
-        return false
+    function statusHint(c: Client): string {
+      if (c.status === 'Prospective' && !c.allFormsComplete) {
+        return 'To move to waitlist, the client needs to complete all forms'
       }
-      if (t.from === 'Waitlist' && t.to === 'Active' && !client.allFormsComplete) {
-        return false
+      return ''
+    }
+
+    const showFormsRemainingColumn = computed(
+      () => clients.value?.some((c) => c.status === 'Prospective' || c.status === 'Waitlist') ?? false
+    )
+
+    const showWeekNoColumn = computed(
+      () => clients.value?.some((c) => c.status === 'Active') ?? false
+    )
+
+    function formatIncompleteForms(c: Client): string {
+      if (c.status !== 'Prospective' && c.status !== 'Waitlist') return ''
+      if (!c.incompleteForms?.length || c.allFormsComplete) {
+        return 'User has completed all forms'
       }
-      return true
-    })
-  }
+      const count = c.incompleteForms.length
+      const names = c.incompleteForms.map((k) => FORM_LABELS[k] ?? k).join(', ')
+      return `${count} remaining: ${names}`
+    }
 
-  const confirmModalOpen = ref(false)
-  const pendingClient = ref<Client | null>(null)
-  const pendingNextStatus = ref<ClientStatus | null>(null)
+    const toast = useToast()
+    const updatingId = ref<string | null>(null)
 
-  const clientDetailModalOpen = ref(false)
-  const selectedClientId = ref<string | null>(null)
+    type StatusTransition = { from: ClientStatus; to: ClientStatus; label: string }
 
-  function openClientDetail(client: Client) {
-    selectedClientId.value = client.id
-    clientDetailModalOpen.value = true
-  }
-
-  function onTableRowSelect(_e: Event, row: TableRow<Client>) {
-    openClientDetail(row.original)
-  }
-
-  const columns = computed<TableColumn<Client>[]>(() => {
-    const cols: TableColumn<Client>[] = [
-      { accessorKey: 'status', header: 'Status' },
-      { id: 'name', header: 'Name' },
-      { accessorKey: 'email', header: 'Email' },
+    const STATUS_TRANSITIONS: StatusTransition[] = [
+      { from: 'Prospective', to: 'Waitlist', label: '-> Waitlist' },
+      { from: 'Waitlist', to: 'Prospective', label: '-> Prospective' },
+      { from: 'Waitlist', to: 'Active', label: '-> Active' },
+      { from: 'Active', to: 'Archived', label: '-> Archive' },
+      { from: 'Archived', to: 'Active', label: '-> Active' },
     ]
-    if (showFormsRemainingColumn.value) {
-      cols.push({ id: 'formsRemaining', header: 'Forms remaining' })
+
+    function getAvailableTransitions(client: Client): StatusTransition[] {
+      return STATUS_TRANSITIONS.filter((t) => {
+        if (t.from !== client.status) return false
+        if (t.from === 'Prospective' && t.to === 'Waitlist' && !client.allFormsComplete) {
+          return false
+        }
+        if (t.from === 'Waitlist' && t.to === 'Active' && !client.allFormsComplete) {
+          return false
+        }
+        return true
+      })
     }
-    if (showWeekNoColumn.value) {
-      cols.push({ id: 'weekNo', header: 'Week no' })
+
+    const confirmModalOpen = ref(false)
+    const pendingClient = ref<Client | null>(null)
+    const pendingNextStatus = ref<ClientStatus | null>(null)
+
+    const clientDetailModalOpen = ref(false)
+    const selectedClientId = ref<string | null>(null)
+
+    function openClientDetail(client: Client) {
+      selectedClientId.value = client.id
+      clientDetailModalOpen.value = true
     }
-    cols.push({
-      id: 'actions',
-      header: 'Actions',
-      meta: {
-        class: {
-          th: 'text-right',
-          td: 'text-right',
+
+    function onTableRowSelect(_e: Event, row: TableRow<Client>) {
+      openClientDetail(row.original)
+    }
+
+    const columns = computed<TableColumn<Client>[]>(() => {
+      const cols: TableColumn<Client>[] = [
+        { accessorKey: 'status', header: 'Status' },
+        { id: 'name', header: 'Name' },
+        { accessorKey: 'email', header: 'Email' },
+      ]
+      if (showFormsRemainingColumn.value) {
+        cols.push({ id: 'formsRemaining', header: 'Forms remaining' })
+      }
+      if (showWeekNoColumn.value) {
+        cols.push({ id: 'weekNo', header: 'Week no' })
+      }
+      if (showRecordsRequestColumn.value) {
+        cols.push({ id: 'recordsRequest', header: 'Records request' })
+      }
+      cols.push({
+        id: 'actions',
+        header: 'Actions',
+        meta: {
+          class: {
+            th: 'text-right',
+            td: 'text-right',
+          },
         },
-      },
+      })
+      return cols
     })
-    return cols
-  })
 
-  function openConfirmModal(client: Client, nextStatus: ClientStatus) {
-    pendingClient.value = client
-    pendingNextStatus.value = nextStatus
-    confirmModalOpen.value = true
-  }
+    function openConfirmModal(client: Client, nextStatus: ClientStatus) {
+      pendingClient.value = client
+      pendingNextStatus.value = nextStatus
+      confirmModalOpen.value = true
+    }
 
-  function closeConfirmModal() {
-    confirmModalOpen.value = false
-    pendingClient.value = null
-    pendingNextStatus.value = null
-  }
+    function closeConfirmModal() {
+      confirmModalOpen.value = false
+      pendingClient.value = null
+      pendingNextStatus.value = null
+    }
 
-  async function confirmStatusUpdate() {
-    if (!pendingClient.value || !pendingNextStatus.value) {
+    async function confirmStatusUpdate() {
+      if (!pendingClient.value || !pendingNextStatus.value) {
+        closeConfirmModal()
+        return
+      }
+      await updateStatus(pendingClient.value.id, pendingNextStatus.value)
       closeConfirmModal()
-      return
     }
-    await updateStatus(pendingClient.value.id, pendingNextStatus.value)
-    closeConfirmModal()
-  }
 
-  async function updateStatus(clientId: string, newStatus: ClientStatus) {
-    if (updatingId.value) return
-    try {
-      updatingId.value = clientId
-      await $fetch(`/api/clients/${clientId}`, {
-        method: 'PATCH',
-        body: { status: newStatus },
-      })
-      toast.add({
-        title: 'Status Updated',
-        description: `Client moved to ${statusLabel(newStatus)}`,
-        color: 'success',
-      })
-      await refreshClientsAndCounts()
-    } catch (error: any) {
-      const msg = error?.data?.statusMessage || error?.statusMessage || 'Failed to update status'
-      toast.add({
-        title: 'Update Failed',
-        description: msg,
-        color: 'error',
-      })
-    } finally {
-      updatingId.value = null
+    async function updateStatus(clientId: string, newStatus: ClientStatus) {
+      if (updatingId.value) return
+      try {
+        updatingId.value = clientId
+        await $fetch(`/api/clients/${clientId}`, {
+          method: 'PATCH',
+          body: { status: newStatus },
+        })
+        clearNuxtData('client-metrics')
+        toast.add({
+          title: 'Status Updated',
+          description: `Client moved to ${statusLabel(newStatus)}`,
+          color: 'success',
+        })
+        await refreshClientsAndCounts()
+      } catch (error: any) {
+        const msg = error?.data?.statusMessage || error?.statusMessage || 'Failed to update status'
+        toast.add({
+          title: 'Update Failed',
+          description: msg,
+          color: 'error',
+        })
+      } finally {
+        updatingId.value = null
+      }
     }
-  }
 </script>
 
 <template>
@@ -298,7 +360,7 @@
         to="/clients/session-notes-requests"
         class="text-primary-600 hover:text-primary-700 dark:text-primary-400 inline-flex items-center gap-2 text-sm font-medium"
       >
-        Session note requests
+        Records requests
         <UBadge v-if="pendingNoteRequestCount > 0" color="warning" variant="subtle" size="sm">
           {{ pendingNoteRequestCount }} pending
         </UBadge>
@@ -310,7 +372,7 @@
     >
       <div class="mb-5 flex items-center gap-2.5">
         <div
-          class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-500/10 text-primary-600 dark:bg-primary-400/10 dark:text-primary-400"
+          class="bg-primary-500/10 text-primary-600 dark:bg-primary-400/10 dark:text-primary-400 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
         >
           <UIcon name="i-heroicons-user-group-20-solid" class="h-5 w-5" />
         </div>
@@ -328,7 +390,7 @@
           type="button"
           role="tab"
           :aria-selected="statusFilter === tab.value"
-          class="rounded-md px-3 py-1.5 text-sm tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/50 dark:focus-visible:ring-gray-500/50"
+          class="rounded-md px-3 py-1.5 text-sm tabular-nums transition-colors focus-visible:ring-2 focus-visible:ring-gray-400/50 focus-visible:outline-none dark:focus-visible:ring-gray-500/50"
           :class="
             statusFilter === tab.value
               ? 'bg-gray-100 font-semibold text-gray-950 dark:bg-gray-800 dark:text-white'
@@ -349,7 +411,10 @@
         :description="error.message"
       />
 
-      <div v-else class="mt-6 overflow-x-auto rounded-lg border border-gray-200/80 dark:border-gray-800">
+      <div
+        v-else
+        class="mt-6 overflow-x-auto rounded-lg border border-gray-200/80 dark:border-gray-800"
+      >
         <UTable
           :data="clients ?? []"
           :columns="columns"
@@ -364,85 +429,109 @@
           }"
           @select="onTableRowSelect"
         >
-        <template #status-cell="{ row }">
-          <div class="flex flex-col gap-1.5">
-            <UBadge
-              :color="row.original.status === 'Prospective' ? 'neutral' : statusColor(row.original.status)"
-              :variant="statusVariant(row.original.status)"
-              size="md"
-              :icon="statusIcon(row.original.status)"
-              leading
+          <template #status-cell="{ row }">
+            <div class="flex flex-col gap-1.5">
+              <UBadge
+                :color="
+                  row.original.status === 'Prospective'
+                    ? 'neutral'
+                    : statusColor(row.original.status)
+                "
+                :variant="statusVariant(row.original.status)"
+                size="md"
+                :icon="statusIcon(row.original.status)"
+                leading
+                :class="[
+                  'inline-flex w-fit font-medium',
+                  row.original.status === 'Prospective' ? PROSPECTIVE_BADGE_CLASS : '',
+                ]"
+              >
+                {{ statusLabel(row.original.status) }}
+              </UBadge>
+              <span v-if="statusHint(row.original)" :class="['text-sm', WARNING_TEXT_MUTED]">
+                {{ statusHint(row.original) }}
+              </span>
+            </div>
+          </template>
+          <template #name-cell="{ row }">
+            <span
               :class="[
-                'inline-flex w-fit font-medium',
-                row.original.status === 'Prospective' ? PROSPECTIVE_BADGE_CLASS : '',
+                'font-medium',
+                isPlaceholderDisplayName(row.original)
+                  ? 'text-muted italic'
+                  : 'text-gray-900 dark:text-white',
               ]"
             >
-              {{ statusLabel(row.original.status) }}
-            </UBadge>
-            <span v-if="statusHint(row.original)" :class="['text-sm', WARNING_TEXT_MUTED]">
-              {{ statusHint(row.original) }}
+              {{ displayName(row.original) }}
             </span>
-          </div>
-        </template>
-        <template #name-cell="{ row }">
-          <span
-            :class="[
-              'font-medium',
-              isPlaceholderDisplayName(row.original)
-                ? 'text-muted italic'
-                : 'text-gray-900 dark:text-white',
-            ]"
-          >
-            {{ displayName(row.original) }}
-          </span>
-        </template>
-        <template #email-cell="{ row }">
-          <span
-            class="text-muted block max-w-[14rem] truncate text-base sm:max-w-xs"
-            :title="row.original.email"
-          >
-            {{ row.original.email }}
-          </span>
-        </template>
-        <template #formsRemaining-cell="{ row }">
-          <span
-            :class="[
-              'text-base',
-              row.original.allFormsComplete
-                ? 'text-green-600 dark:text-green-400'
-                : WARNING_TEXT_MUTED,
-            ]"
-          >
-            {{ formatIncompleteForms(row.original) }}
-          </span>
-        </template>
-        <template #weekNo-cell="{ row }">
-          <span class="text-base text-gray-600 dark:text-gray-400">
-            {{
-              row.original.status === 'Active' && row.original.therapyWeek !== null
-                ? `${row.original.therapyWeek} / 26`
-                : row.original.status === 'Active'
-                  ? '—'
-                  : ''
-            }}
-          </span>
-        </template>
-        <template #actions-cell="{ row }">
-          <div v-if="updatingId !== row.original.id" class="flex flex-wrap justify-end gap-1.5">
-            <UButton
-              v-for="t in getAvailableTransitions(row.original)"
-              :key="`${t.from}-${t.to}`"
-              size="xs"
-              variant="outline"
-              color="primary"
-              :label="t.label"
-              @click="openConfirmModal(row.original, t.to)"
-            />
-          </div>
-          <div v-else class="flex justify-end">
-            <UIcon name="i-heroicons-arrow-path" class="h-5 w-5 animate-spin text-gray-400" />
-          </div>
-        </template>
+          </template>
+          <template #email-cell="{ row }">
+            <span
+              class="text-muted block max-w-[14rem] truncate text-base sm:max-w-xs"
+              :title="row.original.email"
+            >
+              {{ row.original.email }}
+            </span>
+          </template>
+          <template #formsRemaining-cell="{ row }">
+            <span
+              :class="[
+                'text-base',
+                row.original.allFormsComplete
+                  ? 'text-green-600 dark:text-green-400'
+                  : WARNING_TEXT_MUTED,
+              ]"
+            >
+              {{ formatIncompleteForms(row.original) }}
+            </span>
+          </template>
+          <template #weekNo-cell="{ row }">
+            <span class="text-base text-gray-600 dark:text-gray-400">
+              {{
+                row.original.status === 'Active' && row.original.therapyWeek !== null
+                  ? `${row.original.therapyWeek} / 26`
+                  : row.original.status === 'Active'
+                    ? '?'
+                    : ''
+              }}
+            </span>
+          </template>
+          <template #recordsRequest-cell="{ row }">
+            <template v-if="pendingByClient.get(row.original.id)">
+              <NuxtLink
+                to="/clients/session-notes-requests"
+                class="inline-flex items-center gap-1"
+                :title="`Expires ${new Date(pendingByClient.get(row.original.id)!.approvalExpiresAt).toLocaleString()}`"
+                @click.stop
+              >
+                <UBadge
+                  :color="recordsCountdownColor(pendingByClient.get(row.original.id)!)"
+                  variant="subtle"
+                  size="sm"
+                >
+                  <UIcon name="i-heroicons-clock" class="mr-1 h-3.5 w-3.5" />
+                  {{ formatRecordsCountdown(pendingByClient.get(row.original.id)!) }}
+                </UBadge>
+              </NuxtLink>
+            </template>
+            <span v-else class="text-sm text-gray-400 dark:text-gray-600">—</span>
+          </template>
+          <template #actions-cell="{ row }">
+            <div v-if="updatingId !== row.original.id" class="flex flex-wrap justify-end gap-1.5">
+              <UButton
+                v-for="t in getAvailableTransitions(row.original)"
+                :key="`${t.from}-${t.to}`"
+                size="xs"
+                variant="outline"
+                color="primary"
+                :label="t.label"
+                @click="openConfirmModal(row.original, t.to)"
+              />
+            </div>
+            <div v-else class="flex justify-end">
+              <UIcon name="i-heroicons-arrow-path" class="h-5 w-5 animate-spin text-gray-400" />
+            </div>
+          </template>
         </UTable>
       </div>
     </div>

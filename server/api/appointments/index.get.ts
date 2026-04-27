@@ -29,7 +29,6 @@ export default defineEventHandler(async (event) => {
   let appointments: Awaited<ReturnType<typeof prisma.appointment.findMany>> = []
 
   try {
-    // ADMIN → see all
     if (event.context.isAdmin) {
       appointments = await prisma.appointment.findMany({
         include: {
@@ -38,10 +37,21 @@ export default defineEventHandler(async (event) => {
           },
         },
       })
-    }
-
-    // CLIENT → see only their own
-    else {
+    } else if (event.context.isClinician) {
+      // CLINICIAN → only appointments whose client is assigned to them
+      appointments = await prisma.appointment.findMany({
+        where: {
+          client: {
+            client: { clinicianUserId: userId },
+          },
+        },
+        include: {
+          client: {
+            select: { name: true },
+          },
+        },
+      })
+    } else {
       appointments = await prisma.appointment.findMany({
         where: {
           clientId: userId,
@@ -63,7 +73,10 @@ export default defineEventHandler(async (event) => {
 
   return appointments.map((a) => ({
     id: a.id,
+    clientId: a.clientId,
     title: a.title,
+    sessionName: a.sessionName,
+    sessionNumber: a.sessionNumber,
     start: a.startTime,
     end: a.endTime,
     clientName: a.client.name,

@@ -62,6 +62,7 @@
     :current-note="data.currentNote"
     :previous-notes="data.previousNotes"
     :session-notes="data.sessionNotes"
+    :appointments="data.appointments"
     :forms="data.forms"
     :client-picker-options="clientPickerOptions"
     back-href="/clients"
