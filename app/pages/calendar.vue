@@ -807,12 +807,24 @@
 
           <p><strong>Status:</strong> {{ selectedEvent?.status }}</p>
 
-          <div
-            v-if="selectedEvent?.videoJoinUrl && selectedEvent?.videoProvider === 'GOOGLE_MEET'"
-            class="mt-3"
-          >
-            <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Video</p>
+          <div class="mt-3">
+            <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Meeting Link</p>
+            <p
+              v-if="selectedEvent?.videoJoinUrl"
+              class="mb-2 break-all text-sm text-gray-700 dark:text-gray-300"
+            >
+              <a
+                :href="selectedEvent.videoJoinUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-primary-600 underline hover:text-primary-500 dark:text-primary-400"
+              >
+                {{ selectedEvent.videoJoinUrl }}
+              </a>
+            </p>
+            <p v-else class="mb-2 text-sm text-gray-500 dark:text-gray-400">Not set</p>
             <UButton
+              v-if="selectedEvent?.videoJoinUrl"
               :to="selectedEvent.videoJoinUrl"
               external
               target="_blank"
@@ -820,20 +832,11 @@
               color="primary"
               variant="soft"
               icon="i-heroicons-video-camera-20-solid"
-              label="Join Google Meet"
-            />
-          </div>
-          <div v-else-if="selectedEvent?.videoJoinUrl && selectedEvent?.videoProvider" class="mt-3">
-            <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Video</p>
-            <UButton
-              :to="selectedEvent.videoJoinUrl"
-              external
-              target="_blank"
-              rel="noopener noreferrer"
-              color="primary"
-              variant="soft"
-              icon="i-heroicons-video-camera-20-solid"
-              :label="`Join ${VIDEO_PROVIDER_LABEL[selectedEvent.videoProvider] ?? 'session'}`"
+              :label="
+                selectedEvent?.videoProvider === 'GOOGLE_MEET'
+                  ? 'Join Google Meet'
+                  : `Join ${VIDEO_PROVIDER_LABEL[selectedEvent?.videoProvider] ?? 'meeting'}`
+              "
             />
           </div>
         </div>
