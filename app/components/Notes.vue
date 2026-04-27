@@ -247,6 +247,10 @@
   }
 
   async function selectSessionNote(sn: SessionNoteRow) {
+    if (sn.appointmentId && sn.appointmentId === selectedAppointmentId.value) {
+      alert('This session is already open in the current note editor.')
+      return
+    }
     selectedPreviousNote.value = null
     editingNoteId.value = null
     selectedSessionNoteId.value = sn.id
@@ -372,9 +376,13 @@
     props.appointments.find((a) => a.id === selectedAppointmentId.value) ?? null
   )
 
-  /** True when saving would update an existing DB row for the selected session (not first save). */
-  const isUpdatingSelectedSessionNote = computed(() =>
-    localSessionNotes.value.some((n) => n.appointmentId === selectedAppointmentId.value)
+  /** Existing note row for the selected session (if one has already been created). */
+  const existingSelectedSessionNote = computed(() =>
+    localSessionNotes.value.find((n) => n.appointmentId === selectedAppointmentId.value) ?? null
+  )
+  /** Reason is only required when re-signing a clinician-signed note. */
+  const requiresEditReasonForSignSubmit = computed(
+    () => existingSelectedSessionNote.value?.status === 'CLINICIAN_SIGNED'
   )
 
   const canEditCurrentNote = computed(
@@ -838,10 +846,7 @@
       return
     }
 
-    const updating = localSessionNotes.value.some(
-      (n) => n.appointmentId === selectedAppointmentId.value
-    )
-    if (updating && !editReason?.trim()) {
+    if (requiresEditReasonForSignSubmit.value && !editReason?.trim()) {
       alert('A reason is required to update an existing note for this session.')
       saveStatus.value = 'idle'
       return
@@ -866,7 +871,9 @@
           kind: currentNoteKind.value,
           action: 'clinician-sign',
           clinicianSignatureData: signatureData,
-          ...(updating && editReason?.trim() ? { reason: editReason.trim() } : {}),
+          ...(requiresEditReasonForSignSubmit.value && editReason?.trim()
+            ? { reason: editReason.trim() }
+            : {}),
         },
       })) as {
         id: string
@@ -1024,9 +1031,9 @@
 </script>
 
 <template>
-  <div class="overflow-y-auto bg-gray-50 dark:bg-gray-950">
+  <div class="h-[100dvh] overflow-hidden bg-gray-50 dark:bg-gray-950">
     <div
-      class="min-h-screen overflow-hidden border-x border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
+      class="flex h-full min-h-0 flex-col overflow-hidden border-x border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
     >
       <!-- Sidebar overlay -->
       <div
@@ -1084,11 +1091,11 @@
       </div>
 
       <!-- Main layout -->
-      <div class="flex min-h-screen">
+      <div class="flex min-h-0 flex-1 overflow-hidden">
         <!-- Sliding sidebar -->
         <div
           v-show="sidebarOpen"
-          class="fixed top-0 left-0 z-50 flex h-full w-64 flex-col border-r border-gray-200 bg-white shadow-xl md:relative md:z-auto md:h-full md:shadow-none dark:border-gray-800 dark:bg-gray-900"
+          class="fixed top-0 left-0 z-50 flex h-full w-64 min-h-0 flex-col border-r border-gray-200 bg-white shadow-xl md:relative md:z-auto md:h-full md:shadow-none dark:border-gray-800 dark:bg-gray-900"
         >
           <!-- X button inside sidebar-->
           <div
@@ -1187,7 +1194,7 @@
                 </button>
               </div>
             </div>
-            <div class="flex-1 overflow-y-auto">
+            <div class="min-h-0 flex-1 overflow-y-auto">
               <p
                 v-if="localPreviousNotes.length > 0"
                 class="px-4 py-2 text-[10px] font-semibold tracking-wide text-gray-400 uppercase"
@@ -1307,7 +1314,10 @@
           </template>
 
           <!-- Forms Tab -->
-          <div v-if="sidebarTab === 'forms'" class="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
+          <div
+            v-if="sidebarTab === 'forms'"
+            class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3"
+          >
             <div
               v-for="form in forms"
               :key="form.label"
@@ -1342,14 +1352,17 @@
 
         <!-- Right: Note Content Area -->
         <div
-          class="flex flex-1 flex-col divide-y divide-gray-200 overflow-hidden border-l border-gray-200 md:flex-row md:divide-x md:divide-y-0 dark:divide-gray-800 dark:border-gray-800"
+          class="flex min-h-0 flex-1 flex-col divide-y divide-gray-200 overflow-hidden border-l border-gray-200 md:flex-row md:divide-x md:divide-y-0 dark:divide-gray-800 dark:border-gray-800"
         >
           <div
-            class="flex flex-1 flex-col divide-y divide-gray-200 overflow-hidden md:flex-row md:divide-x md:divide-y-0 dark:divide-gray-800"
+            class="flex min-h-0 flex-1 flex-col divide-y divide-gray-200 overflow-hidden md:flex-row md:divide-x md:divide-y-0 dark:divide-gray-800"
           >
             <!-- Previous Note -->
-            <div v-if="selectedNoteData" class="flex min-w-0 flex-col p-5 md:flex-1">
-              <div class="mb-3 flex items-start justify-between gap-2">
+            <div
+              v-if="selectedNoteData"
+              class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-5 md:flex-1"
+            >
+              <div class="mb-3 shrink-0 flex items-start justify-between gap-2">
                 <div class="min-w-0 flex-1">
                   <p class="text-sm font-medium text-gray-400">{{ selectedNoteData.date }}</p>
                   <p
@@ -1412,7 +1425,7 @@
               <!-- Read only -->
               <div
                 v-if="!isEditingPreviousPanel"
-                class="relative flex-1 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm leading-relaxed text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                class="relative min-h-0 flex-1 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm leading-relaxed text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
               >
                 <div
                   class="prose prose-sm dark:prose-invert max-w-none"
@@ -1431,16 +1444,16 @@
 
               <!-- Editable with toolbar -->
               <div v-else class="flex min-h-0 flex-1 flex-col gap-2">
-                <p class="text-xs text-amber-600">
+                <p class="shrink-0 text-xs text-amber-600">
                   Editing previous note — save to confirm changes.
                 </p>
                 <!-- Make it expand and scrollable like the current note -->
                 <div
-                  class="min-h-[400px] flex-1 overflow-hidden rounded-xl border border-gray-300 bg-white dark:bg-gray-900"
+                  class="min-h-0 flex-1 overflow-hidden rounded-xl border border-gray-300 bg-white dark:bg-gray-900"
                 >
-                  <NotesToolbar v-model="previousNoteContent" class="h-full w-full" />
+                  <NotesToolbar v-model="previousNoteContent" class="h-full w-full min-h-0" />
                 </div>
-                <div class="mt-2 flex justify-end gap-2">
+                <div class="mt-2 shrink-0 flex justify-end gap-2">
                   <UButton
                     color="primary"
                     label="Submit changes"
@@ -1450,7 +1463,10 @@
                 </div>
               </div>
               <!-- Edit history -->
-              <div v-if="selectedNoteEdits.length > 0" class="mt-4 flex flex-col gap-2">
+              <div
+                v-if="selectedNoteEdits.length > 0"
+                class="mt-4 flex shrink-0 flex-col gap-2"
+              >
                 <p class="text-xs font-semibold tracking-wider text-gray-500 uppercase">
                   Edit History
                 </p>
@@ -1468,27 +1484,12 @@
             </div>
 
             <!-- Dynamic Editor Area (handles both current and previous/edit mode) -->
-            <div class="flex min-w-0 flex-col overflow-y-auto p-5 md:max-h-screen md:flex-1">
-              <div class="mb-4 flex items-center justify-between">
+            <div
+              class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-5 md:max-h-screen"
+            >
+              <div class="mb-4 shrink-0 flex items-center justify-between">
                 <div>
                   <p class="text-sm font-medium text-gray-400">{{ currentNote.date }}</p>
-                  <div class="mt-2 max-w-sm">
-                    <label class="mb-1 block text-xs font-semibold tracking-wide text-gray-500 uppercase">
-                      Session
-                    </label>
-                    <select
-                      v-model="selectedAppointmentId"
-                      class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                    >
-                      <option value="" disabled>Select a session</option>
-                      <option v-for="opt in appointmentOptions" :key="opt.value" :value="opt.value">
-                        {{ opt.label }}
-                      </option>
-                    </select>
-                    <p v-if="appointmentOptions.length === 0" class="mt-1 text-xs text-gray-500">
-                      No sessions available yet for this client.
-                    </p>
-                  </div>
                   <div class="mt-3 max-w-sm">
                     <label class="mb-1 block text-xs font-semibold tracking-wide text-gray-500 uppercase">
                       Note type
@@ -1554,20 +1555,22 @@
                 </UButtonGroup>
               </div>
 
-              <NotesToolbar
-                v-if="canEditCurrentNote"
-                v-model="noteContent"
-                class="flex-1 overflow-hidden rounded-xl border bg-white dark:bg-gray-900"
-              />
-              <div
-                v-else
-                class="flex min-h-[280px] items-center justify-center rounded-xl border border-amber-300 bg-amber-50/70 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300"
-              >
-                {{ currentNoteLockMessage }}
+              <div class="min-h-0 flex-1 flex flex-col">
+                <NotesToolbar
+                  v-if="canEditCurrentNote"
+                  v-model="noteContent"
+                  class="h-full w-full min-h-0 flex-1 overflow-hidden rounded-xl border bg-white dark:bg-gray-900"
+                />
+                <div
+                  v-else
+                  class="flex min-h-[280px] flex-1 items-center justify-center rounded-xl border border-amber-300 bg-amber-50/70 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300"
+                >
+                  {{ currentNoteLockMessage }}
+                </div>
               </div>
 
               <!-- Save button – show only when there's content or in edit mode -->
-              <div class="mt-4 flex justify-end gap-2">
+              <div class="mt-4 shrink-0 flex justify-end gap-2">
                 <!-- Auto-save status label -->
                 <div class="flex items-center gap-2 text-xs text-gray-500">
                   <span v-if="saveStatus === 'saving'" class="text-amber-600">● Saving...</span>
@@ -1604,7 +1607,10 @@
                   class="w-auto"
                 />
               </div>
-              <p v-if="!isEditingPreviousPanel && attendanceLockMessage" class="mt-2 text-xs text-amber-600">
+              <p
+                v-if="!isEditingPreviousPanel && attendanceLockMessage"
+                class="mt-2 shrink-0 text-xs text-amber-600"
+              >
                 {{ attendanceLockMessage }}
               </p>
             </div>
@@ -1613,7 +1619,7 @@
           <!-- Form Details -->
           <div
             v-if="selectedForm && sidebarTab === 'forms'"
-            class="flex w-full max-w-md min-w-0 flex-shrink-0 flex-col border-l border-gray-200 dark:border-gray-800 md:max-h-screen md:w-96"
+            class="flex w-full max-w-md min-h-0 min-w-0 flex-shrink-0 flex-col border-l border-gray-200 dark:border-gray-800 md:max-h-screen md:w-96"
           >
             <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
               <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
@@ -1766,14 +1772,14 @@
       :open="showSaveModal"
       title="Clinician sign & submit"
       :description="
-        isUpdatingSelectedSessionNote
+        requiresEditReasonForSignSubmit
           ? 'This session already has a note. Enter why you are changing it, then sign. The admin will be notified to counter-sign.'
           : 'Your signature submits this note for admin approval. An administrator will be notified to counter-sign.'
       "
-      :submit-label="isUpdatingSelectedSessionNote ? 'Sign & resubmit for approval' : 'Sign & submit for approval'"
+      :submit-label="requiresEditReasonForSignSubmit ? 'Sign & resubmit for approval' : 'Sign & submit for approval'"
       :loading="saveStatus === 'saving'"
-      :signature-only="!isUpdatingSelectedSessionNote"
-      :requires-edit-reason="isUpdatingSelectedSessionNote"
+      :signature-only="!requiresEditReasonForSignSubmit"
+      :requires-edit-reason="requiresEditReasonForSignSubmit"
       @close="showSaveModal = false"
       @submit="onSaveSessionNoteSigned"
     />

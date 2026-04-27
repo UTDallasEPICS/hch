@@ -61,6 +61,13 @@ export default defineEventHandler(async (event) => {
 
     const parsedProvider = parseVideoProviderInput(videoProvider) as VideoConferenceProvider | null
     const normalizedJoin = normalizeVideoJoinUrl(videoJoinUrl)
+    const rawJoinInput = typeof videoJoinUrl === 'string' ? videoJoinUrl.trim() : ''
+    if (rawJoinInput && !normalizedJoin) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Enter a valid meeting link starting with http:// or https://',
+      })
+    }
     if (normalizedJoin && !parsedProvider) {
       throw createError({
         statusCode: 400,
