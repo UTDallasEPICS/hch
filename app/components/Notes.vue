@@ -376,9 +376,13 @@
     props.appointments.find((a) => a.id === selectedAppointmentId.value) ?? null
   )
 
-  /** True when saving would update an existing DB row for the selected session (not first save). */
-  const isUpdatingSelectedSessionNote = computed(() =>
-    localSessionNotes.value.some((n) => n.appointmentId === selectedAppointmentId.value)
+  /** Existing note row for the selected session (if one has already been created). */
+  const existingSelectedSessionNote = computed(() =>
+    localSessionNotes.value.find((n) => n.appointmentId === selectedAppointmentId.value) ?? null
+  )
+  /** Reason is only required when re-signing a clinician-signed note. */
+  const requiresEditReasonForSignSubmit = computed(
+    () => existingSelectedSessionNote.value?.status === 'CLINICIAN_SIGNED'
   )
 
   const canEditCurrentNote = computed(
@@ -842,10 +846,7 @@
       return
     }
 
-    const updating = localSessionNotes.value.some(
-      (n) => n.appointmentId === selectedAppointmentId.value
-    )
-    if (updating && !editReason?.trim()) {
+    if (requiresEditReasonForSignSubmit.value && !editReason?.trim()) {
       alert('A reason is required to update an existing note for this session.')
       saveStatus.value = 'idle'
       return
@@ -870,7 +871,9 @@
           kind: currentNoteKind.value,
           action: 'clinician-sign',
           clinicianSignatureData: signatureData,
-          ...(updating && editReason?.trim() ? { reason: editReason.trim() } : {}),
+          ...(requiresEditReasonForSignSubmit.value && editReason?.trim()
+            ? { reason: editReason.trim() }
+            : {}),
         },
       })) as {
         id: string
@@ -1769,14 +1772,14 @@
       :open="showSaveModal"
       title="Clinician sign & submit"
       :description="
-        isUpdatingSelectedSessionNote
+        requiresEditReasonForSignSubmit
           ? 'This session already has a note. Enter why you are changing it, then sign. The admin will be notified to counter-sign.'
           : 'Your signature submits this note for admin approval. An administrator will be notified to counter-sign.'
       "
-      :submit-label="isUpdatingSelectedSessionNote ? 'Sign & resubmit for approval' : 'Sign & submit for approval'"
+      :submit-label="requiresEditReasonForSignSubmit ? 'Sign & resubmit for approval' : 'Sign & submit for approval'"
       :loading="saveStatus === 'saving'"
-      :signature-only="!isUpdatingSelectedSessionNote"
-      :requires-edit-reason="isUpdatingSelectedSessionNote"
+      :signature-only="!requiresEditReasonForSignSubmit"
+      :requires-edit-reason="requiresEditReasonForSignSubmit"
       @close="showSaveModal = false"
       @submit="onSaveSessionNoteSigned"
     />
