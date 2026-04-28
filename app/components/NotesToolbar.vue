@@ -1,11 +1,11 @@
 <script setup lang="ts">
-//import type { EditorToolbarItem } from '@nuxt/ui'
-
-type EditorToolbarItem = any;
+import type { EditorToolbarItem } from '@nuxt/ui'
+import TaskList from '@tiptap/extension-task-list'
+import TaskItem from '@tiptap/extension-task-item'
 
 const props = defineProps<{
   modelValue: string
-  contentType?: 'html' | 'markdown' | 'json' 
+  contentType?: 'html' | 'markdown' | 'json'
 }>()
 
 const emit = defineEmits<{
@@ -13,22 +13,12 @@ const emit = defineEmits<{
 }>()
 
 const localContent = ref(props.modelValue)
-const editor = ref<any>(null)
-
-watch(() => props.modelValue, (newVal: string) => {
-  localContent.value = newVal
-})
-
-watch(localContent, (newVal: string) => {
-  emit('update:modelValue', newVal)
-}, { deep: true })
 
 const items: EditorToolbarItem[][] = [
   [
     {
       icon: 'i-lucide-heading',
       tooltip: { text: 'Headings' },
-      content: { align: 'start' },
       items: [
         { kind: 'heading', level: 1, icon: 'i-lucide-heading-1', label: 'Heading 1' },
         { kind: 'heading', level: 2, icon: 'i-lucide-heading-2', label: 'Heading 2' },
@@ -45,41 +35,41 @@ const items: EditorToolbarItem[][] = [
   [
     { kind: 'bulletList', icon: 'i-lucide-list', tooltip: { text: 'Bullet List' } },
     { kind: 'orderedList', icon: 'i-lucide-list-ordered', tooltip: { text: 'Ordered List' } },
-    { slot: 'taskList' },
+    { slot: 'taskList' }
   ]
 ]
 </script>
 
 <template>
-  <div
-    class="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border bg-white dark:bg-gray-900"
-  >
-    <!-- Editor -->
+  <div class="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border bg-white dark:bg-gray-900">
+     <!-- Editor -->
     <ClientOnly>
       <UEditor
-        v-slot="{ editor }" 
+        v-slot="{ editor }"
         v-model="localContent"
         :content-type="contentType || 'markdown'"
+        :extensions="[TaskList, TaskItem.configure({ nested: true })]"
         placeholder="Start typing your clinical notes here..."
-        class="flex flex-col flex-1 min-h-0 prose prose-sm sm:prose text-left dark:prose-invert"
+        class="flex flex-col flex-1 min-h-0 overflow-hidden"
       >
         <UEditorToolbar
           :editor="editor"
           :items="items"
           layout="fixed"
-          class="w-full border-b bg-gray-50 dark:bg-gray-800 flex-shrink-0 sticky top-0 z-10"
+          class="w-full border-b bg-gray-50 dark:bg-gray-800 shrink-0 z-10 sticky top-0"
+          style="min-height: 40px;"
         >
-         <template #taskList>
-          <button
-            type="button"
-            class="p-1.5 rounded transition-colors"
-            :class="editor?.isActive('taskList') ? 'bg-gray-200 dark:bg-gray-600' : 'hover:bg-gray-200 dark:hover:bg-gray-600'"
-            title="Checkbox List"
-            @click="editor?.chain().focus().toggleTaskList().run()"
-          >
-            <UIcon name="i-lucide-list-checks" class="w-4 h-4" />
-          </button>
-        </template>
+          <template #taskList>
+            <button
+              type="button"
+              class="p-1.5 rounded transition-colors flex items-center justify-center"
+              :class="editor?.isActive('taskList') ? 'bg-gray-200 dark:bg-gray-600' : 'hover:bg-gray-200 dark:hover:bg-gray-600'"
+              title="Checkbox List"
+              @click="editor?.chain().focus().toggleTaskList().run()"
+            >
+              <UIcon name="i-lucide-list-checks" class="w-4 h-4" />
+            </button>
+          </template>
         </UEditorToolbar>
       </UEditor>
     </ClientOnly>
@@ -87,11 +77,49 @@ const items: EditorToolbarItem[][] = [
 </template>
 
 <style scoped>
-/* Let the note body scroll inside a height-limited flex parent (toolbar stays fixed) */
-:deep(.ProseMirror) {
-  min-height: 0;
-  flex: 1 1 0;
-  max-height: 100%;
-  overflow-y: auto;
+/* Improved scrolling + toolbar fix */
+/** 
+:deep(.UEditor) {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
 }
+*/
+:deep(.tiptap.ProseMirror) {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  /* override the *:my-5 spacing that pushes content around */
+  margin: 0 !important;
+}
+
+/* This targets the direct parent div of ProseMirror inside UEditor */
+:deep(div:has(> .tiptap.ProseMirror)) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Let the note body scroll inside a height-limited flex parent (toolbar stays fixed) */
+/** 
+:deep(.ProseMirror) {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  padding: 1.25rem;
+  max-height: 100%;
+}
+*/
+
+/* Extra protection for toolbar */
+/** 
+:deep(.UEditorToolbar) {
+  flex-shrink: 0 !important;
+  z-index: 10;
+}
+*/
 </style>

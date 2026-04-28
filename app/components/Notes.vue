@@ -1037,7 +1037,7 @@
       <!-- Sidebar overlay -->
       <div
         v-if="sidebarOpen"
-        class="fixed inset-0 z-40 bg-black/30 md:hidden"
+        class="fixed inset-0 z-40 bg-black/30 md:hidden pointer-events-auto"
         @click="sidebarOpen = false"
       />
       <!-- Header -->
@@ -1094,7 +1094,7 @@
         <!-- Sliding sidebar -->
         <div
           v-show="sidebarOpen"
-          class="fixed top-0 left-0 z-50 flex h-full w-64 min-h-0 flex-col border-r border-gray-200 bg-white shadow-xl md:relative md:z-auto md:h-full md:shadow-none dark:border-gray-800 dark:bg-gray-900"
+          class="fixed top-0 left-0 z-50 flex h-full w-64 min-h-0 flex-col border-r border-gray-200 bg-white shadow-xl md:relative md:z-auto md:h-full md:shadow-none dark:border-gray-800 dark:bg-gray-900 overflow-hidden isolate"
         >
           <!-- X button inside sidebar-->
           <div
@@ -1351,10 +1351,10 @@
 
         <!-- Right: Note Content Area -->
         <div
-          class="flex min-h-0 flex-1 flex-col divide-y divide-gray-200 overflow-hidden border-l border-gray-200 md:flex-row md:divide-x md:divide-y-0 dark:divide-gray-800 dark:border-gray-800"
+          class="flex min-h-0 flex-1 flex-col divide-y divide-gray-200 overflow-hidden border-l border-gray-200 md:flex-row md:divide-x md:divide-y-0 dark:divide-gray-800 dark:border-gray-800 min-w-0"
         >
           <div
-            class="flex min-h-0 flex-1 flex-col divide-y divide-gray-200 overflow-hidden md:flex-row md:divide-x md:divide-y-0 dark:divide-gray-800"
+            class="flex min-h-0 flex-1 flex-col divide-y divide-gray-200 overflow-hidden md:flex-row md:divide-x md:divide-y-0 dark:divide-gray-800 min-w-0"
           >
             <!-- Previous Note -->
             <div
@@ -1467,7 +1467,9 @@
                 <div
                   class="min-h-0 flex-1 overflow-hidden rounded-xl border border-gray-300 bg-white dark:bg-gray-900"
                 >
-                  <NotesToolbar v-model="previousNoteContent" class="h-full w-full min-h-0" />
+                  <NotesToolbar 
+                    v-model="previousNoteContent" 
+                    class="h-full w-full min-h-0" />
                 </div>
                 <div class="mt-2 shrink-0 flex justify-end gap-2">
                   <UButton
@@ -1500,31 +1502,11 @@
             </div>
 
             <!-- Dynamic Editor Area (handles both current and previous/edit mode) -->
-            <div class="flex min-w-0 flex-col p-5 md:flex-1 md:min-h-0 md:overflow-hidden">
-              <div class="mb-4 flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-gray-400">{{ currentNote.date }}</p>
-                  <span class="text-primary-500 text-xs font-semibold uppercase">Current</span>
-                </div>
+            <div class="flex min-w-0 flex-col p-5 md:flex-1 md:min-h-0 overflow-hidden">
 
-                <!-- Attendance Dropdown -->
-                  <AttendanceDropdown v-model="attendanceStatus" />
-                  </div>
-              
-              <!-- Notes Toolbar -->
-              <div class="flex-1 min-h-0 overflow-hidden flex flex-col">
-                <ClientOnly>
-                  <NotesToolbar
-                    v-model="noteContent"
-                    class="h-full overflow-hidden rounded-xl border bg-white dark:bg-gray-900"
-                  />
-                </ClientOnly>
-              </div>
-              <div
-                class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-5 md:max-h-screen"
-              >
-              <div class="mb-4 shrink-0 flex items-center justify-between">
-                <div>
+              <!-- Header row: date/note-type left, attendance right -->
+              <div class="mb-4 shrink-0 flex items-start justify-between gap-6">
+                <div class="flex-1">
                   <p class="text-sm font-medium text-gray-400">{{ currentNote.date }}</p>
                   <div class="mt-3 max-w-sm">
                     <label class="mb-1 block text-xs font-semibold tracking-wide text-gray-500 uppercase">
@@ -1559,43 +1541,41 @@
                       </button>
                     </div>
                     <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                      Psychotherapy (process) notes are stored separately and are not visible to
-                      the client.
+                      Psychotherapy (process) notes are stored separately and are not visible to the client.
                     </p>
                   </div>
-                  <span class="mt-3 inline-block text-primary-500 text-xs font-semibold uppercase">
-                    Current
-                  </span>
-                </div>
-              </div>
+                </div> 
 
-              <div class="min-h-0 flex-1 flex flex-col">
-                <NotesToolbar
-                  v-if="canEditCurrentNote"
-                  v-model="noteContent"
-                  class="h-full w-full min-h-0 flex-1 overflow-hidden rounded-xl border bg-white dark:bg-gray-900"
-                />
+                <!-- Attendance Dropdown: top-right -->
+                <AttendanceDropdown v-model="attendanceStatus" />
+              </div> 
+
+              <!-- Editor / Lock message -->
+              <div class="min-h-0 flex-1 flex flex-col overflow-hidden min-h-[400px] md:min-h-0">
+                <ClientOnly>
+                  <NotesToolbar
+                    v-if="canEditCurrentNote"
+                    v-model="noteContent"
+                    class="h-full w-full min-h-[400px] md:min-h-0 flex-1 overflow-hidden rounded-xl border bg-white dark:bg-gray-900"
+                  />
+                </ClientOnly>
                 <div
-                  v-else
+                  v-if="!canEditCurrentNote"
                   class="flex min-h-[280px] flex-1 items-center justify-center rounded-xl border border-amber-300 bg-amber-50/70 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300"
                 >
                   {{ currentNoteLockMessage }}
                 </div>
               </div>
 
-              <!-- Save button – show only when there's content or in edit mode -->
+              <!-- Save button row -->
               <div class="mt-4 shrink-0 flex justify-end gap-2">
-                <!-- Auto-save status label -->
                 <div class="flex items-center gap-2 text-xs text-gray-500">
                   <span v-if="saveStatus === 'saving'" class="text-amber-600">● Saving...</span>
                   <span v-else-if="saveStatus === 'saved' && lastSaved" class="text-green-600">
                     Saved {{ formatTime(lastSaved) }}
                   </span>
-                  <span v-else-if="saveStatus === 'error'" class="text-red-600"
-                    >Failed to save</span
-                  >
+                  <span v-else-if="saveStatus === 'error'" class="text-red-600">Failed to save</span>
                 </div>
-
                 <UButton
                   v-if="noteContent.trim() && !isEditingPreviousPanel"
                   color="neutral"
@@ -1620,16 +1600,17 @@
                   @click="showSaveModal = true"
                   class="w-auto"
                 />
-              </div>
+              </div> <!-- end save row -->
+
               <p
                 v-if="!isEditingPreviousPanel && attendanceLockMessage"
                 class="mt-2 shrink-0 text-xs text-amber-600"
               >
                 {{ attendanceLockMessage }}
               </p>
+
             </div>
           </div>
-        </div>
 
           <!-- Form Details -->
           <div
