@@ -138,6 +138,8 @@
   const localPreviousNotes = ref([...props.previousNotes])
   const localSessionNotes = ref<SessionNoteRow[]>([...props.sessionNotes])
 
+  const formEditPanelRef = ref<{ handleSave: () => void } | null>(null)
+
   watch(
     () => props.previousNotes,
     (v) => {
@@ -1743,28 +1745,31 @@
                   description="Try again or open the client profile to view form answers."
                 />
                 <div v-else-if="formPreviewData" class="space-y-3">
-                  <p
-                    v-if="formPreviewData.submitted != null"
-                    class="text-xs text-gray-500 dark:text-gray-400"
-                  >
-                    {{ formPreviewData.submitted ? 'Submitted' : 'Not submitted' }}
-                    <span
-                      v-if="formPreviewData.submittedAt || formPreviewData.completedAt"
-                      class="text-gray-400"
-                    >
-                      ·
-                      {{
-                        new Date(
-                          formPreviewData.completedAt ?? formPreviewData.submittedAt ?? ''
-                        ).toLocaleString('en-US')
-                      }}
-                    </span>
-                  </p>
                   <div
-                    v-if="formPreviewData.score != null || formPreviewData.severity"
-                    class="flex flex-wrap items-center justify-between gap-2 text-sm"
+                    v-if="formPreviewData.submitted != null"
+                    class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400"
                   >
-                    <div class="flex flex-wrap items-center gap-2">
+                    <span>
+                      {{ formPreviewData.submitted ? 'Submitted' : 'Not submitted' }}
+                      <span
+                        v-if="formPreviewData.submittedAt || formPreviewData.completedAt"
+                        class="text-gray-400"
+                      >
+                        ·
+                        {{
+                          new Date(
+                            formPreviewData.completedAt ?? formPreviewData.submittedAt ?? ''
+                          ).toLocaleString('en-US')
+                        }}
+                      </span>
+                    </span>
+                    <div v-if="isEditingForm" class="flex items-center">
+                      <UButton label="Cancel" color="neutral" variant="soft" size="xs" @click="isEditingForm = false" />
+                      <UButton label="Save" color="primary" size="xs" @click="formEditPanelRef?.handleSave()" />
+                    </div>
+                    <UButton v-else label="Edit" size="xs" @click="isEditingForm = true" />
+                  </div>
+                    <div class="flex flex-wrap items-center gap-2 text-sm">
                       <span
                         v-if="formPreviewData.score != null"
                         class="font-medium text-gray-900 dark:text-white"
@@ -1775,17 +1780,11 @@
                         {{ formPreviewData.severity }}
                       </span>
                     </div>
-                    <UButton
-                      v-if="!isEditingForm"
-                      label="Edit"
-                      size="xs"
-                      @click="isEditingForm = true"
-                    />
-                  </div>
                   <div v-if="formPreviewData.questions?.length">
                     <!-- Edit mode -->
                     <FormEditPanel
                       v-if="isEditingForm && selectedFormKey"
+                      ref="formEditPanelRef"
                       :form-key="selectedFormKey"
                       :client-id="client.id"
                       :editable-answers="editableAnswers"
@@ -1824,9 +1823,6 @@
                             {{ selectedFormKey === 'application' ? formatAppAnswer(q.answer) : (q.answer || '—') }}
                           </p>
                         </div>
-                      </div>
-                      <div class="mt-3 flex gap-2">
-                        <UButton label="Edit" size="xs" @click="isEditingForm = true" />
                       </div>
                     </template>
                   </div>

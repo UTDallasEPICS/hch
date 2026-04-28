@@ -91,7 +91,11 @@ export default defineEventHandler(async (event) => {
     if (!form) throw createError({ statusCode: 404, statusMessage: 'Form not found' })
     const keys = ['g01','g02','g03','g04','g05','g06','g07','g08']
     const data: Record<string, number | null> = {}
-    answers.forEach((a, i) => { if (keys[i]) data[keys[i]!] = toInt(a.answer, GAD_OPTIONS) })
+    answers.forEach((a, i) => {
+      if (!keys[i]) return
+      const map = keys[i] === 'g08' ? PHQ_DIFFICULTY_OPTIONS : GAD_OPTIONS
+      data[keys[i]!] = toInt(a.answer, map)
+    })
     await prisma.gadQuestion.update({ where: { formId: form.id }, data })
 
     // Recalculate score (g01-g07 only, g08 is difficulty)

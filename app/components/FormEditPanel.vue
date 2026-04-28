@@ -105,6 +105,8 @@ async function handleSave() {
     isSaving.value = false
   }
 }
+
+defineExpose({ handleSave })
 </script>
 
 <template>
@@ -140,10 +142,10 @@ async function handleSave() {
             <UButton v-if="currentStep > 1" label="Previous" color="neutral" variant="soft" size="sm" @click="currentStep--" />
             <UButton v-if="currentStep < TOTAL_STEPS" label="Next" color="primary" variant="soft" size="sm" @click="currentStep++" />
           </div>
-          <div class="flex gap-2">
+          <!-- <div class="flex gap-2">
             <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="emit('cancel')" />
-            <UButton label="Save" color="primary" size="sm" :loading="isSaving" @click="handleSave" />
-          </div>
+            <UButton labels="Save" color="primary" size="sm" :loading="isSaving" @click="handleSave" />
+          </div> -->
         </div>
       </template>
     </template>
@@ -169,10 +171,10 @@ async function handleSave() {
           <UTextarea v-else v-model="q.answer" class="mt-1 w-full" :rows="2" autoresize />
         </div>
       </div>
-      <div class="mt-4 flex justify-end gap-2">
+      <!-- <div class="mt-4 flex justify-end gap-2">
         <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="emit('cancel')" />
         <UButton label="Save" color="primary" size="sm" :loading="isSaving" @click="handleSave" />
-      </div>
+      </div> -->
     </template>
   </div>
 </template>
