@@ -439,7 +439,6 @@
     const ext = info.event.extendedProps || info.event._def?.extendedProps || {}
     selectedEvent.value = {
       ...ext,
-      clientId: ext.clientId ?? null,
       clientName: clientName, // Make sure clientName is included
       id: info.event.id,
       clientId: ext.clientId,
@@ -954,7 +953,7 @@
               :label="
                 selectedEvent?.videoProvider === 'GOOGLE_MEET'
                   ? 'Join Google Meet'
-                  : `Join ${VIDEO_PROVIDER_LABEL[selectedEvent?.videoProvider] ?? 'meeting'}`
+                  : `Join ${selectedEvent?.videoProvider ? VIDEO_PROVIDER_LABEL[selectedEvent.videoProvider] ?? 'meeting' : 'meeting'}`
               "
             />
           </div>
