@@ -1037,7 +1037,7 @@
       <!-- Sidebar overlay -->
       <div
         v-if="sidebarOpen"
-        class="fixed inset-0 z-40 bg-black/30 md:hidden pointer-events-auto"
+        class="fixed inset-0 z-40 bg-black/30 md:hidden cursor-pointer"
         @click="sidebarOpen = false"
       />
       <!-- Header -->
