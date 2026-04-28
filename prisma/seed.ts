@@ -245,6 +245,19 @@ async function main() {
     console.log(`Seeded Admin: ${admin.email}`)
   }
 
+  await prisma.user.upsert({
+    where: { email: 'carl@c.com' },
+    update: { role: 'CLINICIAN', name: 'Carl Karl' },
+    create: {
+      id: 'carl_id',
+      email: 'carl@c.com',
+      name: 'Carl Karl',
+      emailVerified: true,
+      role: 'CLINICIAN',
+    },
+  })
+  console.log('Seeded Clinician: carl@c.com')
+
   // Create / Upsert Bob (Client)
   const bob = await prisma.user.upsert({
     where: { email: 'bob@b.com' },

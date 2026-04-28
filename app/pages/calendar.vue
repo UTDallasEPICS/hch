@@ -9,6 +9,7 @@
 
   const isMobile = ref(process.client && window.innerWidth < 768)
   const calendarRef = ref()
+  const datePickerRef = ref<HTMLInputElement | null>(null)
   const session = authClient.useSession()
   const currentUser = computed(
     () =>
@@ -32,7 +33,79 @@
     { immediate: true }
   )
   const toast = useToast()
-  const clients = ref<any[]>([])
+  const isAdminViewer = computed(() => adminData.value?.isAdmin === true)
+
+  type ClinicianOption = {
+    id: string
+    name: string
+    email: string
+  }
+
+  type CalendarClient = {
+    id: string
+    name: string
+    email: string
+    status: string
+  }
+
+  type AppointmentResponse = {
+    id: string
+    clientId: string
+    title: string
+    sessionName: string
+    sessionNumber: number
+    start: string
+    end: string
+    clientName: string
+    description: string | null
+    status: string
+    videoProvider: string | null
+    videoJoinUrl: string | null
+    assignedClinicianName: string | null
+  }
+
+  type SelectedCalendarEvent = {
+    id: string
+    title: string
+    sessionName: string
+    sessionNumber: number | null
+    clientId: string
+    start: Date
+    end: Date
+    clientName: string
+    description: string | null
+    status: string
+    videoProvider: string | null
+    videoJoinUrl: string | null
+    assignedClinicianName: string | null
+  }
+
+  const { data: clinicians } = await useFetch<ClinicianOption[]>('/api/clinicians', {
+    getCachedData: () => undefined,
+  })
+  const clinicianFilter = ref<string[]>([])
+  const clientFilter = ref<string[]>([])
+  const clinicianFilterItems = computed(() =>
+    (clinicians.value ?? []).map((clinician) => ({
+      label: clinician.name ? `${clinician.name} (${clinician.email})` : clinician.email,
+      value: clinician.id,
+    }))
+  )
+  const clientOptionsQueryParams = computed(() => {
+    const params: Record<string, string> = {}
+    if (isAdminViewer.value && clinicianFilter.value.length > 0) {
+      params.clinicianUserId = clinicianFilter.value.join(',')
+    }
+    return params
+  })
+  const calendarQueryParams = computed(() => {
+    const params = { ...clientOptionsQueryParams.value }
+    if (clientFilter.value.length > 0) {
+      params.clientId = clientFilter.value.join(',')
+    }
+    return params
+  })
+  const clients = ref<CalendarClient[]>([])
   const events = ref<any[]>([])
   const isAdmin = computed(() => adminData.value?.isStaff ?? false)
   const clientColors = [
@@ -49,23 +122,9 @@
   let touchEndX = 0
   async function loadEvents() {
     try {
-      const data = await $fetch<
-        {
-          id: string
-          clientId: string
-          title: string
-          sessionName: string
-          sessionNumber: number
-          start: string
-          end: string
-          clientName: string
-          description: string | null
-          status: string
-          videoProvider: string | null
-          videoJoinUrl: string | null
-        }[]
-      >('/api/appointments', {
+      const data = await $fetch<AppointmentResponse[]>('/api/appointments', {
         credentials: 'include',
+        query: calendarQueryParams.value,
       })
 
       events.value = data.map((e) => ({
@@ -82,6 +141,7 @@
           status: e.status,
           videoProvider: e.videoProvider,
           videoJoinUrl: e.videoJoinUrl,
+          assignedClinicianName: e.assignedClinicianName,
         },
       }))
     } catch (err) {
@@ -97,8 +157,9 @@
     }
 
     try {
-      const data = await $fetch('/api/clients', {
+      const data = await $fetch<CalendarClient[]>('/api/clients', {
         credentials: 'include',
+        query: clientOptionsQueryParams.value,
       })
 
       console.log('CLIENTS:', data)
@@ -123,24 +184,33 @@
   }
 
   function goToDate(event: any) {
-    const calendarApi = calendarRef.value.getApi()
+    const calendarApi = calendarRef.value?.getApi?.()
+    if (!calendarApi) return
     calendarApi.gotoDate(event.target.value)
   }
 
   function next() {
-    calendarRef.value.getApi().next()
+    const calendarApi = calendarRef.value?.getApi?.()
+    if (!calendarApi) return
+    calendarApi.next()
   }
 
   function prev() {
-    calendarRef.value.getApi().prev()
+    const calendarApi = calendarRef.value?.getApi?.()
+    if (!calendarApi) return
+    calendarApi.prev()
   }
 
   function handleTouchStart(e: TouchEvent) {
-    touchStartX = e.changedTouches[0].screenX
+    const touch = e.changedTouches[0]
+    if (!touch) return
+    touchStartX = touch.screenX
   }
 
   function handleTouchEnd(e: TouchEvent) {
-    touchEndX = e.changedTouches[0].screenX
+    const touch = e.changedTouches[0]
+    if (!touch) return
+    touchEndX = touch.screenX
     handleSwipe()
   }
 
@@ -160,11 +230,14 @@
   }
 
   function today() {
-    calendarRef.value.getApi().today()
+    const calendarApi = calendarRef.value?.getApi?.()
+    if (!calendarApi) return
+    calendarApi.today()
   }
 
   function changeView(view: string) {
-    const calendar = calendarRef.value.getApi()
+    const calendar = calendarRef.value?.getApi?.()
+    if (!calendar) return
     const mobile = window.innerWidth < 768
 
     if (view === 'week') {
@@ -218,8 +291,18 @@
     }
   })
 
+  watch(calendarQueryParams, async () => {
+    if (!currentUser.value?.id) return
+    await syncCalendarData()
+  })
+
+  watch(clients, (availableClients) => {
+    const allowedClientIds = new Set(availableClients.map((client) => client.id))
+    clientFilter.value = clientFilter.value.filter((id) => allowedClientIds.has(id))
+  })
+
   const isViewModalOpen = ref(false)
-  const selectedEvent = ref<any>(null)
+  const selectedEvent = ref<SelectedCalendarEvent | null>(null)
   const isEditMode = ref(false)
   const isDeleteConfirming = ref(false)
   const mobileView = ref('week')
@@ -287,7 +370,7 @@
     allDaySlot: false,
     slotEventOverlap: true,
 
-    datesSet(info) {
+    datesSet(info: any) {
       const view = info.view.type
 
       if (view.includes('Day')) mobileView.value = 'day'
@@ -295,7 +378,7 @@
       if (view.includes('Month')) mobileView.value = 'month'
     },
 
-    dayHeaderDidMount(info) {
+    dayHeaderDidMount(info: any) {
       if (info.el) {
         info.el.style.cursor = 'pointer'
 
@@ -305,7 +388,7 @@
 
           const events = section.querySelectorAll('.fc-list-event')
 
-          events.forEach((e) => {
+          events.forEach((e: Element) => {
             e.classList.toggle('hidden')
           })
         }
@@ -314,7 +397,7 @@
 
     initialView: isMobile.value ? 'listWeek' : 'dayGridMonth',
 
-    headerToolbar: false,
+    headerToolbar: false as const,
     // listDayFormat: {
     //   weekday: 'long',
     //   day: 'numeric',
@@ -356,9 +439,9 @@
     const ext = info.event.extendedProps || info.event._def?.extendedProps || {}
     selectedEvent.value = {
       ...ext,
-      clientId: ext.clientId ?? null,
       clientName: clientName, // Make sure clientName is included
       id: info.event.id,
+      clientId: ext.clientId,
       title: info.event.title,
       sessionName: ext.sessionName || info.event.title,
       sessionNumber: ext.sessionNumber ?? null,
@@ -368,6 +451,7 @@
       status: ext.status,
       videoProvider: ext.videoProvider ?? null,
       videoJoinUrl: ext.videoJoinUrl ?? null,
+      assignedClinicianName: ext.assignedClinicianName ?? null,
     }
 
     console.log('selectedEvent after click:', selectedEvent.value)
@@ -376,18 +460,18 @@
   }
 
   function enterEditMode() {
+    const event = selectedEvent.value
+    if (!event) return
     isEditMode.value = true
-    editForm.description = selectedEvent.value.description || ''
-    const d = selectedEvent.value.start
+    editForm.description = event.description || ''
+    const d = event.start
     editForm.date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    editForm.startTime = selectedEvent.value.start.toTimeString().slice(0, 5)
-    editForm.endTime = selectedEvent.value.end.toTimeString().slice(0, 5)
-    editForm.includeVideo = Boolean(
-      selectedEvent.value.videoJoinUrl || selectedEvent.value.videoProvider
-    )
-    editForm.videoJoinUrl = selectedEvent.value.videoJoinUrl || ''
+    editForm.startTime = event.start.toTimeString().slice(0, 5)
+    editForm.endTime = event.end.toTimeString().slice(0, 5)
+    editForm.includeVideo = Boolean(event.videoJoinUrl || event.videoProvider)
+    editForm.videoJoinUrl = event.videoJoinUrl || ''
     editForm.videoProvider = editForm.includeVideo
-      ? (selectedEvent.value.videoProvider as typeof editForm.videoProvider) || 'OTHER'
+      ? (event.videoProvider as typeof editForm.videoProvider) || 'OTHER'
       : ''
     editTimeRangeError.value = ''
     editModalError.value = ''
@@ -401,13 +485,20 @@
 
   async function saveEdit() {
     editModalError.value = ''
+    const event = selectedEvent.value
+    if (!event) return
     if (editForm.includeVideo && !editForm.videoJoinUrl?.trim()) {
       setEditModalError('Add a video link or uncheck Video.')
       return
     }
-    editTimeRangeError.value = getTimeRangeError(editForm.date, editForm.startTime, editForm.endTime, {
-      allowPastStart: true,
-    })
+    editTimeRangeError.value = getTimeRangeError(
+      editForm.date,
+      editForm.startTime,
+      editForm.endTime,
+      {
+        allowPastStart: true,
+      }
+    )
     if (editTimeRangeError.value) {
       toast.add({
         title: 'Invalid date/time range',
@@ -417,10 +508,10 @@
       return
     }
     try {
-      await $fetch(`/api/appointments/${selectedEvent.value.id}`, {
+      await $fetch(`/api/appointments/${event.id}`, {
         method: 'PUT',
         body: {
-          id: selectedEvent.value.id,
+          id: event.id,
           description: editForm.description,
           date: editForm.date,
           startTime: editForm.startTime,
@@ -455,8 +546,10 @@
   }
 
   async function deleteEvent() {
+    const event = selectedEvent.value
+    if (!event) return
     try {
-      await $fetch(`/api/appointments/${selectedEvent.value.id}`, {
+      await $fetch(`/api/appointments/${event.id}`, {
         method: 'DELETE',
         credentials: 'include',
       })
@@ -519,8 +612,8 @@
 
   const clientOptions = computed(() =>
     clients.value
-      .filter((c) => c.status !== 'Archived')
-      .map((c) => ({
+      .filter((c: CalendarClient) => c.status !== 'Archived')
+      .map((c: CalendarClient) => ({
         label: c.name || c.email,
         value: c.id,
       }))
@@ -617,7 +710,9 @@
     () => [editForm.date, editForm.startTime, editForm.endTime] as const,
     ([date, startTime, endTime]) => {
       if (!isEditMode.value) return
-      editTimeRangeError.value = getTimeRangeError(date, startTime, endTime, { allowPastStart: true })
+      editTimeRangeError.value = getTimeRangeError(date, startTime, endTime, {
+        allowPastStart: true,
+      })
     }
   )
 </script>
@@ -637,9 +732,9 @@
         <UButton
           icon="i-heroicons-calendar-days"
           variant="outline"
-          @click="$refs.datePicker.showPicker()"
+          @click="datePickerRef?.showPicker?.()"
         />
-        <input ref="datePicker" type="date" class="hidden" @change="goToDate" />
+        <input ref="datePickerRef" type="date" class="hidden" @change="goToDate" />
 
         <!-- Desktop buttons -->
         <div class="hidden items-center gap-2 md:flex">
@@ -659,8 +754,27 @@
       </div>
     </div>
 
-    <div v-if="isAdmin" class="flex justify-start">
-      <UButton icon="i-heroicons-plus" label="Create Event" @click="openCreateModal" />
+    <div v-if="isAdmin" class="flex justify-end">
+      <div class="flex flex-wrap items-center justify-end gap-3">
+        <USelect
+          id="calendar-client-filter"
+          v-model="clientFilter"
+          :items="clientOptions"
+          multiple
+          placeholder="Filter by clients"
+          class="w-full min-w-[18rem] sm:w-72"
+        />
+        <USelect
+          v-if="isAdminViewer"
+          id="calendar-clinician-filter"
+          v-model="clinicianFilter"
+          :items="clinicianFilterItems"
+          multiple
+          placeholder="Filter by clinicians"
+          class="w-full min-w-[18rem] sm:w-72"
+        />
+        <UButton icon="i-heroicons-plus" label="Create Event" @click="openCreateModal" />
+      </div>
     </div>
 
     <div class="flex gap-6">
@@ -701,7 +815,9 @@
           </p>
         </div>
 
-        <p class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+        <p
+          class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+        >
           Session name will be auto-generated as <strong>Firstname_Lastname_##</strong>.
         </p>
 
@@ -790,7 +906,12 @@
       <div class="flex flex-col gap-4 p-4">
         <div v-if="!isEditMode">
           <p><strong>Client:</strong> {{ selectedClientName }}</p>
-          <p><strong>Session Name:</strong> {{ selectedEvent?.sessionName || selectedEvent?.title }}</p>
+          <p v-if="selectedEvent?.assignedClinicianName">
+            <strong>Assigned Clinician:</strong> {{ selectedEvent.assignedClinicianName }}
+          </p>
+          <p>
+            <strong>Session Name:</strong> {{ selectedEvent?.sessionName || selectedEvent?.title }}
+          </p>
           <p><strong>Date:</strong> {{ selectedEvent?.start?.toLocaleDateString() }}</p>
           <p>
             <strong>Time:</strong>
@@ -832,7 +953,7 @@
               :label="
                 selectedEvent?.videoProvider === 'GOOGLE_MEET'
                   ? 'Join Google Meet'
-                  : `Join ${VIDEO_PROVIDER_LABEL[selectedEvent?.videoProvider] ?? 'meeting'}`
+                  : `Join ${selectedEvent?.videoProvider ? VIDEO_PROVIDER_LABEL[selectedEvent.videoProvider] ?? 'meeting' : 'meeting'}`
               "
             />
           </div>
@@ -854,7 +975,9 @@
           >
             {{ editModalError }}
           </div>
-          <p class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+          <p
+            class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+          >
             Session name is auto-generated and cannot be edited.
           </p>
 
@@ -943,7 +1066,12 @@
 
           <UButton v-if="isEditMode" variant="outline" @click="cancelEdit"> Cancel </UButton>
 
-          <UButton v-if="isEditMode" color="primary" :disabled="!!editTimeRangeError" @click="saveEdit">
+          <UButton
+            v-if="isEditMode"
+            color="primary"
+            :disabled="!!editTimeRangeError"
+            @click="saveEdit"
+          >
             Save
           </UButton>
         </div>
