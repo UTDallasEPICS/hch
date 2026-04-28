@@ -1,5 +1,5 @@
 import { requireStaff } from '../../utils/guard'
-import { defineEventHandler } from 'h3'
+import { defineEventHandler, getQuery } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { isClinicalClient } from '../../utils/is-clinical-client'
 import { toClientStatusLabel } from '../../utils/client-status'
@@ -16,13 +16,25 @@ type ClientTabCounts = {
 export default defineEventHandler(async (event) => {
   const user = requireStaff(event)
   const isClinicianViewer = event.context.isClinician === true && !event.context.isAdmin
+  const isAdminViewer = event.context.isAdmin === true
+  const query = getQuery(event)
+  const clinicianUserIds =
+    isAdminViewer && typeof query.clinicianUserId === 'string'
+      ? query.clinicianUserId
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean)
+      : []
+  const hasClinicianUserIdFilter = clinicianUserIds.length > 0
 
   const users = await prisma.user.findMany({
     where: {
       role: 'CLIENT',
       ...(isClinicianViewer
         ? { client: { clinicianUserId: user.id } }
-        : {}),
+        : hasClinicianUserIdFilter
+          ? { client: { clinicianUserId: { in: clinicianUserIds } } }
+          : {}),
     },
     select: {
       email: true,

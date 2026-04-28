@@ -1,348 +1,380 @@
 <script setup lang="ts">
-    import type { TableColumn, TableRow } from '@nuxt/ui'
-    import { capitalizeName } from '~/utils/name'
+  import type { TableColumn, TableRow } from '@nuxt/ui'
+  import { capitalizeName } from '~/utils/name'
 
-    definePageMeta({ middleware: 'clients-admin' })
+  definePageMeta({ middleware: 'clients-admin' })
 
-    type ClientStatus = 'Prospective' | 'Waitlist' | 'Active' | 'Archived'
+  type ClientStatus = 'Prospective' | 'Waitlist' | 'Active' | 'Archived'
 
-    const FORM_LABELS: Record<string, string> = {
-      application: 'Application',
-      physicianStatement: 'Physician Statement (PDF Upload)',
-      releaseOfInformationAuthorization: 'ROI Authorization (PDF Upload)',
-      ace: 'ACE',
-      gad: 'GAD-7',
-      phq: 'PHQ-9',
-      pcl: 'PCL-5',
+  type ClinicianOption = {
+    id: string
+    name: string
+    email: string
+  }
+
+  const FORM_LABELS: Record<string, string> = {
+    application: 'Application',
+    physicianStatement: 'Physician Statement (PDF Upload)',
+    releaseOfInformationAuthorization: 'ROI Authorization (PDF Upload)',
+    ace: 'ACE',
+    gad: 'GAD-7',
+    phq: 'PHQ-9',
+    pcl: 'PCL-5',
+  }
+
+  type Client = {
+    id: string
+    fname: string
+    lname: string
+    name: string
+    email: string
+    status: ClientStatus
+    allFormsComplete: boolean
+    therapyWeek: number | null
+    missedSessions: number
+    incompleteForms: string[]
+  }
+
+  const ALL_STATUS = '__all__'
+  const statusFilter = ref<string>(ALL_STATUS)
+  const clinicianFilter = ref<string[]>([])
+
+  const { data: roleData } = await useFetch<{ isAdmin: boolean }>('/api/users/me/is-admin', {
+    getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
+  })
+  const isAdminViewer = computed(() => roleData.value?.isAdmin === true)
+
+  const { data: clinicians } = await useFetch<ClinicianOption[]>('/api/clinicians', {
+    getCachedData: () => undefined,
+  })
+
+  const clinicianFilterItems = computed(() => {
+    const items: Array<{ label: string; value: string }> = []
+    for (const clinician of clinicians.value ?? []) {
+      items.push({
+        label: clinician.name ? `${clinician.name} (${clinician.email})` : clinician.email,
+        value: clinician.id,
+      })
     }
+    return items
+  })
 
-    type Client = {
-      id: string
-      fname: string
-      lname: string
-      name: string
-      email: string
-      status: ClientStatus
-      allFormsComplete: boolean
-      therapyWeek: number | null
-      missedSessions: number
-      incompleteForms: string[]
+  type ClientTabCounts = {
+    __all__: number
+    Prospective: number
+    Waitlist: number
+    Active: number
+    Archived: number
+  }
+
+  const queryParams = computed(() => {
+    const params: Record<string, string> = {}
+    if (statusFilter.value && statusFilter.value !== ALL_STATUS) params.status = statusFilter.value
+    if (isAdminViewer.value && clinicianFilter.value.length > 0) {
+      params.clinicianUserId = clinicianFilter.value.join(',')
     }
+    return params
+  })
 
-    const ALL_STATUS = '__all__'
-    const statusFilter = ref<string>(ALL_STATUS)
-
-    type ClientTabCounts = {
-      __all__: number
-      Prospective: number
-      Waitlist: number
-      Active: number
-      Archived: number
-    }
-
-    const { data: clientCounts, refresh: refreshCounts } = await useFetch<ClientTabCounts>(
-      '/api/clients/counts',
-      {
-        getCachedData: () => undefined,
-      }
-    )
-
-    const statusTabs = computed(() => {
-      const c = clientCounts.value
-      const n = (key: keyof ClientTabCounts) => c?.[key] ?? 0
-      return [
-        { value: ALL_STATUS, label: 'All', count: n('__all__') },
-        { value: 'Prospective', label: 'Prospective', count: n('Prospective') },
-        { value: 'Waitlist', label: 'Waitlist', count: n('Waitlist') },
-        { value: 'Active', label: 'Active', count: n('Active') },
-        { value: 'Archived', label: 'Archived', count: n('Archived') },
-      ] as const
-    })
-
-    const queryParams = computed(() => {
-      const params: Record<string, string> = {}
-      if (statusFilter.value && statusFilter.value !== ALL_STATUS) params.status = statusFilter.value
-      return params
-    })
-
-    const {
-      data: clients,
-      pending,
-      error,
-      refresh: refreshClients,
-    } = await useFetch<Client[]>('/api/clients', {
+  const { data: clientCounts, refresh: refreshCounts } = await useFetch<ClientTabCounts>(
+    '/api/clients/counts',
+    {
       query: queryParams,
       watch: [queryParams],
       getCachedData: () => undefined,
-    })
-
-    type PendingNoteRequest = {
-      id: string
-      clientUserId: string
-      approvalWindowDays: number
-      approvalExpiresAt: string
     }
+  )
 
-    const { data: pendingNoteRequests } = await useFetch<PendingNoteRequest[]>(
-      '/api/session-notes-requests',
-      {
-        getCachedData: () => undefined,
+  const statusTabs = computed(() => {
+    const c = clientCounts.value
+    const n = (key: keyof ClientTabCounts) => c?.[key] ?? 0
+    return [
+      { value: ALL_STATUS, label: 'All', count: n('__all__') },
+      { value: 'Prospective', label: 'Prospective', count: n('Prospective') },
+      { value: 'Waitlist', label: 'Waitlist', count: n('Waitlist') },
+      { value: 'Active', label: 'Active', count: n('Active') },
+      { value: 'Archived', label: 'Archived', count: n('Archived') },
+    ] as const
+  })
+
+  const {
+    data: clients,
+    pending,
+    error,
+    refresh: refreshClients,
+  } = await useFetch<Client[]>('/api/clients', {
+    query: queryParams,
+    watch: [queryParams],
+    getCachedData: () => undefined,
+  })
+
+  type PendingNoteRequest = {
+    id: string
+    clientUserId: string
+    approvalWindowDays: number
+    approvalExpiresAt: string
+  }
+
+  const { data: pendingNoteRequests } = await useFetch<PendingNoteRequest[]>(
+    '/api/session-notes-requests',
+    {
+      getCachedData: () => undefined,
+    }
+  )
+  const pendingNoteRequestCount = computed(() => pendingNoteRequests.value?.length ?? 0)
+
+  /** Per-client most-urgent pending records request (earliest expiry wins). */
+  const pendingByClient = computed(() => {
+    const map = new Map<string, PendingNoteRequest>()
+    for (const r of pendingNoteRequests.value ?? []) {
+      const existing = map.get(r.clientUserId)
+      if (!existing || new Date(r.approvalExpiresAt) < new Date(existing.approvalExpiresAt)) {
+        map.set(r.clientUserId, r)
       }
-    )
-    const pendingNoteRequestCount = computed(() => pendingNoteRequests.value?.length ?? 0)
-
-    /** Per-client most-urgent pending records request (earliest expiry wins). */
-    const pendingByClient = computed(() => {
-      const map = new Map<string, PendingNoteRequest>()
-      for (const r of pendingNoteRequests.value ?? []) {
-        const existing = map.get(r.clientUserId)
-        if (!existing || new Date(r.approvalExpiresAt) < new Date(existing.approvalExpiresAt)) {
-          map.set(r.clientUserId, r)
-        }
-      }
-      return map
-    })
-
-    const showRecordsRequestColumn = computed(() => (pendingNoteRequests.value?.length ?? 0) > 0)
-
-    /** Ticking "now" so the Time-Left countdowns update live. */
-    const nowMs = ref(Date.now())
-    let recordsRequestTickTimer: ReturnType<typeof setInterval> | null = null
-    onMounted(() => {
-      recordsRequestTickTimer = setInterval(() => {
-        nowMs.value = Date.now()
-      }, 1000)
-    })
-    onBeforeUnmount(() => {
-      if (recordsRequestTickTimer) clearInterval(recordsRequestTickTimer)
-    })
-
-    function recordsMsLeft(r: PendingNoteRequest): number {
-      return new Date(r.approvalExpiresAt).getTime() - nowMs.value
     }
+    return map
+  })
 
-    /** e.g. "12d 03:47:12" or "Expired" */
-    function formatRecordsCountdown(r: PendingNoteRequest): string {
-      const ms = recordsMsLeft(r)
-      if (ms <= 0) return 'Expired'
-      const totalSec = Math.floor(ms / 1000)
-      const days = Math.floor(totalSec / 86400)
-      const hours = Math.floor((totalSec % 86400) / 3600)
-      const mins = Math.floor((totalSec % 3600) / 60)
-      const secs = totalSec % 60
-      const pad = (n: number) => String(n).padStart(2, '0')
-      return `${days}d ${pad(hours)}:${pad(mins)}:${pad(secs)}`
-    }
+  const showRecordsRequestColumn = computed(() => (pendingNoteRequests.value?.length ?? 0) > 0)
 
-    function recordsCountdownColor(r: PendingNoteRequest): 'success' | 'warning' | 'error' {
-      const ms = recordsMsLeft(r)
-      if (ms <= 0) return 'error'
-      const dayMs = 24 * 60 * 60 * 1000
-      if (ms < 3 * dayMs) return 'warning'
-      return 'success'
-    }
+  /** Ticking "now" so the Time-Left countdowns update live. */
+  const nowMs = ref(Date.now())
+  let recordsRequestTickTimer: ReturnType<typeof setInterval> | null = null
+  onMounted(() => {
+    recordsRequestTickTimer = setInterval(() => {
+      nowMs.value = Date.now()
+    }, 1000)
+  })
+  onBeforeUnmount(() => {
+    if (recordsRequestTickTimer) clearInterval(recordsRequestTickTimer)
+  })
 
-    async function refreshClientsAndCounts() {
-      await Promise.all([refreshClients(), refreshCounts()])
-    }
+  function recordsMsLeft(r: PendingNoteRequest): number {
+    return new Date(r.approvalExpiresAt).getTime() - nowMs.value
+  }
 
-    function displayName(c: Client) {
-      const raw = c.lname ? `${c.fname} ${c.lname}` : c.fname || c.name || ''
-      const trimmed = raw.trim()
-      if (!trimmed) {
-        return c.status === 'Prospective' ? 'New inquiry' : 'Unknown name'
-      }
-      return capitalizeName(trimmed)
-    }
+  /** e.g. "12d 03:47:12" or "Expired" */
+  function formatRecordsCountdown(r: PendingNoteRequest): string {
+    const ms = recordsMsLeft(r)
+    if (ms <= 0) return 'Expired'
+    const totalSec = Math.floor(ms / 1000)
+    const days = Math.floor(totalSec / 86400)
+    const hours = Math.floor((totalSec % 86400) / 3600)
+    const mins = Math.floor((totalSec % 3600) / 60)
+    const secs = totalSec % 60
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${days}d ${pad(hours)}:${pad(mins)}:${pad(secs)}`
+  }
 
-    function isPlaceholderDisplayName(c: Client) {
-      const raw = c.lname ? `${c.fname} ${c.lname}` : c.fname || c.name || ''
-      return raw.trim().length === 0
-    }
+  function recordsCountdownColor(r: PendingNoteRequest): 'success' | 'warning' | 'error' {
+    const ms = recordsMsLeft(r)
+    if (ms <= 0) return 'error'
+    const dayMs = 24 * 60 * 60 * 1000
+    if (ms < 3 * dayMs) return 'warning'
+    return 'success'
+  }
 
-    function statusLabel(status: ClientStatus): string {
-      const labels: Record<ClientStatus, string> = {
-        Prospective: 'Prospective',
-        Waitlist: 'Waitlist',
-        Active: 'Active',
-        Archived: 'Archived',
-      }
-      return labels[status]
-    }
+  async function refreshClientsAndCounts() {
+    await Promise.all([refreshClients(), refreshCounts()])
+  }
 
-    function statusColor(status: ClientStatus): 'warning' | 'primary' | 'success' | 'neutral' {
-      const colors: Record<ClientStatus, 'warning' | 'primary' | 'success' | 'neutral'> = {
-        Prospective: 'warning',
-        Waitlist: 'primary',
-        Active: 'success',
-        Archived: 'neutral',
-      }
-      return colors[status]
+  function displayName(c: Client) {
+    const raw = c.lname ? `${c.fname} ${c.lname}` : c.fname || c.name || ''
+    const trimmed = raw.trim()
+    if (!trimmed) {
+      return c.status === 'Prospective' ? 'New inquiry' : 'Unknown name'
     }
+    return capitalizeName(trimmed)
+  }
 
-    function statusVariant(status: ClientStatus): 'soft' | 'outline' {
-      return status === 'Archived' ? 'outline' : 'soft'
-    }
+  function isPlaceholderDisplayName(c: Client) {
+    const raw = c.lname ? `${c.fname} ${c.lname}` : c.fname || c.name || ''
+    return raw.trim().length === 0
+  }
 
-    function statusIcon(status: ClientStatus): string {
-      const icons: Record<ClientStatus, string> = {
-        Prospective: 'i-heroicons-clock',
-        Waitlist: 'i-heroicons-queue-list',
-        Active: 'i-heroicons-check-circle',
-        Archived: 'i-heroicons-archive-box',
-      }
-      return icons[status]
+  function statusLabel(status: ClientStatus): string {
+    const labels: Record<ClientStatus, string> = {
+      Prospective: 'Prospective',
+      Waitlist: 'Waitlist',
+      Active: 'Active',
+      Archived: 'Archived',
     }
+    return labels[status]
+  }
+
+  function statusColor(status: ClientStatus): 'warning' | 'primary' | 'success' | 'neutral' {
+    const colors: Record<ClientStatus, 'warning' | 'primary' | 'success' | 'neutral'> = {
+      Prospective: 'warning',
+      Waitlist: 'primary',
+      Active: 'success',
+      Archived: 'neutral',
+    }
+    return colors[status]
+  }
+
+  function statusVariant(status: ClientStatus): 'soft' | 'outline' {
+    return status === 'Archived' ? 'outline' : 'soft'
+  }
+
+  function statusIcon(status: ClientStatus): string {
+    const icons: Record<ClientStatus, string> = {
+      Prospective: 'i-heroicons-clock',
+      Waitlist: 'i-heroicons-queue-list',
+      Active: 'i-heroicons-check-circle',
+      Archived: 'i-heroicons-archive-box',
+    }
+    return icons[status]
+  }
 
   /** Muted warning text — easier on dark UIs than default amber-400 */
-    const WARNING_TEXT_MUTED = 'text-amber-700 dark:text-amber-500/75'
+  const WARNING_TEXT_MUTED = 'text-amber-700 dark:text-amber-500/75'
 
-    /** Prospective badge: softer than UBadge `warning` on dark backgrounds */
-    const PROSPECTIVE_BADGE_CLASS =
-      '!bg-amber-500/10 !text-amber-900 !ring-1 !ring-inset !ring-amber-600/15 dark:!bg-amber-950/40 dark:!text-amber-400/85 dark:!ring-amber-500/25 dark:[&_svg]:text-amber-400/80'
+  /** Prospective badge: softer than UBadge `warning` on dark backgrounds */
+  const PROSPECTIVE_BADGE_CLASS =
+    '!bg-amber-500/10 !text-amber-900 !ring-1 !ring-inset !ring-amber-600/15 dark:!bg-amber-950/40 dark:!text-amber-400/85 dark:!ring-amber-500/25 dark:[&_svg]:text-amber-400/80'
 
-    function statusHint(c: Client): string {
-      if (c.status === 'Prospective' && !c.allFormsComplete) {
-        return 'To move to waitlist, the client needs to complete all forms'
-      }
-      return ''
+  function statusHint(c: Client): string {
+    if (c.status === 'Prospective' && !c.allFormsComplete) {
+      return 'To move to waitlist, the client needs to complete all forms'
     }
+    return ''
+  }
 
-    const showFormsRemainingColumn = computed(
-      () => clients.value?.some((c) => c.status === 'Prospective' || c.status === 'Waitlist') ?? false
-    )
+  const showFormsRemainingColumn = computed(
+    () => clients.value?.some((c) => c.status === 'Prospective' || c.status === 'Waitlist') ?? false
+  )
 
-    const showWeekNoColumn = computed(
-      () => clients.value?.some((c) => c.status === 'Active') ?? false
-    )
+  const showWeekNoColumn = computed(
+    () => clients.value?.some((c) => c.status === 'Active') ?? false
+  )
 
-    function formatIncompleteForms(c: Client): string {
-      if (c.status !== 'Prospective' && c.status !== 'Waitlist') return ''
-      if (!c.incompleteForms?.length || c.allFormsComplete) {
-        return 'User has completed all forms'
-      }
-      const count = c.incompleteForms.length
-      const names = c.incompleteForms.map((k) => FORM_LABELS[k] ?? k).join(', ')
-      return `${count} remaining: ${names}`
+  function formatIncompleteForms(c: Client): string {
+    if (c.status !== 'Prospective' && c.status !== 'Waitlist') return ''
+    if (!c.incompleteForms?.length || c.allFormsComplete) {
+      return 'User has completed all forms'
     }
+    const count = c.incompleteForms.length
+    const names = c.incompleteForms.map((k) => FORM_LABELS[k] ?? k).join(', ')
+    return `${count} remaining: ${names}`
+  }
 
-    const toast = useToast()
-    const updatingId = ref<string | null>(null)
+  const toast = useToast()
+  const updatingId = ref<string | null>(null)
 
-    type StatusTransition = { from: ClientStatus; to: ClientStatus; label: string }
+  type StatusTransition = { from: ClientStatus; to: ClientStatus; label: string }
 
-    const STATUS_TRANSITIONS: StatusTransition[] = [
-      { from: 'Prospective', to: 'Waitlist', label: '-> Waitlist' },
-      { from: 'Waitlist', to: 'Prospective', label: '-> Prospective' },
-      { from: 'Waitlist', to: 'Active', label: '-> Active' },
-      { from: 'Active', to: 'Archived', label: '-> Archive' },
-      { from: 'Archived', to: 'Active', label: '-> Active' },
-    ]
+  const STATUS_TRANSITIONS: StatusTransition[] = [
+    { from: 'Prospective', to: 'Waitlist', label: '-> Waitlist' },
+    { from: 'Waitlist', to: 'Prospective', label: '-> Prospective' },
+    { from: 'Waitlist', to: 'Active', label: '-> Active' },
+    { from: 'Active', to: 'Archived', label: '-> Archive' },
+    { from: 'Archived', to: 'Active', label: '-> Active' },
+  ]
 
-    function getAvailableTransitions(client: Client): StatusTransition[] {
-      return STATUS_TRANSITIONS.filter((t) => {
-        if (t.from !== client.status) return false
-        if (t.from === 'Prospective' && t.to === 'Waitlist' && !client.allFormsComplete) {
-          return false
-        }
-        if (t.from === 'Waitlist' && t.to === 'Active' && !client.allFormsComplete) {
-          return false
-        }
-        return true
-      })
-    }
-
-    const confirmModalOpen = ref(false)
-    const pendingClient = ref<Client | null>(null)
-    const pendingNextStatus = ref<ClientStatus | null>(null)
-
-    const clientDetailModalOpen = ref(false)
-    const selectedClientId = ref<string | null>(null)
-
-    function openClientDetail(client: Client) {
-      selectedClientId.value = client.id
-      clientDetailModalOpen.value = true
-    }
-
-    function onTableRowSelect(_e: Event, row: TableRow<Client>) {
-      openClientDetail(row.original)
-    }
-
-    const columns = computed<TableColumn<Client>[]>(() => {
-      const cols: TableColumn<Client>[] = [
-        { accessorKey: 'status', header: 'Status' },
-        { id: 'name', header: 'Name' },
-        { accessorKey: 'email', header: 'Email' },
-      ]
-      if (showFormsRemainingColumn.value) {
-        cols.push({ id: 'formsRemaining', header: 'Forms remaining' })
+  function getAvailableTransitions(client: Client): StatusTransition[] {
+    return STATUS_TRANSITIONS.filter((t) => {
+      if (t.from !== client.status) return false
+      if (t.from === 'Prospective' && t.to === 'Waitlist' && !client.allFormsComplete) {
+        return false
       }
-      if (showWeekNoColumn.value) {
-        cols.push({ id: 'weekNo', header: 'Week no' })
+      if (t.from === 'Waitlist' && t.to === 'Active' && !client.allFormsComplete) {
+        return false
       }
-      if (showRecordsRequestColumn.value) {
-        cols.push({ id: 'recordsRequest', header: 'Records request' })
-      }
-      cols.push({
-        id: 'actions',
-        header: 'Actions',
-        meta: {
-          class: {
-            th: 'text-right',
-            td: 'text-right',
-          },
-        },
-      })
-      return cols
+      return true
     })
+  }
 
-    function openConfirmModal(client: Client, nextStatus: ClientStatus) {
-      pendingClient.value = client
-      pendingNextStatus.value = nextStatus
-      confirmModalOpen.value = true
+  const confirmModalOpen = ref(false)
+  const pendingClient = ref<Client | null>(null)
+  const pendingNextStatus = ref<ClientStatus | null>(null)
+
+  const clientDetailModalOpen = ref(false)
+  const selectedClientId = ref<string | null>(null)
+
+  function openClientDetail(client: Client) {
+    selectedClientId.value = client.id
+    clientDetailModalOpen.value = true
+  }
+
+  function onTableRowSelect(_e: Event, row: TableRow<Client>) {
+    openClientDetail(row.original)
+  }
+
+  const columns = computed<TableColumn<Client>[]>(() => {
+    const cols: TableColumn<Client>[] = [
+      { accessorKey: 'status', header: 'Status' },
+      { id: 'name', header: 'Name' },
+      { accessorKey: 'email', header: 'Email' },
+    ]
+    if (showFormsRemainingColumn.value) {
+      cols.push({ id: 'formsRemaining', header: 'Forms remaining' })
     }
-
-    function closeConfirmModal() {
-      confirmModalOpen.value = false
-      pendingClient.value = null
-      pendingNextStatus.value = null
+    if (showWeekNoColumn.value) {
+      cols.push({ id: 'weekNo', header: 'Week no' })
     }
+    if (showRecordsRequestColumn.value) {
+      cols.push({ id: 'recordsRequest', header: 'Records request' })
+    }
+    cols.push({
+      id: 'actions',
+      header: 'Actions',
+      meta: {
+        class: {
+          th: 'text-right',
+          td: 'text-right',
+        },
+      },
+    })
+    return cols
+  })
 
-    async function confirmStatusUpdate() {
-      if (!pendingClient.value || !pendingNextStatus.value) {
-        closeConfirmModal()
-        return
-      }
-      await updateStatus(pendingClient.value.id, pendingNextStatus.value)
+  function openConfirmModal(client: Client, nextStatus: ClientStatus) {
+    pendingClient.value = client
+    pendingNextStatus.value = nextStatus
+    confirmModalOpen.value = true
+  }
+
+  function closeConfirmModal() {
+    confirmModalOpen.value = false
+    pendingClient.value = null
+    pendingNextStatus.value = null
+  }
+
+  async function confirmStatusUpdate() {
+    if (!pendingClient.value || !pendingNextStatus.value) {
       closeConfirmModal()
+      return
     }
+    await updateStatus(pendingClient.value.id, pendingNextStatus.value)
+    closeConfirmModal()
+  }
 
-    async function updateStatus(clientId: string, newStatus: ClientStatus) {
-      if (updatingId.value) return
-      try {
-        updatingId.value = clientId
-        await $fetch(`/api/clients/${clientId}`, {
-          method: 'PATCH',
-          body: { status: newStatus },
-        })
-        clearNuxtData('client-metrics')
-        toast.add({
-          title: 'Status Updated',
-          description: `Client moved to ${statusLabel(newStatus)}`,
-          color: 'success',
-        })
-        await refreshClientsAndCounts()
-      } catch (error: any) {
-        const msg = error?.data?.statusMessage || error?.statusMessage || 'Failed to update status'
-        toast.add({
-          title: 'Update Failed',
-          description: msg,
-          color: 'error',
-        })
-      } finally {
-        updatingId.value = null
-      }
+  async function updateStatus(clientId: string, newStatus: ClientStatus) {
+    if (updatingId.value) return
+    try {
+      updatingId.value = clientId
+      await $fetch(`/api/clients/${clientId}`, {
+        method: 'PATCH',
+        body: { status: newStatus },
+      })
+      clearNuxtData('client-metrics')
+      toast.add({
+        title: 'Status Updated',
+        description: `Client moved to ${statusLabel(newStatus)}`,
+        color: 'success',
+      })
+      await refreshClientsAndCounts()
+    } catch (error: any) {
+      const msg = error?.data?.statusMessage || error?.statusMessage || 'Failed to update status'
+      toast.add({
+        title: 'Update Failed',
+        description: msg,
+        color: 'error',
+      })
+    } finally {
+      updatingId.value = null
     }
+  }
 </script>
 
 <template>
@@ -379,28 +411,46 @@
         <h2 class="text-base font-semibold text-gray-900 dark:text-white">Client list</h2>
       </div>
 
-      <nav
-        class="mb-4 flex flex-wrap items-center justify-start gap-1"
-        aria-label="Filter clients by status"
-        role="tablist"
-      >
-        <button
-          v-for="tab in statusTabs"
-          :key="tab.value"
-          type="button"
-          role="tab"
-          :aria-selected="statusFilter === tab.value"
-          class="rounded-md px-3 py-1.5 text-sm tabular-nums transition-colors focus-visible:ring-2 focus-visible:ring-gray-400/50 focus-visible:outline-none dark:focus-visible:ring-gray-500/50"
-          :class="
-            statusFilter === tab.value
-              ? 'bg-gray-100 font-semibold text-gray-950 dark:bg-gray-800 dark:text-white'
-              : 'bg-transparent font-medium text-gray-500 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-400'
-          "
-          @click="statusFilter = tab.value"
+      <div class="mb-4 flex flex-wrap items-end gap-3">
+        <div v-if="isAdminViewer" class="flex min-w-[18rem] flex-col gap-1.5">
+          <label
+            for="assigned-clinician-filter"
+            class="text-xs font-medium tracking-wide text-gray-500 uppercase dark:text-gray-400"
+          >
+            Assigned clinician
+          </label>
+          <USelect
+            id="assigned-clinician-filter"
+            v-model="clinicianFilter"
+            :items="clinicianFilterItems"
+            multiple
+            placeholder="Filter by clinicians"
+          />
+        </div>
+
+        <nav
+          class="flex flex-wrap items-center justify-start gap-1"
+          aria-label="Filter clients by status"
+          role="tablist"
         >
-          {{ tab.label }} ({{ tab.count }})
-        </button>
-      </nav>
+          <button
+            v-for="tab in statusTabs"
+            :key="tab.value"
+            type="button"
+            role="tab"
+            :aria-selected="statusFilter === tab.value"
+            class="rounded-md px-3 py-1.5 text-sm tabular-nums transition-colors focus-visible:ring-2 focus-visible:ring-gray-400/50 focus-visible:outline-none dark:focus-visible:ring-gray-500/50"
+            :class="
+              statusFilter === tab.value
+                ? 'bg-gray-100 font-semibold text-gray-950 dark:bg-gray-800 dark:text-white'
+                : 'bg-transparent font-medium text-gray-500 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-400'
+            "
+            @click="statusFilter = tab.value"
+          >
+            {{ tab.label }} ({{ tab.count }})
+          </button>
+        </nav>
+      </div>
 
       <UAlert
         v-if="error"
