@@ -78,15 +78,6 @@ const items: EditorToolbarItem[][] = [
 
 <style scoped>
 /* Improved scrolling + toolbar fix */
-/** 
-:deep(.UEditor) {
-  display: flex !important;
-  flex-direction: column !important;
-  flex: 1 1 0 !important;
-  min-height: 0 !important;
-  overflow: hidden !important;
-}
-*/
 :deep(.tiptap.ProseMirror) {
   flex: 1 1 0;
   min-height: 0;
@@ -103,23 +94,4 @@ const items: EditorToolbarItem[][] = [
   min-height: 0;
   overflow: hidden;
 }
-
-/* Let the note body scroll inside a height-limited flex parent (toolbar stays fixed) */
-/** 
-:deep(.ProseMirror) {
-  flex: 1 1 0 !important;
-  min-height: 0 !important;
-  overflow-y: auto !important;
-  padding: 1.25rem;
-  max-height: 100%;
-}
-*/
-
-/* Extra protection for toolbar */
-/** 
-:deep(.UEditorToolbar) {
-  flex-shrink: 0 !important;
-  z-index: 10;
-}
-*/
 </style>
