@@ -121,6 +121,7 @@ export default defineEventHandler(async (event) => {
     clientName: a.client.name,
     description: a.description,
     status: a.status,
+    seriesId: a.seriesId,
     videoProvider: a.videoProvider,
     videoJoinUrl: a.videoJoinUrl,
     assignedClinicianName:
