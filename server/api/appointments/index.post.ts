@@ -1,8 +1,8 @@
 import { requireStaff } from '../../utils/guard'
 import { assertStaffCanAccessClient } from '../../utils/clinician-access'
 import { prisma } from '../../utils/prisma'
-import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/video-conference'
 import { readBody, createError, defineEventHandler } from 'h3'
+import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/video-conference'
 import type { VideoConferenceProvider } from '../../../prisma/generated/enums'
 
 function sanitizeNamePart(part: string | null | undefined) {
@@ -13,8 +13,10 @@ function sanitizeNamePart(part: string | null | undefined) {
 function deriveSessionName(fullName: string | null | undefined, sessionNumber: number) {
   const raw = (fullName ?? '').trim()
   const pieces = raw.split(/\s+/).filter(Boolean)
+
   const first = sanitizeNamePart(pieces[0] ?? 'Client') || 'Client'
   const last = sanitizeNamePart(pieces.slice(1).join('_') || 'Unknown') || 'Unknown'
+
   return `${first}_${last}_${String(sessionNumber).padStart(2, '0')}`
 }
 
@@ -40,18 +42,20 @@ export default defineEventHandler(async (event) => {
         statusMessage: 'Missing required fields',
       })
     }
+
     await assertStaffCanAccessClient(event, clientId)
 
     const start = new Date(`${date}T${startTime}`)
     const end = new Date(`${date}T${endTime}`)
     const now = new Date()
 
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+    if (end <= start) {
       throw createError({
         statusCode: 400,
-        statusMessage: 'Invalid date/time range',
+        statusMessage: 'Invalid time range',
       })
     }
+
     if (start < now) {
       throw createError({
         statusCode: 400,
@@ -60,14 +64,17 @@ export default defineEventHandler(async (event) => {
     }
 
     const parsedProvider = parseVideoProviderInput(videoProvider) as VideoConferenceProvider | null
+
     const normalizedJoin = normalizeVideoJoinUrl(videoJoinUrl)
     const rawJoinInput = typeof videoJoinUrl === 'string' ? videoJoinUrl.trim() : ''
+
     if (rawJoinInput && !normalizedJoin) {
       throw createError({
         statusCode: 400,
         statusMessage: 'Enter a valid meeting link starting with http:// or https://',
       })
     }
+
     if (normalizedJoin && !parsedProvider) {
       throw createError({
         statusCode: 400,
@@ -99,6 +106,7 @@ export default defineEventHandler(async (event) => {
         return normalized !== 'CANCELED' && normalized !== 'CANCELLED'
       })
       .map((a) => a.sessionNumber)
+
     const sessionNumber = nextAvailableNumber(activeSessionNumbers)
     const sessionName = deriveSessionName(clientUser.name, sessionNumber)
 
@@ -113,8 +121,8 @@ export default defineEventHandler(async (event) => {
         startTime: start,
         endTime: end,
         status: 'SCHEDULED',
-        ...(parsedProvider != null && { videoProvider: parsedProvider }),
-        ...(normalizedJoin != null && { videoJoinUrl: normalizedJoin }),
+        videoProvider: parsedProvider ?? null,
+        videoJoinUrl: normalizedJoin ?? null,
       },
     })
 
@@ -122,6 +130,7 @@ export default defineEventHandler(async (event) => {
       where: { userId: clientId },
       select: { id: true },
     })
+
     if (clientRow) {
       await prisma.sessionNote.create({
         data: {
@@ -130,7 +139,7 @@ export default defineEventHandler(async (event) => {
           sessionName,
           sessionNumber,
           content: '',
-          attended: true,
+          attendanceStatus: 'show',
         },
       })
     }
@@ -151,11 +160,12 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    console.error('Create appointment error:', error)
+    console.error('🔥 BACKEND FULL ERROR:', error)
+    console.error('🔥 BACKEND STACK:', error?.stack)
 
     throw createError({
       statusCode: 500,
-      statusMessage: 'Failed to create appointment',
+      statusMessage: error?.message || JSON.stringify(error),
     })
   }
 })

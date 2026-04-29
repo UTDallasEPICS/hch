@@ -58,11 +58,29 @@
   }
 
   function buildPayload() {
-    const body: Record<string, number | string | null> = { worstEvent: worstEvent.value }
-    responses.value.forEach((val, i) => {
-      body[`q${i + 1}`] = val === -1 ? null : val
-    })
-    return body
+    return {
+      worstEvent: worstEvent.value,
+      q01: responses.value[0],
+      q02: responses.value[1],
+      q03: responses.value[2],
+      q04: responses.value[3],
+      q05: responses.value[4],
+      q06: responses.value[5],
+      q07: responses.value[6],
+      q08: responses.value[7],
+      q09: responses.value[8],
+      q10: responses.value[9],
+      q11: responses.value[10],
+      q12: responses.value[11],
+      q13: responses.value[12],
+      q14: responses.value[13],
+      q15: responses.value[14],
+      q16: responses.value[15],
+      q17: responses.value[16],
+      q18: responses.value[17],
+      q19: responses.value[18],
+      q20: responses.value[19],
+    }
   }
 
   async function submitForm() {

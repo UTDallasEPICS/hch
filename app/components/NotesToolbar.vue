@@ -14,6 +14,11 @@ const emit = defineEmits<{
 
 const localContent = ref(props.modelValue)
 
+watch(localContent, (val) => emit('update:modelValue', val))
+watch(() => props.modelValue, (val) => {
+  if (val !== localContent.value) localContent.value = val
+})
+
 const items: EditorToolbarItem[][] = [
   [
     {

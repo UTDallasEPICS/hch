@@ -115,7 +115,18 @@ export default defineEventHandler(async (event) => {
       if (!trimmed) return ''
       try {
         const parsed = JSON.parse(trimmed) as unknown
-        if (Array.isArray(parsed)) return parsed.join(', ')
+        if (Array.isArray(parsed)) {
+          return parsed.map((item: unknown) => {
+            if (item && typeof item === 'object') {
+              const r = item as Record<string, unknown>
+              if (typeof r.firstName === 'string') {
+                return [r.firstName, r.middleInitial, r.lastName, r.age ? `(age ${r.age})` : '', r.relationship].filter(Boolean).join(' ')
+              }
+              return Object.values(r).filter(Boolean).join(' ')
+            }
+            return String(item)
+          }).join(', ')
+        }
         if (parsed && typeof parsed === 'object') {
           const r = parsed as Record<string, unknown>
           if (Array.isArray(r.values)) {
@@ -176,6 +187,7 @@ export default defineEventHandler(async (event) => {
       formName: 'GAD-7',
       questions,
       submitted: gadForm?.status === 'COMPLETE',
+      submittedAt: gadForm?.submittedAt,
       score: gadForm?.totalScore,
       severity: gadForm?.severity,
     }
@@ -193,10 +205,13 @@ export default defineEventHandler(async (event) => {
       formName: 'PHQ-9',
       questions,
       submitted: phqForm?.status === 'COMPLETE',
+      submittedAt: phqForm?.submittedAt,
       score: phqForm?.totalScore,
+      severity: phqForm?.severity,
     }
   }
 
+  // ── PCL-5 ─────────────────────────────────────────────────
   if (formKey === 'pcl') {
     const pclForm = await prisma.pclForm.findFirst({
       where: { userId: clientUserId },
@@ -209,7 +224,46 @@ export default defineEventHandler(async (event) => {
         (await prisma.pclQuestion.findFirst({ where: { formId: pclForm.id } })) ??
         (await prisma.pclQuestion.findFirst({ where: { userId: clientUserId } }))
     }
-    const questions = await loadClinicalFormQuestions(prisma, clientUserId, 'pcl')
+    let questions = await loadClinicalFormQuestions(prisma, clientUserId, 'pcl')
+
+    const OPTIONS = ['Not at all', 'A little bit', 'Moderately', 'Quite a bit', 'Extremely']
+
+    if (questions.length < 20 && pclForm) {  // ← was `< 0`, which is never true
+      const PCL5_QUESTIONS = [
+        'Repeated, disturbing, and unwanted memories of the stressful experience?',
+        'Repeated, disturbing dreams of the stressful experience?',
+        'Suddenly feeling or acting as if the stressful experience were actually happening again?',
+        'Feeling very upset when something reminded you of the stressful experience?',
+        'Having strong physical reactions when something reminded you of the stressful experience?',
+        'Avoiding memories, thoughts, or feelings related to the stressful experience?',
+        'Avoiding external reminders of the stressful experience?',
+        'Trouble remembering important parts of the stressful experience?',
+        'Having strong negative beliefs about yourself, other people, or the world?',
+        'Blaming yourself or someone else for the stressful experience or what happened after it?',
+        'Having strong negative feelings such as fear, horror, anger, guilt, or shame?',
+        'Loss of interest in activities that you used to enjoy?',
+        'Feeling distant or cut off from other people?',
+        'Trouble experiencing positive feelings?',
+        'Irritable behavior, angry outbursts, or acting aggressively?',
+        'Taking too many risks or doing things that could cause you harm?',
+        'Being "superalert" or watchful or on guard?',
+        'Feeling jumpy or easily startled?',
+        'Having difficulty concentrating?',
+        'Trouble falling or staying asleep?',
+      ]
+
+      questions = [
+        // worstEvent as the first question so it appears at the top
+        { label: 'Worst event', answer: q?.worstEvent ?? '' },
+        ...PCL5_QUESTIONS.map((label, i) => {
+          const key = `q${String(i + 1).padStart(2, '0')}` as keyof typeof q
+          const raw = q?.[key]
+          const answer = typeof raw === 'number' && raw >= 0 && raw <= 4 ? (OPTIONS[raw] ?? '') : ''
+          return { label, answer }
+        }),
+      ]
+    }
+
     let totalScore = pclForm?.totalScore ?? null
     if (q && totalScore == null) {
       totalScore = 0
@@ -236,6 +290,5 @@ export default defineEventHandler(async (event) => {
       severity,
     }
   }
-
   throw createError({ statusCode: 400, statusMessage: 'Invalid form key' })
 })

@@ -6,23 +6,33 @@ enum VideoConferenceProvider {
 }
 
 model Appointment {
-  id              String                   @id @default(cuid())
-  clientId        String
-  adminId         String
-  title           String
+  id          String   @id @default(cuid())
+  
+  clientId    String
+  adminId     String
+  
+  title       String
   sessionName     String
   sessionNumber   Int
-  description     String?
-  startTime       DateTime
-  endTime         DateTime
-  status          String                   @default("SCHEDULED")
-  /** When set with videoJoinUrl, describes how the client joins the call. */
+
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  
+  status      String   @default("SCHEDULED")
+
+  seriesId    String?
+  recurrence  String
+
   videoProvider   VideoConferenceProvider?
   videoJoinUrl    String?
-  createdAt       DateTime                 @default(now())
-  updatedAt       DateTime                 @updatedAt
-  client          User                     @relation("ClientAppointments", fields: [clientId], references: [id], onDelete: Restrict)
-  admin           User                     @relation("AdminAppointments", fields: [adminId], references: [id], onDelete: Restrict)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  client      User     @relation("ClientAppointments", fields: [clientId], references: [id], onDelete: Restrict)
+  admin       User     @relation("AdminAppointments", fields: [adminId], references: [id], onDelete: Restrict)
+  
   sessionNotes    SessionNote[]            @relation("AppointmentSessionNotes")
 
   @@index([clientId])

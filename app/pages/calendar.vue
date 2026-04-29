@@ -17,6 +17,9 @@
         | ({ id: string; role?: string } & Record<string, unknown>)
         | null) ?? null
   )
+  const deleteType = ref<'ONE' | 'FUTURE' | 'ALL' | null>(null)
+  const isDeleteTypeModalOpen = ref(false)
+  const isDeleteConfirmOpen = ref(false)
   const { data: adminData, refresh: refreshAdminData } = await useFetch<{
     isAdmin: boolean
     isClinician: boolean
@@ -78,6 +81,7 @@
     videoProvider: string | null
     videoJoinUrl: string | null
     assignedClinicianName: string | null
+    seriesId?: string | null
   }
 
   const { data: clinicians } = await useFetch<ClinicianOption[]>('/api/clinicians', {
@@ -306,6 +310,32 @@
   const isEditMode = ref(false)
   const isDeleteConfirming = ref(false)
   const mobileView = ref('week')
+  const currentRangeLabel = ref('')
+
+  function formatShortDate(date: Date) {
+    return date.toLocaleDateString('en-US')
+  }
+
+  function updateRangeLabel(viewType: string, start: Date) {
+    if (viewType.includes('Week')) {
+      currentRangeLabel.value = `Week of ${formatShortDate(start)}`
+      return
+    }
+
+    if (viewType.includes('Month')) {
+      currentRangeLabel.value = start.toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric',
+      })
+      return
+    }
+
+    currentRangeLabel.value = start.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  }
 
   watch(mobileView, (view) => {
     changeView(view)
@@ -372,6 +402,7 @@
 
     datesSet(info: any) {
       const view = info.view.type
+      updateRangeLabel(view, info.view.currentStart)
 
       if (view.includes('Day')) mobileView.value = 'day'
       if (view.includes('Week')) mobileView.value = 'week'
@@ -432,14 +463,14 @@
 
     isEditMode.value = false
 
-    // Get clientName from either extendedProps or _def.extendedProps
     const clientName =
       info.event.extendedProps?.clientName || info.event._def?.extendedProps?.clientName
 
     const ext = info.event.extendedProps || info.event._def?.extendedProps || {}
+
     selectedEvent.value = {
       ...ext,
-      clientName: clientName, // Make sure clientName is included
+      clientName,
       id: info.event.id,
       clientId: ext.clientId,
       title: info.event.title,
@@ -447,8 +478,12 @@
       sessionNumber: ext.sessionNumber ?? null,
       start: info.event.start,
       end: info.event.end,
+
+      // merged fields
       description: ext.description,
       status: ext.status,
+      seriesId: ext.seriesId ?? null,
+
       videoProvider: ext.videoProvider ?? null,
       videoJoinUrl: ext.videoJoinUrl ?? null,
       assignedClinicianName: ext.assignedClinicianName ?? null,
@@ -545,13 +580,40 @@
     }
   }
 
-  async function deleteEvent() {
+  function onDeleteClick() {
+    // CLOSE the current modal first
+    isViewModalOpen.value = false
+
+    setTimeout(() => {
+      if (selectedEvent.value?.seriesId) {
+        isDeleteTypeModalOpen.value = true
+      } else {
+        deleteType.value = 'ONE'
+        isDeleteConfirmOpen.value = true
+      }
+    }, 100) // small delay so UI updates cleanly
+  }
+
+  function selectDeleteType(type: 'ONE' | 'FUTURE' | 'ALL') {
+    deleteType.value = type
+    isDeleteTypeModalOpen.value = false
+
+    setTimeout(() => {
+      isDeleteConfirmOpen.value = true
+    }, 100)
+  }
+
+  async function confirmDelete() {
     const event = selectedEvent.value
     if (!event) return
     try {
-      await $fetch(`/api/appointments/${event.id}`, {
+      await $fetch(`/api/appointments/${selectedEvent.value?.id}`, {
         method: 'DELETE',
-        credentials: 'include',
+        body: {
+          type: deleteType.value || 'ONE', // fallback safety
+          startTime: event.start.toISOString(),
+          seriesId: event.seriesId || null,
+        },
       })
 
       toast.add({
@@ -559,12 +621,14 @@
         color: 'success',
       })
 
-      isDeleteConfirming.value = false
+      // reset state
+      deleteType.value = null
+      isDeleteConfirmOpen.value = false
       isViewModalOpen.value = false
 
       await loadEvents()
     } catch (error) {
-      console.error('Delete error:', error)
+      console.error(error)
 
       toast.add({
         title: 'Failed to delete session',
@@ -581,6 +645,7 @@
     date: '',
     startTime: '',
     endTime: '',
+    recurrence: '',
     includeVideo: false,
     videoProvider: '' as '' | 'GOOGLE_MEET' | 'ZOOM' | 'OTHER',
     videoJoinUrl: '',
@@ -670,6 +735,8 @@
           date: form.date,
           startTime: form.startTime,
           endTime: form.endTime,
+          isRecurring: !!form.recurrence,
+          recurrence: form.recurrence || null,
           videoProvider: form.includeVideo ? form.videoProvider || 'OTHER' : undefined,
           videoJoinUrl: form.includeVideo ? form.videoJoinUrl.trim() : undefined,
         },
@@ -726,6 +793,9 @@
         <UButton icon="i-heroicons-chevron-left" variant="ghost" @click="prev" />
         <UButton icon="i-heroicons-chevron-right" variant="ghost" @click="next" />
         <UButton label="Today" variant="outline" @click="today" />
+        <p class="ml-2 text-sm font-medium text-gray-600 dark:text-gray-300">
+          {{ currentRangeLabel }}
+        </p>
       </div>
 
       <div class="flex items-center gap-2">
@@ -876,7 +946,12 @@
             </p>
           </div>
         </div>
-
+        <select v-model="form.recurrence">
+          <option value="">Does not repeat</option>
+          <option value="DAILY">Daily</option>
+          <option value="WEEKLY">Weekly</option>
+          <option value="MONTHLY">Monthly</option>
+        </select>
         <div class="flex justify-end gap-3 pt-2">
           <UButton variant="outline" @click="closeCreateModal"> Cancel </UButton>
 
@@ -887,6 +962,35 @@
           >
             Create
           </UButton>
+        </div>
+      </div>
+    </template>
+  </UModal>
+  <!-- DELETE TYPE MODAL -->
+  <UModal v-model:open="isDeleteTypeModalOpen">
+    <template #title>Delete Recurring Session</template>
+
+    <template #content>
+      <div class="flex flex-col gap-3 p-4">
+        <UButton @click="selectDeleteType('ONE')">This event only</UButton>
+        <UButton @click="selectDeleteType('FUTURE')">This and future events</UButton>
+        <UButton @click="selectDeleteType('ALL')">All events in series</UButton>
+      </div>
+    </template>
+  </UModal>
+
+  <!-- DELETE CONFIRM MODAL -->
+  <UModal v-model:open="isDeleteConfirmOpen" :ui="{ content: 'max-w-md', body: 'p-0' }">
+    <template #title>Confirm Delete</template>
+
+    <template #content>
+      <div class="p-4">
+        <p>Are you sure you want to delete this session?</p>
+
+        <div class="mt-4 flex justify-end gap-2">
+          <UButton variant="outline" @click="isDeleteConfirmOpen = false"> Cancel </UButton>
+
+          <UButton color="error" @click="confirmDelete"> Delete </UButton>
         </div>
       </div>
     </template>
@@ -929,13 +1033,13 @@
             <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Meeting Link</p>
             <p
               v-if="selectedEvent?.videoJoinUrl"
-              class="mb-2 break-all text-sm text-gray-700 dark:text-gray-300"
+              class="mb-2 text-sm break-all text-gray-700 dark:text-gray-300"
             >
               <a
                 :href="selectedEvent.videoJoinUrl"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="text-primary-600 underline hover:text-primary-500 dark:text-primary-400"
+                class="text-primary-600 hover:text-primary-500 dark:text-primary-400 underline"
               >
                 {{ selectedEvent.videoJoinUrl }}
               </a>
@@ -953,7 +1057,7 @@
               :label="
                 selectedEvent?.videoProvider === 'GOOGLE_MEET'
                   ? 'Join Google Meet'
-                  : `Join ${selectedEvent?.videoProvider ? VIDEO_PROVIDER_LABEL[selectedEvent.videoProvider] ?? 'meeting' : 'meeting'}`
+                  : `Join ${selectedEvent?.videoProvider ? (VIDEO_PROVIDER_LABEL[selectedEvent.videoProvider] ?? 'meeting') : 'meeting'}`
               "
             />
           </div>
@@ -1031,27 +1135,13 @@
           </div>
         </div>
 
-        <!-- Delete confirmation -->
-        <div
-          v-if="isDeleteConfirming && !isEditMode"
-          class="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-900/20"
-        >
-          <p class="mb-3 font-medium text-red-900 dark:text-red-200">
-            Are you sure you want to delete this session?
-          </p>
-          <div class="flex justify-end gap-2">
-            <UButton variant="outline" @click="isDeleteConfirming = false"> Cancel </UButton>
-            <UButton color="error" @click="deleteEvent"> Delete </UButton>
-          </div>
-        </div>
-
         <!-- Buttons (same pattern as Create modal) -->
         <div v-if="!isDeleteConfirming" class="flex justify-end gap-3 pt-2">
           <UButton
             v-if="!isEditMode && isAdmin"
             color="error"
             variant="outline"
-            @click="isDeleteConfirming = true"
+            @click="onDeleteClick"
           >
             Delete
           </UButton>

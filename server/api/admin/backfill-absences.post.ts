@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
     const calendarAbsences = await prisma.sessionNote.count({
       where: {
         clientId: client.id,
-        attended: false,
+        attendanceStatus: 'no-show',
       },
     })
 
