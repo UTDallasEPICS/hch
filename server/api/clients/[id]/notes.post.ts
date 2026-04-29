@@ -45,7 +45,7 @@ export default defineEventHandler(async (event) => {
 
   const body = await readBody<{
     content?: string
-    attended?: boolean
+    attendanceStatus?: string
     appointmentId?: string
     kind?: SessionNoteKind
     action?: SaveAction
@@ -59,6 +59,10 @@ export default defineEventHandler(async (event) => {
     /** Required when updating an existing note (audit trail). */
     reason?: string
   }>(event)
+
+  if (!body?.content || typeof body.content !== 'string') {
+    throw createError({ statusCode: 400, statusMessage: 'Content is required' })
+  }
 
   const content = typeof body?.content === 'string' ? body.content.trim() : ''
   if (!content) {
@@ -99,7 +103,8 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const hasAttendance = typeof body.attended === 'boolean'
+  const attendanceStatus = body.attendanceStatus ?? 'show'
+  const hasAttendance = attendanceStatus === 'show'
 
   const dbUser = await prisma.user.findFirst({
     where: { id: clientUserId, role: 'CLIENT' },
@@ -144,7 +149,6 @@ export default defineEventHandler(async (event) => {
       statusMessage: 'Attendance status is required when signing a session note.',
     })
   }
-  const attended = hasAttendance ? body.attended : true
 
   const existingNote = await prisma.sessionNote.findFirst({
     where: { appointmentId: appointment.id, clientId: client.id },
@@ -197,7 +201,7 @@ export default defineEventHandler(async (event) => {
         where: { id: existingNote.id },
         data: {
           content,
-          attended,
+          attendanceStatus,
           kind,
           status: nextStatus,
           ...clinicianFields,
@@ -226,7 +230,7 @@ export default defineEventHandler(async (event) => {
     data: {
       clientId: client.id,
       content,
-      attended,
+      attendanceStatus,
       kind,
       status: nextStatus,
       appointmentId: appointment.id,

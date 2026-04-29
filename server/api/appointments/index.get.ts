@@ -112,6 +112,7 @@ export default defineEventHandler(async (event) => {
 
   return appointments.map((a) => ({
     id: a.id,
+    clientId: a.clientId,
     title: a.title,
     sessionName: a.sessionName,
     sessionNumber: a.sessionNumber,
