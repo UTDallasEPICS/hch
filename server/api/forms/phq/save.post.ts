@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
 
   let form = await prisma.phqForm.findFirst({
     where: { userId },
-    orderBy: { id: 'asc' },
+    orderBy: { id: 'desc' },
   })
 
   if (!form) {
@@ -86,11 +86,12 @@ export default defineEventHandler(async (event) => {
     data,
   })
 
+  // save score
   await prisma.phqForm.update({
     where: { id: form.id },
     data: {
-      status: 'IN_PROGRESS',
-      submittedAt: null,
+      status: 'COMPLETE',      // ← was 'IN_PROGRESS'
+      submittedAt: new Date(), // ← was null
       totalScore,
       severity,
     },
