@@ -23,6 +23,14 @@ const transporter = nodemailer.createTransport({
   },
 })
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 export const auth = betterAuth({
   baseURL: baseUrl,
   trustedOrigins,
@@ -58,8 +66,8 @@ export const auth = betterAuth({
         await transporter.sendMail({
           from: process.env.EMAIL_USER,
           to: email,
-          subject: 'OTP',
-          html: `${otp}`,
+          subject: '[HCH] Your sign-in code',
+          html: `<p>Your verification code is:</p><p><strong>${escapeHtml(String(otp))}</strong></p>`,
         })
       },
     }),

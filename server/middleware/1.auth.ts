@@ -1,5 +1,5 @@
 import { auth } from '../utils/auth'
-import { isAdmin } from '../utils/is-admin'
+import { isAdmin, isClinician, isStaff } from '../utils/is-admin'
 
 export default defineEventHandler(async (event) => {
   const path = event.path
@@ -25,9 +25,12 @@ export default defineEventHandler(async (event) => {
 
   const user = session.user as any
   const userIsAdmin = isAdmin(user.role, user.email)
+  const userIsClinician = isClinician(user.role)
+  const userIsStaff = isStaff(user.role, user.email)
 
-  // Enrich context
   event.context.user = user
   event.context.session = session.session
   event.context.isAdmin = userIsAdmin
+  event.context.isClinician = userIsClinician
+  event.context.isStaff = userIsStaff
 })

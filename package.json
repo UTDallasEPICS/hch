@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "nuxt build",
-    "dev": "concurrently \"nuxt dev\" \"prisma studio\"",
+    "dev": "concurrently \"nuxt dev\" \"prisma studio --port 51512\"",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
@@ -19,6 +19,8 @@
     "@nuxt/ui": "4.6.0",
     "@prisma/adapter-better-sqlite3": "^7.2.0",
     "@prisma/client": "^7.2.0",
+    "@tiptap/extension-task-item": "^3.22.4",
+    "@tiptap/extension-task-list": "^3.22.4",
     "@tiptap/extension-text-align": "^3.20.1",
     "@types/dompurify": "^3.2.0",
     "@types/nodemailer": "^7.0.4",

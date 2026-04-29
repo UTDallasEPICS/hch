@@ -1,72 +1,165 @@
-import { requireAdmin } from '../../utils/guard'
+import { requireStaff } from '../../utils/guard'
+import { assertStaffCanAccessClient } from '../../utils/clinician-access'
 import { prisma } from '../../utils/prisma'
 import { readBody, createError, defineEventHandler } from 'h3'
-import { v4 as uuidv4 } from 'uuid'
+import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/video-conference'
+import type { VideoConferenceProvider } from '../../../prisma/generated/enums'
+
+function sanitizeNamePart(part: string | null | undefined) {
+  const normalized = (part ?? '').trim().replace(/\s+/g, '_')
+  return normalized.replace(/[^A-Za-z0-9_]/g, '')
+}
+
+function deriveSessionName(fullName: string | null | undefined, sessionNumber: number) {
+  const raw = (fullName ?? '').trim()
+  const pieces = raw.split(/\s+/).filter(Boolean)
+
+  const first = sanitizeNamePart(pieces[0] ?? 'Client') || 'Client'
+  const last = sanitizeNamePart(pieces.slice(1).join('_') || 'Unknown') || 'Unknown'
+
+  return `${first}_${last}_${String(sessionNumber).padStart(2, '0')}`
+}
+
+function nextAvailableNumber(used: number[]) {
+  const usedSet = new Set(used.filter((n) => Number.isInteger(n) && n > 0))
+  let candidate = 1
+  while (usedSet.has(candidate)) candidate += 1
+  return candidate
+}
 
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event)
-    const user = requireAdmin(event)
+
+    const user = requireStaff(event)
     const adminId = user.id
 
-    const { clientId, title, description, date, startTime, endTime, isRecurring, recurrence } = body
+    const { clientId, description, date, startTime, endTime, videoProvider, videoJoinUrl } = body
 
-    if (!clientId || !title || !date || !startTime || !endTime) {
-      throw createError({ statusCode: 400, statusMessage: 'Missing required fields' })
-    }
-
-    const baseStart = new Date(`${date}T${startTime}`)
-    const baseEnd = new Date(`${date}T${endTime}`)
-
-    if (baseEnd <= baseStart) {
-      throw createError({ statusCode: 400, statusMessage: 'Invalid time range' })
-    }
-
-    const seriesId = isRecurring ? uuidv4() : null
-    const count = isRecurring ? 20 : 1
-
-    const appointmentsToCreate = []
-
-    for (let i = 0; i < count; i++) {
-      const newStart = new Date(baseStart)
-      const newEnd = new Date(baseEnd)
-
-      if (isRecurring) {
-        if (recurrence === 'DAILY') {
-          newStart.setDate(baseStart.getDate() + i)
-          newEnd.setDate(baseEnd.getDate() + i)
-        }
-
-        if (recurrence === 'WEEKLY') {
-          newStart.setDate(baseStart.getDate() + i * 7)
-          newEnd.setDate(baseEnd.getDate() + i * 7)
-        }
-
-        if (recurrence === 'MONTHLY') {
-          newStart.setMonth(baseStart.getMonth() + i)
-          newEnd.setMonth(baseEnd.getMonth() + i)
-        }
-      }
-
-      appointmentsToCreate.push({
-        clientId,
-        adminId,
-        title,
-        description,
-        startTime: newStart,
-        endTime: newEnd,
-        status: 'SCHEDULED',
-        seriesId,
-        recurrence: isRecurring ? recurrence : null,
+    if (!clientId || !date || !startTime || !endTime) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Missing required fields',
       })
     }
 
-    await prisma.appointment.createMany({
-      data: appointmentsToCreate,
+    await assertStaffCanAccessClient(event, clientId)
+
+    const start = new Date(`${date}T${startTime}`)
+    const end = new Date(`${date}T${endTime}`)
+    const now = new Date()
+
+    if (end <= start) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Invalid time range',
+      })
+    }
+
+    if (start < now) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Cannot create events in the past',
+      })
+    }
+
+    const parsedProvider = parseVideoProviderInput(videoProvider) as VideoConferenceProvider | null
+
+    const normalizedJoin = normalizeVideoJoinUrl(videoJoinUrl)
+    const rawJoinInput = typeof videoJoinUrl === 'string' ? videoJoinUrl.trim() : ''
+
+    if (rawJoinInput && !normalizedJoin) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Enter a valid meeting link starting with http:// or https://',
+      })
+    }
+
+    if (normalizedJoin && !parsedProvider) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Choose a video provider when adding a join link',
+      })
+    }
+
+    const [clientUser, existingAppointments] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: clientId },
+        select: { name: true, role: true },
+      }),
+      prisma.appointment.findMany({
+        where: { clientId },
+        select: { sessionNumber: true, status: true },
+      }),
+    ])
+
+    if (!clientUser || clientUser.role !== 'CLIENT') {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Invalid client ID',
+      })
+    }
+
+    const activeSessionNumbers = existingAppointments
+      .filter((a) => {
+        const normalized = String(a.status ?? '').toUpperCase()
+        return normalized !== 'CANCELED' && normalized !== 'CANCELLED'
+      })
+      .map((a) => a.sessionNumber)
+
+    const sessionNumber = nextAvailableNumber(activeSessionNumbers)
+    const sessionName = deriveSessionName(clientUser.name, sessionNumber)
+
+    const appointment = await prisma.appointment.create({
+      data: {
+        clientId,
+        adminId,
+        title: sessionName,
+        sessionName,
+        sessionNumber,
+        description,
+        startTime: start,
+        endTime: end,
+        status: 'SCHEDULED',
+        videoProvider: parsedProvider ?? null,
+        videoJoinUrl: normalizedJoin ?? null,
+      },
     })
 
-    return { success: true }
+    const clientRow = await prisma.client.findUnique({
+      where: { userId: clientId },
+      select: { id: true },
+    })
+
+    if (clientRow) {
+      await prisma.sessionNote.create({
+        data: {
+          clientId: clientRow.id,
+          appointmentId: appointment.id,
+          sessionName,
+          sessionNumber,
+          content: '',
+          attended: true,
+        },
+      })
+    }
+
+    return {
+      success: true,
+      appointment,
+    }
   } catch (error: any) {
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      throw error
+    }
+
+    if (error?.code === 'P2003') {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Invalid client ID or Foreign Key constraint failed',
+      })
+    }
+
     console.error('🔥 BACKEND FULL ERROR:', error)
     console.error('🔥 BACKEND STACK:', error?.stack)
 

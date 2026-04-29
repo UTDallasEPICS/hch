@@ -1,22 +1,42 @@
+/** External video meeting provider (e.g. Google Meet, Zoom). */
+enum VideoConferenceProvider {
+  GOOGLE_MEET
+  ZOOM
+  OTHER
+}
+
 model Appointment {
   id          String   @id @default(cuid())
+  
   clientId    String
   adminId     String
+  
   title       String
+  sessionName     String
+  sessionNumber   Int
+
   description String?
   startTime   DateTime
   endTime     DateTime
+  
   status      String   @default("SCHEDULED")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 
   seriesId    String?
   recurrence  String
+
+  videoProvider   VideoConferenceProvider?
+  videoJoinUrl    String?
   
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   client      User     @relation("ClientAppointments", fields: [clientId], references: [id], onDelete: Restrict)
   admin       User     @relation("AdminAppointments", fields: [adminId], references: [id], onDelete: Restrict)
+  
+  sessionNotes    SessionNote[]            @relation("AppointmentSessionNotes")
 
   @@index([clientId])
   @@index([adminId])
+  @@unique([clientId, sessionNumber])
   @@map("Appointment")
 }

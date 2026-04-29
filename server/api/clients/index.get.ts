@@ -1,4 +1,4 @@
-import { requireAdmin } from '../../utils/guard'
+import { requireStaff } from '../../utils/guard'
 import { createError, defineEventHandler, getHeaders, getQuery } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { isAdmin } from '../../utils/is-admin'
@@ -18,28 +18,66 @@ import { joinName, parseName } from '../../utils/name'
 import type { ClientStatus } from '../../../prisma/generated/client'
 
 export default defineEventHandler(async (event) => {
-  const user = requireAdmin(event)
+  const user = requireStaff(event)
+  const isClinicianViewer = event.context.isClinician === true && !event.context.isAdmin
+  const isAdminViewer = event.context.isAdmin === true
 
   const query = getQuery(event)
   const statusFilter = query.status as string | undefined
+  const clinicianUserIds =
+    isAdminViewer && typeof query.clinicianUserId === 'string'
+      ? query.clinicianUserId
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean)
+      : []
+  const hasClinicianUserIdFilter = clinicianUserIds.length > 0
 
   const hasStatusFilter = Boolean(statusFilter && isClientStatusLabel(statusFilter))
   const dbStatusFilter = toDbClientStatus(statusFilter)
 
+  // Build where clause. Clinicians only see clients assigned to them -- and
+  // because "unassigned client record" and "no client record yet" both have no
+  // clinicianUserId, clinicians never see INCOMPLETE-with-no-record entries.
+  type UserWhere = NonNullable<Parameters<typeof prisma.user.findMany>[0]>['where']
+  let where: UserWhere = { role: 'CLIENT' }
+
+  if (isClinicianViewer) {
+    const clientFilter: { clinicianUserId: string; status?: ClientStatus } = {
+      clinicianUserId: user.id,
+    }
+    if (hasStatusFilter) clientFilter.status = dbStatusFilter as ClientStatus
+    where = { ...where, client: clientFilter }
+  } else {
+    const adminClientFilter: {
+      clinicianUserId?: string | { in: string[] }
+      status?: ClientStatus
+    } = {}
+    if (hasClinicianUserIdFilter) adminClientFilter.clinicianUserId = { in: clinicianUserIds }
+
+    if (hasStatusFilter) {
+      if (dbStatusFilter === 'INCOMPLETE') {
+        where = {
+          ...where,
+          OR: hasClinicianUserIdFilter
+            ? [{ client: { ...adminClientFilter, status: 'INCOMPLETE' as ClientStatus } }]
+            : [{ client: null }, { client: { status: 'INCOMPLETE' as ClientStatus } }],
+        }
+      } else {
+        where = {
+          ...where,
+          client: { ...adminClientFilter, status: dbStatusFilter as ClientStatus },
+        }
+      }
+    } else {
+      if (hasClinicianUserIdFilter) {
+        where = { ...where, client: adminClientFilter }
+      }
+    }
+  }
+
   const users = await prisma.user.findMany({
-    where: {
-      role: 'CLIENT',
-      ...(hasStatusFilter &&
-        (dbStatusFilter === 'INCOMPLETE'
-          ? {
-              OR: [{ client: null }, { client: { status: 'INCOMPLETE' as ClientStatus } }],
-            }
-          : {
-              client: {
-                status: dbStatusFilter as ClientStatus,
-              },
-            })),
-    },
+    where,
     include: {
       client: true,
       appForms: {

@@ -61,10 +61,8 @@ async function seedForms(userId: string) {
   })
 
   // 3. PHQ-9
-  const phqForm = await prisma.phqForm.upsert({
-    where: { userId },
-    update: {},
-    create: {
+  const phqForm = await prisma.phqForm.create({
+    data: {
       userId,
       status: 'COMPLETE',
       totalScore: 14,
@@ -131,10 +129,8 @@ async function seedForms(userId: string) {
   })
 
   // 5. ACE (Hardcoded Form)
-  const aceForm = await prisma.aceForm.upsert({
-    where: { userId },
-    update: {},
-    create: {
+  const aceForm = await prisma.aceForm.create({
+    data: {
       userId,
       status: 'COMPLETE',
       totalScore: 2,
@@ -179,11 +175,15 @@ async function ensureBobBuilderSessionNotes(bobUserId: string) {
       data: [
         {
           clientId: client.id,
+          sessionName: 'Intake / Week 1',
+          sessionNumber: 1,
           content:
             'Intake / Week 1 — Rapport established. Bob reviewed clinic policies and confidentiality. Reported primary stressors related to work deadlines and sleep disruption. PHQ-9 and GAD-7 administered; safety screen negative. Plan: sleep hygiene handout, begin weekly CBT skills.',
         },
         {
           clientId: client.id,
+          sessionName: 'Session 2',
+          sessionNumber: 2,
           content:
             'Session 2 — Focus on thought challenging around catastrophic predictions at work. Homework: thought record for 3 situations. Bob engaged well; identified one automatic thought pattern to monitor between sessions.',
         },
@@ -227,6 +227,7 @@ async function main() {
     { email: 'rxa230079@utdallas.edu', name: 'Ritikha Ashok', id: 'ritikha_id' },
     { email: 'sxr230101@utdallas.edu', name: 'Swaminathan Ramanathan', id: 'swaminathan_id' },
     { email: 'tmw220003@utdallas.edu', name: 'Tushar Wani', id: 'tushar_id' },
+    { email: 'info@hopecopeheal.org', name: 'Adriana Lewin', id: 'adriana_id' },
   ]
 
   for (const admin of newAdmins) {
@@ -243,6 +244,19 @@ async function main() {
     })
     console.log(`Seeded Admin: ${admin.email}`)
   }
+
+  await prisma.user.upsert({
+    where: { email: 'carl@c.com' },
+    update: { role: 'CLINICIAN', name: 'Carl Karl' },
+    create: {
+      id: 'carl_id',
+      email: 'carl@c.com',
+      name: 'Carl Karl',
+      emailVerified: true,
+      role: 'CLINICIAN',
+    },
+  })
+  console.log('Seeded Clinician: carl@c.com')
 
   // Create / Upsert Bob (Client)
   const bob = await prisma.user.upsert({
@@ -272,3 +286,4 @@ main()
     await prisma.$disconnect()
     process.exit(1)
   })
+
