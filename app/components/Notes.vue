@@ -1696,8 +1696,10 @@
                 </div>
 
               <!-- Attendance Dropdown from stage -->
+              <div class="mt-43">
               <AttendanceDropdown v-model="attendanceStatus" />
               </div> 
+              </div>
 
               <!-- Editor / Lock message -->
               <div class="min-h-0 flex-1 flex flex-col overflow-hidden min-h-[400px] md:min-h-0">
