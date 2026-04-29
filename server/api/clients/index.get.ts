@@ -20,9 +20,18 @@ import type { ClientStatus } from '../../../prisma/generated/client'
 export default defineEventHandler(async (event) => {
   const user = requireStaff(event)
   const isClinicianViewer = event.context.isClinician === true && !event.context.isAdmin
+  const isAdminViewer = event.context.isAdmin === true
 
   const query = getQuery(event)
   const statusFilter = query.status as string | undefined
+  const clinicianUserIds =
+    isAdminViewer && typeof query.clinicianUserId === 'string'
+      ? query.clinicianUserId
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean)
+      : []
+  const hasClinicianUserIdFilter = clinicianUserIds.length > 0
 
   const hasStatusFilter = Boolean(statusFilter && isClientStatusLabel(statusFilter))
   const dbStatusFilter = toDbClientStatus(statusFilter)
@@ -39,14 +48,31 @@ export default defineEventHandler(async (event) => {
     }
     if (hasStatusFilter) clientFilter.status = dbStatusFilter as ClientStatus
     where = { ...where, client: clientFilter }
-  } else if (hasStatusFilter) {
-    if (dbStatusFilter === 'INCOMPLETE') {
-      where = {
-        ...where,
-        OR: [{ client: null }, { client: { status: 'INCOMPLETE' as ClientStatus } }],
+  } else {
+    const adminClientFilter: {
+      clinicianUserId?: string | { in: string[] }
+      status?: ClientStatus
+    } = {}
+    if (hasClinicianUserIdFilter) adminClientFilter.clinicianUserId = { in: clinicianUserIds }
+
+    if (hasStatusFilter) {
+      if (dbStatusFilter === 'INCOMPLETE') {
+        where = {
+          ...where,
+          OR: hasClinicianUserIdFilter
+            ? [{ client: { ...adminClientFilter, status: 'INCOMPLETE' as ClientStatus } }]
+            : [{ client: null }, { client: { status: 'INCOMPLETE' as ClientStatus } }],
+        }
+      } else {
+        where = {
+          ...where,
+          client: { ...adminClientFilter, status: dbStatusFilter as ClientStatus },
+        }
       }
     } else {
-      where = { ...where, client: { status: dbStatusFilter as ClientStatus } }
+      if (hasClinicianUserIdFilter) {
+        where = { ...where, client: adminClientFilter }
+      }
     }
   }
 

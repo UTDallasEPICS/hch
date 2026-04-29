@@ -7,14 +7,9 @@
   import listPlugin from '@fullcalendar/list'
   import { VIDEO_PROVIDER_LABEL } from '~/utils/video-conference'
 
-  const videoMeetingTypeOptions = [
-    { value: 'GOOGLE_MEET' as const, label: 'Google Meet' },
-    { value: 'ZOOM' as const, label: 'Zoom' },
-    { value: 'OTHER' as const, label: 'Other link' },
-  ]
-
   const isMobile = ref(process.client && window.innerWidth < 768)
   const calendarRef = ref()
+  const datePickerRef = ref<HTMLInputElement | null>(null)
   const session = authClient.useSession()
   const currentUser = computed(
     () =>
@@ -38,7 +33,79 @@
     { immediate: true }
   )
   const toast = useToast()
-  const clients = ref<any[]>([])
+  const isAdminViewer = computed(() => adminData.value?.isAdmin === true)
+
+  type ClinicianOption = {
+    id: string
+    name: string
+    email: string
+  }
+
+  type CalendarClient = {
+    id: string
+    name: string
+    email: string
+    status: string
+  }
+
+  type AppointmentResponse = {
+    id: string
+    clientId: string
+    title: string
+    sessionName: string
+    sessionNumber: number
+    start: string
+    end: string
+    clientName: string
+    description: string | null
+    status: string
+    videoProvider: string | null
+    videoJoinUrl: string | null
+    assignedClinicianName: string | null
+  }
+
+  type SelectedCalendarEvent = {
+    id: string
+    title: string
+    sessionName: string
+    sessionNumber: number | null
+    clientId: string
+    start: Date
+    end: Date
+    clientName: string
+    description: string | null
+    status: string
+    videoProvider: string | null
+    videoJoinUrl: string | null
+    assignedClinicianName: string | null
+  }
+
+  const { data: clinicians } = await useFetch<ClinicianOption[]>('/api/clinicians', {
+    getCachedData: () => undefined,
+  })
+  const clinicianFilter = ref<string[]>([])
+  const clientFilter = ref<string[]>([])
+  const clinicianFilterItems = computed(() =>
+    (clinicians.value ?? []).map((clinician) => ({
+      label: clinician.name ? `${clinician.name} (${clinician.email})` : clinician.email,
+      value: clinician.id,
+    }))
+  )
+  const clientOptionsQueryParams = computed(() => {
+    const params: Record<string, string> = {}
+    if (isAdminViewer.value && clinicianFilter.value.length > 0) {
+      params.clinicianUserId = clinicianFilter.value.join(',')
+    }
+    return params
+  })
+  const calendarQueryParams = computed(() => {
+    const params = { ...clientOptionsQueryParams.value }
+    if (clientFilter.value.length > 0) {
+      params.clientId = clientFilter.value.join(',')
+    }
+    return params
+  })
+  const clients = ref<CalendarClient[]>([])
   const events = ref<any[]>([])
   const isAdmin = computed(() => adminData.value?.isStaff ?? false)
   const clientColors = [
@@ -55,22 +122,9 @@
   let touchEndX = 0
   async function loadEvents() {
     try {
-      const data = await $fetch<
-        {
-          id: string
-          title: string
-          sessionName: string
-          sessionNumber: number
-          start: string
-          end: string
-          clientName: string
-          description: string | null
-          status: string
-          videoProvider: string | null
-          videoJoinUrl: string | null
-        }[]
-      >('/api/appointments', {
+      const data = await $fetch<AppointmentResponse[]>('/api/appointments', {
         credentials: 'include',
+        query: calendarQueryParams.value,
       })
 
       events.value = data.map((e) => ({
@@ -79,6 +133,7 @@
         start: e.start,
         end: e.end,
         extendedProps: {
+          clientId: e.clientId,
           sessionName: e.sessionName,
           sessionNumber: e.sessionNumber,
           clientName: e.clientName,
@@ -86,6 +141,7 @@
           status: e.status,
           videoProvider: e.videoProvider,
           videoJoinUrl: e.videoJoinUrl,
+          assignedClinicianName: e.assignedClinicianName,
         },
       }))
     } catch (err) {
@@ -101,8 +157,9 @@
     }
 
     try {
-      const data = await $fetch('/api/clients', {
+      const data = await $fetch<CalendarClient[]>('/api/clients', {
         credentials: 'include',
+        query: clientOptionsQueryParams.value,
       })
 
       console.log('CLIENTS:', data)
@@ -127,24 +184,33 @@
   }
 
   function goToDate(event: any) {
-    const calendarApi = calendarRef.value.getApi()
+    const calendarApi = calendarRef.value?.getApi?.()
+    if (!calendarApi) return
     calendarApi.gotoDate(event.target.value)
   }
 
   function next() {
-    calendarRef.value.getApi().next()
+    const calendarApi = calendarRef.value?.getApi?.()
+    if (!calendarApi) return
+    calendarApi.next()
   }
 
   function prev() {
-    calendarRef.value.getApi().prev()
+    const calendarApi = calendarRef.value?.getApi?.()
+    if (!calendarApi) return
+    calendarApi.prev()
   }
 
   function handleTouchStart(e: TouchEvent) {
-    touchStartX = e.changedTouches[0].screenX
+    const touch = e.changedTouches[0]
+    if (!touch) return
+    touchStartX = touch.screenX
   }
 
   function handleTouchEnd(e: TouchEvent) {
-    touchEndX = e.changedTouches[0].screenX
+    const touch = e.changedTouches[0]
+    if (!touch) return
+    touchEndX = touch.screenX
     handleSwipe()
   }
 
@@ -164,11 +230,14 @@
   }
 
   function today() {
-    calendarRef.value.getApi().today()
+    const calendarApi = calendarRef.value?.getApi?.()
+    if (!calendarApi) return
+    calendarApi.today()
   }
 
   function changeView(view: string) {
-    const calendar = calendarRef.value.getApi()
+    const calendar = calendarRef.value?.getApi?.()
+    if (!calendar) return
     const mobile = window.innerWidth < 768
 
     if (view === 'week') {
@@ -222,8 +291,18 @@
     }
   })
 
+  watch(calendarQueryParams, async () => {
+    if (!currentUser.value?.id) return
+    await syncCalendarData()
+  })
+
+  watch(clients, (availableClients) => {
+    const allowedClientIds = new Set(availableClients.map((client) => client.id))
+    clientFilter.value = clientFilter.value.filter((id) => allowedClientIds.has(id))
+  })
+
   const isViewModalOpen = ref(false)
-  const selectedEvent = ref<any>(null)
+  const selectedEvent = ref<SelectedCalendarEvent | null>(null)
   const isEditMode = ref(false)
   const isDeleteConfirming = ref(false)
   const mobileView = ref('week')
@@ -243,6 +322,16 @@
   })
   const createTimeRangeError = ref('')
   const editTimeRangeError = ref('')
+  const createModalError = ref('')
+  const editModalError = ref('')
+
+  function setCreateModalError(message: string) {
+    createModalError.value = message
+  }
+
+  function setEditModalError(message: string) {
+    editModalError.value = message
+  }
 
   function getTimeRangeError(
     date: string,
@@ -281,7 +370,7 @@
     allDaySlot: false,
     slotEventOverlap: true,
 
-    datesSet(info) {
+    datesSet(info: any) {
       const view = info.view.type
 
       if (view.includes('Day')) mobileView.value = 'day'
@@ -289,7 +378,7 @@
       if (view.includes('Month')) mobileView.value = 'month'
     },
 
-    dayHeaderDidMount(info) {
+    dayHeaderDidMount(info: any) {
       if (info.el) {
         info.el.style.cursor = 'pointer'
 
@@ -299,7 +388,7 @@
 
           const events = section.querySelectorAll('.fc-list-event')
 
-          events.forEach((e) => {
+          events.forEach((e: Element) => {
             e.classList.toggle('hidden')
           })
         }
@@ -308,7 +397,7 @@
 
     initialView: isMobile.value ? 'listWeek' : 'dayGridMonth',
 
-    headerToolbar: false,
+    headerToolbar: false as const,
     // listDayFormat: {
     //   weekday: 'long',
     //   day: 'numeric',
@@ -352,6 +441,7 @@
       ...ext,
       clientName: clientName, // Make sure clientName is included
       id: info.event.id,
+      clientId: ext.clientId,
       title: info.event.title,
       sessionName: ext.sessionName || info.event.title,
       sessionNumber: ext.sessionNumber ?? null,
@@ -361,6 +451,7 @@
       status: ext.status,
       videoProvider: ext.videoProvider ?? null,
       videoJoinUrl: ext.videoJoinUrl ?? null,
+      assignedClinicianName: ext.assignedClinicianName ?? null,
     }
 
     console.log('selectedEvent after click:', selectedEvent.value)
@@ -369,38 +460,45 @@
   }
 
   function enterEditMode() {
+    const event = selectedEvent.value
+    if (!event) return
     isEditMode.value = true
-    editForm.description = selectedEvent.value.description || ''
-    const d = selectedEvent.value.start
+    editForm.description = event.description || ''
+    const d = event.start
     editForm.date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    editForm.startTime = selectedEvent.value.start.toTimeString().slice(0, 5)
-    editForm.endTime = selectedEvent.value.end.toTimeString().slice(0, 5)
-    editForm.includeVideo = Boolean(
-      selectedEvent.value.videoJoinUrl || selectedEvent.value.videoProvider
-    )
-    editForm.videoJoinUrl = selectedEvent.value.videoJoinUrl || ''
+    editForm.startTime = event.start.toTimeString().slice(0, 5)
+    editForm.endTime = event.end.toTimeString().slice(0, 5)
+    editForm.includeVideo = Boolean(event.videoJoinUrl || event.videoProvider)
+    editForm.videoJoinUrl = event.videoJoinUrl || ''
     editForm.videoProvider = editForm.includeVideo
-      ? (selectedEvent.value.videoProvider as typeof editForm.videoProvider) || 'GOOGLE_MEET'
+      ? (event.videoProvider as typeof editForm.videoProvider) || 'OTHER'
       : ''
     editTimeRangeError.value = ''
+    editModalError.value = ''
   }
 
   function cancelEdit() {
     isEditMode.value = false
     editTimeRangeError.value = ''
+    editModalError.value = ''
   }
 
   async function saveEdit() {
+    editModalError.value = ''
+    const event = selectedEvent.value
+    if (!event) return
     if (editForm.includeVideo && !editForm.videoJoinUrl?.trim()) {
-      toast.add({
-        title: 'Add a video link or uncheck Video',
-        color: 'warning',
-      })
+      setEditModalError('Add a video link or uncheck Video.')
       return
     }
-    editTimeRangeError.value = getTimeRangeError(editForm.date, editForm.startTime, editForm.endTime, {
-      allowPastStart: true,
-    })
+    editTimeRangeError.value = getTimeRangeError(
+      editForm.date,
+      editForm.startTime,
+      editForm.endTime,
+      {
+        allowPastStart: true,
+      }
+    )
     if (editTimeRangeError.value) {
       toast.add({
         title: 'Invalid date/time range',
@@ -410,15 +508,15 @@
       return
     }
     try {
-      await $fetch(`/api/appointments/${selectedEvent.value.id}`, {
+      await $fetch(`/api/appointments/${event.id}`, {
         method: 'PUT',
         body: {
-          id: selectedEvent.value.id,
+          id: event.id,
           description: editForm.description,
           date: editForm.date,
           startTime: editForm.startTime,
           endTime: editForm.endTime,
-          videoProvider: editForm.includeVideo ? editForm.videoProvider || 'GOOGLE_MEET' : null,
+          videoProvider: editForm.includeVideo ? editForm.videoProvider || 'OTHER' : null,
           videoJoinUrl: editForm.includeVideo ? editForm.videoJoinUrl.trim() || null : null,
         },
       })
@@ -448,8 +546,10 @@
   }
 
   async function deleteEvent() {
+    const event = selectedEvent.value
+    if (!event) return
     try {
-      await $fetch(`/api/appointments/${selectedEvent.value.id}`, {
+      await $fetch(`/api/appointments/${event.id}`, {
         method: 'DELETE',
         credentials: 'include',
       })
@@ -493,7 +593,7 @@
         form.videoProvider = ''
         form.videoJoinUrl = ''
       } else if (!form.videoProvider) {
-        form.videoProvider = 'GOOGLE_MEET'
+        form.videoProvider = 'OTHER'
       }
     }
   )
@@ -505,15 +605,15 @@
         editForm.videoProvider = ''
         editForm.videoJoinUrl = ''
       } else if (!editForm.videoProvider) {
-        editForm.videoProvider = 'GOOGLE_MEET'
+        editForm.videoProvider = 'OTHER'
       }
     }
   )
 
   const clientOptions = computed(() =>
     clients.value
-      .filter((c) => c.status !== 'Archived')
-      .map((c) => ({
+      .filter((c: CalendarClient) => c.status !== 'Archived')
+      .map((c: CalendarClient) => ({
         label: c.name || c.email,
         value: c.id,
       }))
@@ -535,20 +635,20 @@
     form.videoProvider = ''
     form.videoJoinUrl = ''
     createTimeRangeError.value = ''
+    createModalError.value = ''
     isCreateModalOpen.value = true
   }
 
   function closeCreateModal() {
     isCreateModalOpen.value = false
     createTimeRangeError.value = ''
+    createModalError.value = ''
   }
 
   async function createSession() {
+    createModalError.value = ''
     if (form.includeVideo && !form.videoJoinUrl?.trim()) {
-      toast.add({
-        title: 'Add a video link or uncheck Video',
-        color: 'warning',
-      })
+      setCreateModalError('Add a video link or uncheck Video.')
       return
     }
     createTimeRangeError.value = getTimeRangeError(form.date, form.startTime, form.endTime)
@@ -570,7 +670,7 @@
           date: form.date,
           startTime: form.startTime,
           endTime: form.endTime,
-          videoProvider: form.includeVideo ? form.videoProvider || 'GOOGLE_MEET' : undefined,
+          videoProvider: form.includeVideo ? form.videoProvider || 'OTHER' : undefined,
           videoJoinUrl: form.includeVideo ? form.videoJoinUrl.trim() : undefined,
         },
       })
@@ -610,7 +710,9 @@
     () => [editForm.date, editForm.startTime, editForm.endTime] as const,
     ([date, startTime, endTime]) => {
       if (!isEditMode.value) return
-      editTimeRangeError.value = getTimeRangeError(date, startTime, endTime, { allowPastStart: true })
+      editTimeRangeError.value = getTimeRangeError(date, startTime, endTime, {
+        allowPastStart: true,
+      })
     }
   )
 </script>
@@ -630,9 +732,9 @@
         <UButton
           icon="i-heroicons-calendar-days"
           variant="outline"
-          @click="$refs.datePicker.showPicker()"
+          @click="datePickerRef?.showPicker?.()"
         />
-        <input ref="datePicker" type="date" class="hidden" @change="goToDate" />
+        <input ref="datePickerRef" type="date" class="hidden" @change="goToDate" />
 
         <!-- Desktop buttons -->
         <div class="hidden items-center gap-2 md:flex">
@@ -652,8 +754,27 @@
       </div>
     </div>
 
-    <div v-if="isAdmin" class="flex justify-start">
-      <UButton icon="i-heroicons-plus" label="Create Event" @click="openCreateModal" />
+    <div v-if="isAdmin" class="flex justify-end">
+      <div class="flex flex-wrap items-center justify-end gap-3">
+        <USelect
+          id="calendar-client-filter"
+          v-model="clientFilter"
+          :items="clientOptions"
+          multiple
+          placeholder="Filter by clients"
+          class="w-full min-w-[18rem] sm:w-72"
+        />
+        <USelect
+          v-if="isAdminViewer"
+          id="calendar-clinician-filter"
+          v-model="clinicianFilter"
+          :items="clinicianFilterItems"
+          multiple
+          placeholder="Filter by clinicians"
+          class="w-full min-w-[18rem] sm:w-72"
+        />
+        <UButton icon="i-heroicons-plus" label="Create Event" @click="openCreateModal" />
+      </div>
     </div>
 
     <div class="flex gap-6">
@@ -675,6 +796,12 @@
 
     <template #content>
       <div class="flex flex-col gap-4 p-4">
+        <div
+          v-if="createModalError"
+          class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-900/20 dark:text-red-200"
+        >
+          {{ createModalError }}
+        </div>
         <div>
           <label class="mb-2 block text-sm font-medium" for="client">Client</label>
           <select id="client" v-model="form.clientId" class="w-full rounded border px-2 py-1">
@@ -688,18 +815,36 @@
           </p>
         </div>
 
-        <p class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+        <p
+          class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+        >
           Session name will be auto-generated as <strong>Firstname_Lastname_##</strong>.
         </p>
 
-        <UTextarea v-model="form.description" placeholder="Description" />
+        <div>
+          <label class="mb-2 block text-sm font-medium" for="create-description">Description</label>
+          <UTextarea
+            id="create-description"
+            v-model="form.description"
+            placeholder="Optional notes for this session"
+          />
+        </div>
 
         <div class="grid grid-cols-3 gap-4">
-          <UInput v-model="form.date" type="date" />
+          <div>
+            <label class="mb-2 block text-sm font-medium" for="create-date">Date</label>
+            <UInput id="create-date" v-model="form.date" type="date" />
+          </div>
 
-          <UInput v-model="form.startTime" type="time" />
+          <div>
+            <label class="mb-2 block text-sm font-medium" for="create-start-time">Start Time</label>
+            <UInput id="create-start-time" v-model="form.startTime" type="time" />
+          </div>
 
-          <UInput v-model="form.endTime" type="time" />
+          <div>
+            <label class="mb-2 block text-sm font-medium" for="create-end-time">End Time</label>
+            <UInput id="create-end-time" v-model="form.endTime" type="time" />
+          </div>
         </div>
         <p v-if="createTimeRangeError" class="text-sm text-red-500">
           {{ createTimeRangeError }}
@@ -713,41 +858,22 @@
 
           <div
             v-if="form.includeVideo"
-            class="space-y-3 rounded-lg border border-gray-200 bg-gray-50/90 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/60"
+            class="space-y-2 rounded-lg border border-gray-200 bg-gray-50/90 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/60"
           >
-            <p class="text-xs font-medium text-gray-600 dark:text-gray-400">Meeting type</p>
-            <div class="flex flex-wrap gap-4">
-              <label
-                v-for="opt in videoMeetingTypeOptions"
-                :key="opt.value"
-                class="flex cursor-pointer items-center gap-2 text-sm text-gray-800 dark:text-gray-200"
-              >
-                <input
-                  v-model="form.videoProvider"
-                  type="radio"
-                  name="create-video-provider"
-                  :value="opt.value"
-                  class="text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600"
-                />
-                {{ opt.label }}
-              </label>
-            </div>
-            <div>
-              <label
-                class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                for="create-video-url"
-              >
-                Join link
-              </label>
-              <UInput
-                id="create-video-url"
-                v-model="form.videoJoinUrl"
-                placeholder="https://meet.google.com/..."
-              />
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Paste a secure https link so clients can join from the dashboard and calendar.
-              </p>
-            </div>
+            <label
+              class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+              for="create-video-url"
+            >
+              Join link
+            </label>
+            <UInput
+              id="create-video-url"
+              v-model="form.videoJoinUrl"
+              placeholder="https://meet.google.com/..."
+            />
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Paste a secure https link so clients can join from the dashboard and calendar.
+            </p>
           </div>
         </div>
 
@@ -780,7 +906,12 @@
       <div class="flex flex-col gap-4 p-4">
         <div v-if="!isEditMode">
           <p><strong>Client:</strong> {{ selectedClientName }}</p>
-          <p><strong>Session Name:</strong> {{ selectedEvent?.sessionName || selectedEvent?.title }}</p>
+          <p v-if="selectedEvent?.assignedClinicianName">
+            <strong>Assigned Clinician:</strong> {{ selectedEvent.assignedClinicianName }}
+          </p>
+          <p>
+            <strong>Session Name:</strong> {{ selectedEvent?.sessionName || selectedEvent?.title }}
+          </p>
           <p><strong>Date:</strong> {{ selectedEvent?.start?.toLocaleDateString() }}</p>
           <p>
             <strong>Time:</strong>
@@ -794,39 +925,59 @@
 
           <p><strong>Status:</strong> {{ selectedEvent?.status }}</p>
 
-          <div
-            v-if="selectedEvent?.videoJoinUrl && selectedEvent?.videoProvider === 'GOOGLE_MEET'"
+          <div class="mt-3">
+            <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Meeting Link</p>
+            <p
+              v-if="selectedEvent?.videoJoinUrl"
+              class="mb-2 break-all text-sm text-gray-700 dark:text-gray-300"
+            >
+              <a
+                :href="selectedEvent.videoJoinUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-primary-600 underline hover:text-primary-500 dark:text-primary-400"
+              >
+                {{ selectedEvent.videoJoinUrl }}
+              </a>
+            </p>
+            <p v-else class="mb-2 text-sm text-gray-500 dark:text-gray-400">Not set</p>
+            <UButton
+              v-if="selectedEvent?.videoJoinUrl"
+              :to="selectedEvent.videoJoinUrl"
+              external
+              target="_blank"
+              rel="noopener noreferrer"
+              color="primary"
+              variant="soft"
+              icon="i-heroicons-video-camera-20-solid"
+              :label="
+                selectedEvent?.videoProvider === 'GOOGLE_MEET'
+                  ? 'Join Google Meet'
+                  : `Join ${selectedEvent?.videoProvider ? VIDEO_PROVIDER_LABEL[selectedEvent.videoProvider] ?? 'meeting' : 'meeting'}`
+              "
+            />
+          </div>
+          <UButton
+            v-if="selectedEvent?.clientId"
             class="mt-3"
-          >
-            <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Video</p>
-            <UButton
-              :to="selectedEvent.videoJoinUrl"
-              external
-              target="_blank"
-              rel="noopener noreferrer"
-              color="primary"
-              variant="soft"
-              icon="i-heroicons-video-camera-20-solid"
-              label="Join Google Meet"
-            />
-          </div>
-          <div v-else-if="selectedEvent?.videoJoinUrl && selectedEvent?.videoProvider" class="mt-3">
-            <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Video</p>
-            <UButton
-              :to="selectedEvent.videoJoinUrl"
-              external
-              target="_blank"
-              rel="noopener noreferrer"
-              color="primary"
-              variant="soft"
-              icon="i-heroicons-video-camera-20-solid"
-              :label="`Join ${VIDEO_PROVIDER_LABEL[selectedEvent.videoProvider] ?? 'session'}`"
-            />
-          </div>
+            color="primary"
+            variant="outline"
+            icon="i-heroicons-document-text"
+            :to="{ path: '/notes-test', query: { client: selectedEvent.clientId } }"
+            label="Open Notes"
+          />
         </div>
 
         <div v-else class="flex flex-col gap-4">
-          <p class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+          <div
+            v-if="editModalError"
+            class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-900/20 dark:text-red-200"
+          >
+            {{ editModalError }}
+          </div>
+          <p
+            class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+          >
             Session name is auto-generated and cannot be edited.
           </p>
 
@@ -863,38 +1014,19 @@
 
             <div
               v-if="editForm.includeVideo"
-              class="space-y-3 rounded-lg border border-gray-200 bg-gray-50/90 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/60"
+              class="space-y-2 rounded-lg border border-gray-200 bg-gray-50/90 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/60"
             >
-              <p class="text-xs font-medium text-gray-600 dark:text-gray-400">Meeting type</p>
-              <div class="flex flex-wrap gap-4">
-                <label
-                  v-for="opt in videoMeetingTypeOptions"
-                  :key="opt.value"
-                  class="flex cursor-pointer items-center gap-2 text-sm text-gray-800 dark:text-gray-200"
-                >
-                  <input
-                    v-model="editForm.videoProvider"
-                    type="radio"
-                    name="edit-video-provider"
-                    :value="opt.value"
-                    class="text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600"
-                  />
-                  {{ opt.label }}
-                </label>
-              </div>
-              <div>
-                <label
-                  class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                  for="edit-video-url"
-                >
-                  Join link
-                </label>
-                <UInput
-                  id="edit-video-url"
-                  v-model="editForm.videoJoinUrl"
-                  placeholder="https://meet.google.com/..."
-                />
-              </div>
+              <label
+                class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                for="edit-video-url"
+              >
+                Join link
+              </label>
+              <UInput
+                id="edit-video-url"
+                v-model="editForm.videoJoinUrl"
+                placeholder="https://meet.google.com/..."
+              />
             </div>
           </div>
         </div>
@@ -934,7 +1066,12 @@
 
           <UButton v-if="isEditMode" variant="outline" @click="cancelEdit"> Cancel </UButton>
 
-          <UButton v-if="isEditMode" color="primary" :disabled="!!editTimeRangeError" @click="saveEdit">
+          <UButton
+            v-if="isEditMode"
+            color="primary"
+            :disabled="!!editTimeRangeError"
+            @click="saveEdit"
+          >
             Save
           </UButton>
         </div>

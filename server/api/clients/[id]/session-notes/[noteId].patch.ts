@@ -26,6 +26,7 @@ export default defineEventHandler(async (event) => {
     content?: string
     reason?: string
     signature?: string
+    attendanceStatus?: string
     signatureData?: string
   }>(event)
 
@@ -78,13 +79,18 @@ export default defineEventHandler(async (event) => {
       data: {
         sessionNoteId: note.id,
         originalContent: note.content,
+        editedContent: body.content.trim(),
+        oldAttendanceStatus: note.attendanceStatus,
+        newAttendanceStatus: body.attendanceStatus ?? note.attendanceStatus,
         reason: body.reason.trim(),
         signature: signatureStored,
       },
     }),
     prisma.sessionNote.update({
       where: { id: note.id },
-      data: { content: body.content.trim() },
+      data: { content: body.content.trim(), 
+        ...(body.attendanceStatus && { attendanceStatus: body.attendanceStatus }),
+      },
     }),
   ])
 

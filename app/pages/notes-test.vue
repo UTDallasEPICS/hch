@@ -31,6 +31,15 @@
     return clientPickerOptions.value[0]?.id ?? ''
   })
 
+  type NotesEditorData = {
+    client: { id: string; name: string }
+    currentNote: { id: number; date: string; content: string }
+    previousNotes: { id: number; date: string; preview: string; content: string }[]
+    sessionNotes: { id: string; content: string; createdAt: string }[]
+    forms: { label?: string; status: 'complete' | 'pending' }[]
+    appointments?: { id: string; sessionName: string; sessionNumber: number; startTime: string; status: string }[]
+  }
+
   const { data, pending, error } = await useFetch(
     () => `/api/clients/${clientId.value}/notes-editor-data`,
     {
@@ -84,7 +93,7 @@
     :previous-notes="data.previousNotes"
     :session-notes="data.sessionNotes"
     :appointments="data.appointments"
-    :forms="data.forms"
+    :forms="(data.forms as { label: string; status: 'complete' | 'pending' }[]).filter(f => !!f.label)"
     :client-picker-options="clientPickerOptions"
     client-picker-mode="notes-test"
     back-href="/"

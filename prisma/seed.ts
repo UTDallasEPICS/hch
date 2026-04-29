@@ -20,117 +20,15 @@ async function seedForms(userId: string) {
 
   await prisma.appQuestion.upsert({
     where: { formId: appForm.id },
-    update: {
-      q01: 'wendy.builder@example.com',
-      q02: 'Wendy',
-      q03: 'Builder',
-      q04: '4165551234',
-      q05: 'Female',
-      q06: '1975-03-10',
-      q07: '123 Construction Ave|||Toronto|||ON|||M5H 2N2',
-      q08: 'Bob',
-      q09: 'Builder',
-      q10: '2010-06-15',
-      q11: 'Male',
-      q12: '123 Construction Ave|||Toronto|||ON|||M5H 2N2',
-      q13: 'Acute Lymphoblastic Leukemia (ALL)',
-      q14: '2024-01-10',
-      q15: JSON.stringify([
-        { firstName: 'Scoop', middleInitial: '', lastName: 'Builder', age: '10', relationship: 'Sibling' },
-      ]),
-      q16: JSON.stringify({ value: 'no', text: '' }),
-      q17: JSON.stringify({ values: ['joint'], other: '' }),
-      q18: 'yes',
-      q19: 'Wendy',
-      q20: 'Builder',
-      q21: '123 Construction Ave',
-      q22: 'Toronto',
-      q23: 'ON',
-      q24: 'M5H 2N2',
-      q25: 'wendy@bobthebuilder.com',
-      q26: 'Contractor',
-      q27: 'yes',
-      q28: 'Robert',
-      q29: 'Builder',
-      q30: '123 Construction Ave',
-      q31: 'Toronto',
-      q32: 'ON',
-      q33: 'M5H 2N2',
-      q34: 'robert@bobthebuilder.com',
-      q35: 'Construction Manager',
-      q36: JSON.stringify({ value: 'Mom', text: '' }),
-      q37: 'yes',
-      q38: 'yes',
-      q39: 'Wendy Builder (Mother)',
-      q40: 'Wendy Builder and Robert Builder',
-      q41: '6 months',
-      q42: 'no',
-      q43: '2 weeks initial admission, multiple shorter stays',
-      q44: 'no',
-      q45: JSON.stringify({ value: 'no', text: '' }),
-      q46: 'yes',
-      q47: JSON.stringify(['adolescent_child_diagnosed_with_cancer']),
-      q48: JSON.stringify({ firstName: 'Bob', middleInitial: '', lastName: 'Builder', age: '14', relationship: 'Self (Patient)' }),
-      q49: 'need_referral',
-      q50: 'yes_with_mental_health_benefits',
-    },
+    update: {},
     create: {
       formId: appForm.id,
       userId,
-      q01: 'wendy.builder@example.com',
-      q02: 'Wendy',
-      q03: 'Builder',
-      q04: '4165551234',
-      q05: 'Female',
-      q06: '1975-03-10',
-      q07: '123 Construction Ave|||Toronto|||ON|||M5H 2N2',
-      q08: 'Bob',
-      q09: 'Builder',
-      q10: '2010-06-15',
-      q11: 'Male',
-      q12: '123 Construction Ave|||Toronto|||ON|||M5H 2N2',
-      q13: 'Acute Lymphoblastic Leukemia (ALL)',
-      q14: '2024-01-10',
-      q15: JSON.stringify([
-        { firstName: 'Scoop', middleInitial: '', lastName: 'Builder', age: '10', relationship: 'Sibling' },
-      ]),
-      q16: JSON.stringify({ value: 'no', text: '' }),
-      q17: JSON.stringify({ values: ['joint'], other: '' }),
-      q18: 'yes',
-      q19: 'Wendy',
-      q20: 'Builder',
-      q21: '123 Construction Ave',
-      q22: 'Toronto',
-      q23: 'ON',
-      q24: 'M5H 2N2',
-      q25: 'wendy@bobthebuilder.com',
-      q26: 'Contractor',
-      q27: 'yes',
-      q28: 'Robert',
-      q29: 'Builder',
-      q30: '123 Construction Ave',
-      q31: 'Toronto',
-      q32: 'ON',
-      q33: 'M5H 2N2',
-      q34: 'robert@bobthebuilder.com',
-      q35: 'Construction Manager',
-      q36: JSON.stringify({ value: 'Mom', text: '' }),
-      q37: 'yes',
-      q38: 'yes',
-      q39: 'Wendy Builder (Mother)',
-      q40: 'Wendy Builder and Robert Builder',
-      q41: '6 months',
-      q42: 'no',
-      q43: '2 weeks initial admission, multiple shorter stays',
-      q44: 'no',
-      q45: JSON.stringify({ value: 'no', text: '' }),
-      q46: 'yes',
-      q47: JSON.stringify(['adolescent_child_diagnosed_with_cancer']),
-      q48: JSON.stringify({ firstName: 'Bob', middleInitial: '', lastName: 'Builder', age: '14', relationship: 'Self (Patient)' }),
-      q49: 'need_referral',
-      q50: 'yes_with_mental_health_benefits',
-    },
-  })
+      q01: 'Bob',
+      q02: 'Builder',
+      q05: '1234567890',
+  },
+})
 
   // 2. GAD-7
   const gadForm = await prisma.gadForm.create({
@@ -142,7 +40,13 @@ async function seedForms(userId: string) {
 
   // 3. PHQ-9
   const phqForm = await prisma.phqForm.create({
-    data: { userId, status: 'COMPLETE', totalScore: 14, severity: 'Moderate depression', submittedAt: new Date() },
+    data: {
+      userId,
+      status: 'COMPLETE',
+      totalScore: 14,
+      severity: 'Moderate depression',
+      submittedAt: new Date(),
+    },
   })
   await prisma.phqQuestion.create({
     data: { formId: phqForm.id, userId, q1: 2, q2: 1, q3: 2, q4: 1, q5: 2, q6: 2, q7: 2, q8: 1, q9: 1, q10: 1 },
@@ -160,9 +64,15 @@ async function seedForms(userId: string) {
     },
   })
 
-  // 5. ACE
+  // 5. ACE (Hardcoded Form)
   const aceForm = await prisma.aceForm.create({
-    data: { userId, status: 'COMPLETE', totalScore: 2, severity: 'Low', submittedAt: new Date() },
+    data: {
+      userId,
+      status: 'COMPLETE',
+      totalScore: 2,
+      severity: 'Low',
+      submittedAt: new Date(),
+    },
   })
   await prisma.aceQuestion.create({
     data: {
@@ -174,19 +84,46 @@ async function seedForms(userId: string) {
 }
 
 async function ensureBobBuilderSessionNotes(bobUserId: string, clinicianUserId: string) {
-  const bobClient = await prisma.client.upsert({
+  const client = await prisma.client.upsert({
     where: { userId: bobUserId },
-    update: { status: 'ACTIVE', clinicianUserId },
-    create: { userId: bobUserId, status: 'ACTIVE', clinicianUserId },
+    update: { status: 'ACTIVE', clinician: { connect: { id: clinicianUserId } } },
+    create: { userId: bobUserId, status: 'ACTIVE' },
   })
 
+  const existingSessionNotes = await prisma.sessionNote.count({
+    where: { clientId: client.id },
+  })
+
+  // if (existingSessionNotes === 0) {
+  //   await prisma.sessionNote.createMany({
+  //     data: [
+  //       {
+  //         clientId: client.id,
+  //         sessionName: 'Intake / Week 1',
+  //         sessionNumber: 1,
+  //         content:
+  //           'Intake / Week 1 — Rapport established. Bob reviewed clinic policies and confidentiality. Reported primary stressors related to work deadlines and sleep disruption. PHQ-9 and GAD-7 administered; safety screen negative. Plan: sleep hygiene handout, begin weekly CBT skills.',
+  //       },
+  //       {
+  //         clientId: client.id,
+  //         sessionName: 'Session 2',
+  //         sessionNumber: 2,
+  //         content:
+  //           'Session 2 — Focus on thought challenging around catastrophic predictions at work. Homework: thought record for 3 situations. Bob engaged well; identified one automatic thought pattern to monitor between sessions.',
+  //       },
+  //     ],
+  //   })
+  //   console.log('Created sample SessionNote rows for Bob Builder.')
+  // }
+
+  // Populate form dummy data if it doesn't exist
   const existingApp = await prisma.appForm.count({ where: { userId: bobUserId } })
   if (existingApp === 0) {
     await seedForms(bobUserId)
     console.log('Seeded clinical forms for Bob Builder.')
   }
 
-  return bobClient
+  return client
 }
 
 async function seedApprovalWorkflowNotes(
@@ -210,7 +147,7 @@ async function seedApprovalWorkflowNotes(
       clientId, sessionName: 'Intake – initial session', sessionNumber: 1,
       kind: 'PROGRESS', status: 'DRAFT',
       content: 'Client arrived on time. Presenting concerns include sleep disruption and work stress. Draft — still gathering history.',
-      attended: true,
+      attendanceStatus: 'show',
     },
   })
 
@@ -219,7 +156,7 @@ async function seedApprovalWorkflowNotes(
       clientId, sessionName: 'Session 2 – CBT intro', sessionNumber: 2,
       kind: 'PROGRESS', status: 'CLINICIAN_SIGNED',
       content: 'Reviewed sleep-hygiene worksheet. Client reports mild improvement. Introduced cognitive-restructuring framework.',
-      attended: true,
+      attendanceStatus: 'late',
       clinicianSignedAt: now, clinicianSignedById: clinicianUserId, clinicianSignatureData: PLACEHOLDER_SIG,
     },
   })
@@ -239,7 +176,7 @@ async function seedApprovalWorkflowNotes(
       clientId, sessionName: 'Session 3 – thought records', sessionNumber: 3,
       kind: 'PROGRESS', status: 'FULLY_APPROVED',
       content: 'Completed two thought-record examples in session. Client identified core belief patterns and committed to daily practice.',
-      attended: true,
+      attendanceStatus: 'no-show',
       clinicianSignedAt: now, clinicianSignedById: clinicianUserId, clinicianSignatureData: PLACEHOLDER_SIG,
       adminSignedAt: now, adminSignedById: adminUserId, adminSignatureData: PLACEHOLDER_SIG,
       adminApprovalNote: 'Reviewed — documentation meets clinic standard.',
@@ -251,7 +188,7 @@ async function seedApprovalWorkflowNotes(
       clientId, sessionName: 'Session 3 – clinician process notes', sessionNumber: 3,
       kind: 'PSYCHOTHERAPY', status: 'DRAFT',
       content: 'Clinician-only process notes: countertransference observations, working hypotheses, and next-session targets.',
-      attended: true,
+      attendanceStatus: 'show',
     },
   })
 
@@ -260,7 +197,7 @@ async function seedApprovalWorkflowNotes(
       clientId, sessionName: 'Session 2 – clinician process notes', sessionNumber: 2,
       kind: 'PSYCHOTHERAPY', status: 'FULLY_APPROVED',
       content: 'Process notes: explored defense patterns around perfectionism. Plan to revisit in session 4.',
-      attended: true,
+      attendanceStatus: 'show',
       clinicianSignedAt: now, clinicianSignedById: clinicianUserId, clinicianSignatureData: PLACEHOLDER_SIG,
       adminSignedAt: now, adminSignedById: adminUserId, adminSignatureData: PLACEHOLDER_SIG,
       adminApprovalNote: 'Approved — psychotherapy note retained separately.',
@@ -276,12 +213,42 @@ async function main() {
   await ensureDefaultDeclarationTemplates(prisma)
   await backfillSessionNotesRequestTemplates(prisma)
 
+  // Create / Upsert Alice (Admin)
   const alice = await prisma.user.upsert({
     where: { email: 'alice@a.com' },
     update: { role: 'ADMIN', name: 'Alice Wonderland' },
-    create: { id: 'alice_id', email: 'alice@a.com', name: 'Alice Wonderland', emailVerified: true, role: 'ADMIN' },
+    create: { id: 'alice_id', 
+      email: 'alice@a.com', 
+      name: 'Alice Wonderland', 
+      emailVerified: true, 
+      role: 'ADMIN' },
   })
   console.log('Seeded Admin: alice@a.com')
+
+  const newAdmins = [
+    { email: 'cxk230036@utdallas.edu', name: 'Charvisree Koripella ', id: 'charvisree_id' },
+    { email: 'dxj230013@utdallas.edu', name: 'Deethya Janjanam', id: 'deethya_id' },
+    { email: 'dxv230030@utdallas.edu', name: 'Devika Viju', id: 'devika_id' },
+    { email: 'rxa230079@utdallas.edu', name: 'Ritikha Ashok', id: 'ritikha_id' },
+    { email: 'sxr230101@utdallas.edu', name: 'Swaminathan Ramanathan', id: 'swaminathan_id' },
+    { email: 'tmw220003@utdallas.edu', name: 'Tushar Wani', id: 'tushar_id' },
+    { email: 'info@hopecopeheal.org', name: 'Adriana Lewin', id: 'adriana_id' },
+  ]
+
+  for (const admin of newAdmins) {
+    await prisma.user.upsert({
+      where: { email: admin.email },
+      update: { role: 'ADMIN', name: admin.name },
+      create: {
+        id: admin.id,
+        email: admin.email,
+        name: admin.name,
+        emailVerified: true,
+        role: 'ADMIN',
+      },
+    })
+    console.log(`Seeded Admin: ${admin.email}`)
+  }
 
   const carl = await prisma.user.upsert({
     where: { email: 'carl@c.com' },
@@ -304,5 +271,12 @@ async function main() {
 }
 
 main()
-  .then(async () => { await prisma.$disconnect() })
-  .catch(async (e) => { console.error(e); await prisma.$disconnect(); process.exit(1) })
+  .then(async () => {
+    await prisma.$disconnect()
+  })
+  .catch(async (e) => {
+    console.error(e)
+    await prisma.$disconnect()
+    process.exit(1)
+  })
+

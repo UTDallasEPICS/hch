@@ -1,7 +1,27 @@
 import { requireUser } from '../../utils/guard'
-import { defineEventHandler, getHeaders, createError } from 'h3'
+import { defineEventHandler, getHeaders, createError, getQuery } from 'h3'
 import { isAppointmentTableMissingError } from '../../utils/is-appointment-table-error'
 import { prisma } from '../../utils/prisma'
+import type { Prisma } from '../../../prisma/generated/client'
+
+const appointmentInclude = {
+  client: {
+    select: {
+      name: true,
+      client: {
+        select: {
+          clinician: {
+            select: { name: true, email: true },
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.AppointmentInclude
+
+type AppointmentWithClient = Prisma.AppointmentGetPayload<{
+  include: typeof appointmentInclude
+}>
 
 export default defineEventHandler(async (event) => {
   const headers = new Headers()
@@ -26,41 +46,60 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403 })
   }
 
-  let appointments: Awaited<ReturnType<typeof prisma.appointment.findMany>> = []
+  const query = getQuery(event)
+  const clinicianUserIds =
+    event.context.isAdmin && typeof query.clinicianUserId === 'string'
+      ? query.clinicianUserId
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean)
+      : []
+  const hasClinicianUserIdFilter = clinicianUserIds.length > 0
+  const clientIds =
+    typeof query.clientId === 'string'
+      ? query.clientId
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean)
+      : []
+  const hasClientIdFilter = clientIds.length > 0
+
+  let appointments: AppointmentWithClient[] = []
 
   try {
     if (event.context.isAdmin) {
       appointments = await prisma.appointment.findMany({
-        include: {
-          client: {
-            select: { name: true },
-          },
+        where: {
+          ...(hasClientIdFilter ? { clientId: { in: clientIds } } : {}),
+          ...(hasClinicianUserIdFilter
+            ? {
+                client: {
+                  client: {
+                    clinicianUserId: { in: clinicianUserIds },
+                  },
+                },
+              }
+            : {}),
         },
+        include: appointmentInclude,
       })
     } else if (event.context.isClinician) {
       // CLINICIAN → only appointments whose client is assigned to them
       appointments = await prisma.appointment.findMany({
         where: {
+          ...(hasClientIdFilter ? { clientId: { in: clientIds } } : {}),
           client: {
             client: { clinicianUserId: userId },
           },
         },
-        include: {
-          client: {
-            select: { name: true },
-          },
-        },
+        include: appointmentInclude,
       })
     } else {
       appointments = await prisma.appointment.findMany({
         where: {
-          clientId: userId,
+          clientId: hasClientIdFilter ? { in: clientIds } : userId,
         },
-        include: {
-          client: {
-            select: { name: true },
-          },
-        },
+        include: appointmentInclude,
       })
     }
   } catch (e: unknown) {
@@ -73,6 +112,7 @@ export default defineEventHandler(async (event) => {
 
   return appointments.map((a) => ({
     id: a.id,
+    clientId: a.clientId,
     title: a.title,
     sessionName: a.sessionName,
     sessionNumber: a.sessionNumber,
@@ -83,5 +123,7 @@ export default defineEventHandler(async (event) => {
     status: a.status,
     videoProvider: a.videoProvider,
     videoJoinUrl: a.videoJoinUrl,
+    assignedClinicianName:
+      a.client.client?.clinician?.name ?? a.client.client?.clinician?.email ?? null,
   }))
 })

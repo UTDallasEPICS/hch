@@ -28,18 +28,18 @@ enum SessionNoteKind {
 }
 
 model SessionNote {
-  id            String            @id @default(cuid())
-  clientId      String
-  sessionName   String
-  sessionNumber Int
-  appointmentId String?
-  kind          SessionNoteKind   @default(PROGRESS)
-  status        SessionNoteStatus @default(DRAFT)
-  content       String
-  attended      Boolean           @default(true)
+  id                String            @id @default(cuid())
+  clientId          String
+  content           String
+  attendanceStatus  String?           @default("show")
+  sessionName       String
+  sessionNumber     Int
+  appointmentId     String?
+  kind              SessionNoteKind   @default(PROGRESS)
+  status            SessionNoteStatus @default(DRAFT)
   /// Deprecated: legacy single-signature field kept for back-compat with existing rows.
   /// New flow uses `clinicianSignatureData` / `adminSignatureData` below.
-  signatureData String?
+  signatureData     String?
 
   /// Tier 1 — signed by the clinician who wrote the note.
   clinicianSignedAt      DateTime?
@@ -70,11 +70,14 @@ model SessionNote {
 }
 
 model SessionNoteEdit {
-  id              String      @id @default(cuid())
-  sessionNoteId   String
-  originalContent String?
-  reason          String?
-  signature       String?
+  id                    String      @id @default(cuid())
+  sessionNoteId         String
+  originalContent       String?
+  editedContent         String?
+  oldAttendanceStatus   String?
+  newAttendanceStatus   String?
+  reason                String?
+  signature             String?
   editedAt        DateTime    @default(now())
   sessionNote     SessionNote @relation(fields: [sessionNoteId], references: [id], onDelete: Cascade)
 
