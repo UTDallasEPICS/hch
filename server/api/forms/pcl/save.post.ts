@@ -42,7 +42,7 @@ export default defineEventHandler(async (event) => {
 
   let form = await prisma.pclForm.findFirst({
     where: { userId },
-    orderBy: { id: 'asc' },
+    orderBy: { id: 'desc' },
   })
 
   if (!form) {
@@ -102,8 +102,8 @@ export default defineEventHandler(async (event) => {
   await prisma.pclForm.update({
     where: { id: form.id },
     data: {
-      status: 'IN_PROGRESS',
-      submittedAt: null,
+      status: 'COMPLETE',
+      submittedAt: new Date(),
       totalScore,
       severity,
     },

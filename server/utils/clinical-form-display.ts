@@ -27,6 +27,29 @@ export const PHQ_LABELS = [
   'If you checked any problems, how difficult have they made it?',
 ]
 
+export const PCL_LABELS = [
+  'Repeated, disturbing, and unwanted memories of the stressful experience?',
+  'Repeated, disturbing dreams of the stressful experience?',
+  'Suddenly feeling or acting as if the stressful experience were actually happening again?',
+  'Feeling very upset when something reminded you of the stressful experience?',
+  'Having strong physical reactions when something reminded you of the stressful experience?',
+  'Avoiding memories, thoughts, or feelings related to the stressful experience?',
+  'Avoiding external reminders of the stressful experience?',
+  'Trouble remembering important parts of the stressful experience?',
+  'Having strong negative beliefs about yourself, other people, or the world?',
+  'Blaming yourself or someone else for the stressful experience or what happened after it?',
+  'Having strong negative feelings such as fear, horror, anger, guilt, or shame?',
+  'Loss of interest in activities that you used to enjoy?',
+  'Feeling distant or cut off from other people?',
+  'Trouble experiencing positive feelings?',
+  'Irritable behavior, angry outbursts, or acting aggressively?',
+  'Taking too many risks or doing things that could cause you harm?',
+  'Being "superalert" or watchful or on guard?',
+  'Feeling jumpy or easily startled?',
+  'Having difficulty concentrating?',
+  'Trouble falling or staying asleep?',
+]
+
 export const PHQ_OPTIONS: Record<number, string> = {
   0: 'Not at all',
   1: 'Several days',
@@ -39,6 +62,21 @@ export const GAD_OPTIONS: Record<number, string> = {
   1: 'Several days',
   2: 'More than half the days',
   3: 'Nearly every day',
+}
+
+export const DIFFICULTY_OPTIONS: Record<number, string> = {
+  0: 'Not difficult at all',
+  1: 'Somewhat difficult',
+  2: 'Very difficult',
+  3: 'Extremely difficult',
+}
+
+export const PCL_OPTIONS: Record<number, string> = {
+  0: 'Not at all',
+  1: 'A little bit',
+  2: 'Moderately',
+  3: 'Quite a bit',
+  4: 'Extremely',
 }
 
 const ACE_QUESTIONS_TEXT = [
@@ -96,7 +134,9 @@ export async function loadClinicalFormQuestions(
     const answers = [q.g01, q.g02, q.g03, q.g04, q.g05, q.g06, q.g07, q.g08]
     return GAD_LABELS.slice(0, answers.length).map((label, i) => ({
       label,
-      answer: answers[i] != null ? (GAD_OPTIONS[answers[i] as number] ?? String(answers[i])) : '',
+      answer: answers[i] != null
+        ? ((i === 7 ? DIFFICULTY_OPTIONS : GAD_OPTIONS)[answers[i] as number] ?? String(answers[i]))
+        : '',
     }))
   }
 
@@ -114,7 +154,9 @@ export async function loadClinicalFormQuestions(
     const answers = [q.q1, q.q2, q.q3, q.q4, q.q5, q.q6, q.q7, q.q8, q.q9, q.q10]
     return PHQ_LABELS.slice(0, answers.length).map((label, i) => ({
       label,
-      answer: answers[i] != null ? (PHQ_OPTIONS[answers[i] as number] ?? String(answers[i])) : '',
+      answer: answers[i] != null
+        ? ((i === 9 ? DIFFICULTY_OPTIONS : PHQ_OPTIONS)[answers[i] as number] ?? String(answers[i]))
+        : '',
     }))
   }
 
@@ -130,14 +172,14 @@ export async function loadClinicalFormQuestions(
       (await prisma.pclQuestion.findFirst({ where: { userId } }))
   }
   if (!q) return []
-  const questions: ClinicalFormQuestionRow[] = []
+  const questions: ClinicalFormQuestionRow[] = [
+    { label: 'Worst event', answer: q.worstEvent ?? '' },
+  ]
   for (let i = 1; i <= 20; i++) {
     const key = `q${String(i).padStart(2, '0')}` as keyof typeof q
     const val = q[key]
     const numVal = typeof val === 'number' ? val : null
-    if (numVal != null && numVal >= 0) {
-      questions.push({ label: `Item ${i}`, answer: String(numVal) })
-    }
+    questions.push({ label: PCL_LABELS[i - 1] ?? `Item ${i}`, answer: numVal != null ? (PCL_OPTIONS[numVal] ?? String(numVal)) : '' })
   }
   return questions
 }
