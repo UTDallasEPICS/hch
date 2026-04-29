@@ -130,7 +130,7 @@ export default defineEventHandler(async (event) => {
           sessionName,
           sessionNumber,
           content: '',
-          attended: true,
+          attendanceStatus: 'show',
         },
       })
     }

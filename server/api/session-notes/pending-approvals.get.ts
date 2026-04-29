@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
     typeof query.kind === 'string' ? query.kind.toUpperCase() : ''
   const kindFilter =
     kindParam === 'PROGRESS' || kindParam === 'PSYCHOTHERAPY'
-      ? { kind: kindParam }
+      ? { kind: kindParam as 'PROGRESS' | 'PSYCHOTHERAPY' }
       : {}
 
   const rows = await prisma.sessionNote.findMany({
@@ -55,7 +55,7 @@ export default defineEventHandler(async (event) => {
       kind: r.kind,
       status: r.status,
       content: r.content,
-      attended: r.attended,
+      attendanceStatus: r.attendanceStatus,
       appointmentId: r.appointmentId,
       appointmentStartTime: r.appointment?.startTime?.toISOString() ?? null,
       clinicianSignedAt: r.clinicianSignedAt?.toISOString() ?? null,
