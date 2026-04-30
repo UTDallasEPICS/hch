@@ -28,7 +28,7 @@ function nextAvailableNumber(used: number[]) {
   return candidate
 }
 
-const RECURRING_OCCURRENCE_COUNT = 12
+const MAX_RECURRING_OCCURRENCES = 260
 
 function addRecurrenceStep(base: Date, recurrence: string, step: number) {
   const next = new Date(base)
@@ -60,6 +60,8 @@ export default defineEventHandler(async (event) => {
     const recurrence = ['DAILY', 'WEEKLY', 'MONTHLY'].includes(recurrenceInput)
       ? recurrenceInput
       : 'NONE'
+    const recurrenceEndDateInput =
+      typeof body?.recurrenceEndDate === 'string' ? body.recurrenceEndDate.trim() : ''
     const seriesId = recurrence === 'NONE' ? null : randomUUID()
 
     if (!clientId || !date || !startTime || !endTime) {
@@ -87,6 +89,36 @@ export default defineEventHandler(async (event) => {
         statusCode: 400,
         statusMessage: 'Cannot create events in the past',
       })
+    }
+
+    let occurrences = 1
+    if (recurrence !== 'NONE') {
+      if (!recurrenceEndDateInput) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: 'Recurrence end date is required for recurring sessions',
+        })
+      }
+      const recurrenceEnd = new Date(`${recurrenceEndDateInput}T23:59:59.999`)
+      if (Number.isNaN(recurrenceEnd.getTime())) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: 'Invalid recurrence end date',
+        })
+      }
+      if (recurrenceEnd < start) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: 'Recurrence end date must be on or after start date',
+        })
+      }
+      let count = 0
+      for (let i = 0; i < MAX_RECURRING_OCCURRENCES; i += 1) {
+        const next = addRecurrenceStep(start, recurrence, i)
+        if (next > recurrenceEnd) break
+        count += 1
+      }
+      occurrences = count
     }
 
     const parsedProvider = parseVideoProviderInput(videoProvider) as VideoConferenceProvider | null
@@ -134,7 +166,6 @@ export default defineEventHandler(async (event) => {
       .map((a) => a.sessionNumber)
 
     const usedSessionNumbers = [...activeSessionNumbers]
-    const occurrences = recurrence === 'NONE' ? 1 : RECURRING_OCCURRENCE_COUNT
     const appointmentsToCreate: Array<{
       clientId: string
       adminId: string
