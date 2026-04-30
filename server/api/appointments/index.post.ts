@@ -4,6 +4,7 @@ import { prisma } from '../../utils/prisma'
 import { readBody, createError, defineEventHandler } from 'h3'
 import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/video-conference'
 import type { VideoConferenceProvider } from '../../../prisma/generated/enums'
+import { randomUUID } from 'node:crypto'
 
 function sanitizeNamePart(part: string | null | undefined) {
   const normalized = (part ?? '').trim().replace(/\s+/g, '_')
@@ -27,6 +28,25 @@ function nextAvailableNumber(used: number[]) {
   return candidate
 }
 
+const RECURRING_OCCURRENCE_COUNT = 12
+
+function addRecurrenceStep(base: Date, recurrence: string, step: number) {
+  const next = new Date(base)
+  if (recurrence === 'DAILY') {
+    next.setDate(next.getDate() + step)
+    return next
+  }
+  if (recurrence === 'WEEKLY') {
+    next.setDate(next.getDate() + step * 7)
+    return next
+  }
+  if (recurrence === 'MONTHLY') {
+    next.setMonth(next.getMonth() + step)
+    return next
+  }
+  return next
+}
+
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event)
@@ -35,6 +55,12 @@ export default defineEventHandler(async (event) => {
     const adminId = user.id
 
     const { clientId, description, date, startTime, endTime, videoProvider, videoJoinUrl } = body
+
+    const recurrenceInput = typeof body?.recurrence === 'string' ? body.recurrence.trim() : ''
+    const recurrence = ['DAILY', 'WEEKLY', 'MONTHLY'].includes(recurrenceInput)
+      ? recurrenceInput
+      : 'NONE'
+    const seriesId = recurrence === 'NONE' ? null : randomUUID()
 
     if (!clientId || !date || !startTime || !endTime) {
       throw createError({
@@ -107,46 +133,83 @@ export default defineEventHandler(async (event) => {
       })
       .map((a) => a.sessionNumber)
 
-    const sessionNumber = nextAvailableNumber(activeSessionNumbers)
-    const sessionName = deriveSessionName(clientUser.name, sessionNumber)
+    const usedSessionNumbers = [...activeSessionNumbers]
+    const occurrences = recurrence === 'NONE' ? 1 : RECURRING_OCCURRENCE_COUNT
+    const appointmentsToCreate: Array<{
+      clientId: string
+      adminId: string
+      title: string
+      sessionName: string
+      sessionNumber: number
+      description: string | null
+      startTime: Date
+      endTime: Date
+      status: string
+      seriesId: string | null
+      recurrence: string
+      videoProvider: VideoConferenceProvider | null
+      videoJoinUrl: string | null
+    }> = []
 
-    const appointment = await prisma.appointment.create({
-      data: {
+    for (let i = 0; i < occurrences; i += 1) {
+      const nextSessionNumber = nextAvailableNumber(usedSessionNumbers)
+      usedSessionNumbers.push(nextSessionNumber)
+      const sessionName = deriveSessionName(clientUser.name, nextSessionNumber)
+      appointmentsToCreate.push({
         clientId,
         adminId,
         title: sessionName,
         sessionName,
-        sessionNumber,
-        description,
-        startTime: start,
-        endTime: end,
+        sessionNumber: nextSessionNumber,
+        description: description ?? null,
+        startTime: addRecurrenceStep(start, recurrence, i),
+        endTime: addRecurrenceStep(end, recurrence, i),
         status: 'SCHEDULED',
+        seriesId,
+        recurrence,
         videoProvider: parsedProvider ?? null,
         videoJoinUrl: normalizedJoin ?? null,
-      },
-    })
+      })
+    }
 
     const clientRow = await prisma.client.findUnique({
       where: { userId: clientId },
       select: { id: true },
     })
 
-    if (clientRow) {
-      await prisma.sessionNote.create({
-        data: {
-          clientId: clientRow.id,
-          appointmentId: appointment.id,
-          sessionName,
-          sessionNumber,
-          content: '',
-          attendanceStatus: 'show',
-        },
-      })
-    }
+    const createdAppointments = await prisma.$transaction(async (tx) => {
+      const created: Array<{ id: string; sessionName: string; sessionNumber: number }> = []
+      for (const appointmentData of appointmentsToCreate) {
+        const appointment = await tx.appointment.create({ data: appointmentData })
+        created.push({
+          id: appointment.id,
+          sessionName: appointment.sessionName,
+          sessionNumber: appointment.sessionNumber,
+        })
+      }
+
+      if (clientRow) {
+        for (const createdAppointment of created) {
+          await tx.sessionNote.create({
+            data: {
+              clientId: clientRow.id,
+              appointmentId: createdAppointment.id,
+              sessionName: createdAppointment.sessionName,
+              sessionNumber: createdAppointment.sessionNumber,
+              content: '',
+              attendanceStatus: 'show',
+            },
+          })
+        }
+      }
+
+      return created
+    })
 
     return {
       success: true,
-      appointment,
+      appointment: createdAppointments[0] ?? null,
+      createdCount: createdAppointments.length,
     }
   } catch (error: any) {
     if (error && typeof error === 'object' && 'statusCode' in error) {

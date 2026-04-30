@@ -454,6 +454,7 @@
     },
     height: 'auto',
     eventClick: onEventClick,
+    dateClick: onDateClick,
   })
 
   function onEventClick(info: any) {
@@ -684,18 +685,33 @@
       }))
   )
 
+  const searchableClientOptions = computed(() =>
+    clientOptions.value.map((option) => ({
+      label: option.label,
+      value: option.value,
+    }))
+  )
+
   const selectedClientName = computed(() => {
     const name = selectedEvent.value?.clientName
     console.log('selectedClientName:', name)
     return name || 'Unknown Client'
   })
 
-  function openCreateModal() {
+  function formatDateForInput(date: Date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  }
+
+  function formatTimeForInput(date: Date) {
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  }
+
+  function openCreateModal(prefill?: { date?: Date; startDate?: Date; endDate?: Date }) {
     form.clientId = ''
     form.description = ''
-    form.date = ''
-    form.startTime = ''
-    form.endTime = ''
+    form.date = prefill?.date ? formatDateForInput(prefill.date) : ''
+    form.startTime = prefill?.startDate ? formatTimeForInput(prefill.startDate) : ''
+    form.endTime = prefill?.endDate ? formatTimeForInput(prefill.endDate) : ''
     form.includeVideo = false
     form.videoProvider = ''
     form.videoJoinUrl = ''
@@ -708,6 +724,22 @@
     isCreateModalOpen.value = false
     createTimeRangeError.value = ''
     createModalError.value = ''
+  }
+
+  function onDateClick(info: any) {
+    if (!isAdmin.value) return
+    const start = new Date(info.date)
+    const viewType = info.view?.type ?? ''
+    const isMonthView = viewType.includes('Month')
+
+    if (isMonthView) {
+      openCreateModal({ date: start })
+      return
+    }
+
+    const end = new Date(start)
+    end.setMinutes(end.getMinutes() + 60)
+    openCreateModal({ date: start, startDate: start, endDate: end })
   }
 
   async function createSession() {
@@ -874,12 +906,16 @@
         </div>
         <div>
           <label class="mb-2 block text-sm font-medium" for="client">Client</label>
-          <select id="client" v-model="form.clientId" class="w-full rounded border px-2 py-1">
-            <option value="" disabled>Select a client</option>
-            <option v-for="opt in clientOptions" :key="opt.value" :value="opt.value">
-              {{ opt.label }}
-            </option>
-          </select>
+          <USelectMenu
+            id="client"
+            v-model="form.clientId"
+            value-key="value"
+            :items="searchableClientOptions"
+            :search-input="{ placeholder: 'Search clients...' }"
+            searchable
+            placeholder="Select a client"
+            class="w-full"
+          />
           <p v-if="clientOptions.length === 0" class="mt-1 text-xs text-gray-500">
             No clients available. Make sure clients are registered in the system.
           </p>
