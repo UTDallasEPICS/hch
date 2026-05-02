@@ -5,6 +5,13 @@ enum VideoConferenceProvider {
   OTHER
 }
 
+/** Client-requested session times (not booked until staff accepts). */
+enum AppointmentScheduleRequestStatus {
+  PENDING
+  ACCEPTED
+  DENIED
+}
+
 model Appointment {
   id          String   @id @default(cuid())
   
@@ -34,9 +41,34 @@ model Appointment {
   admin       User     @relation("AdminAppointments", fields: [adminId], references: [id], onDelete: Restrict)
   
   sessionNotes    SessionNote[]            @relation("AppointmentSessionNotes")
+  originScheduleRequest AppointmentScheduleRequest?
 
   @@index([clientId])
   @@index([adminId])
   @@unique([clientId, sessionNumber])
   @@map("Appointment")
+}
+
+model AppointmentScheduleRequest {
+  id                   String                           @id @default(cuid())
+  clientId             String
+  requestedStartTime   DateTime
+  requestedEndTime     DateTime
+  message              String?
+  status               AppointmentScheduleRequestStatus   @default(PENDING)
+  decidedAt            DateTime?
+  decidedByUserId      String?
+  staffResponseNote    String?
+  createdAppointmentId String?                          @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client             User          @relation("ClientScheduleRequests", fields: [clientId], references: [id], onDelete: Cascade)
+  decidedBy          User?         @relation("StaffScheduleRequestDecisions", fields: [decidedByUserId], references: [id], onDelete: SetNull)
+  createdAppointment Appointment?  @relation(fields: [createdAppointmentId], references: [id], onDelete: SetNull)
+
+  @@index([clientId])
+  @@index([status])
+  @@map("appointment_schedule_request")
 }
