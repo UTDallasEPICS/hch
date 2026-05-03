@@ -55,6 +55,16 @@ export default defineEventHandler(async (event) => {
     ? { status: 'PENDING' as const, client: { clinicianUserId: session.user.id } }
     : { status: 'PENDING' as const }
 
+  /** Schedule requests use clientId → User; scope by User.client (profile) → clinician. */
+  const pendingScheduleRequestWhere = isClinicianViewer
+    ? {
+        status: 'PENDING' as const,
+        client: {
+          client: { clinicianUserId: session.user.id },
+        },
+      }
+    : { status: 'PENDING' as const }
+
   // Pending note approvals: only admins can act on this queue, so clinicians
   // see 0 (their own CLINICIAN_SIGNED notes aren't "pending approval" to them).
   const pendingNoteApprovalsWhere = isClinicianViewer
@@ -65,6 +75,7 @@ export default defineEventHandler(async (event) => {
     userCount,
     clientCount,
     pendingSessionNotesRequests,
+    pendingAppointmentScheduleRequests,
     pendingNoteApprovals,
     unreadNotifications,
     viewerClient,
@@ -74,6 +85,7 @@ export default defineEventHandler(async (event) => {
       : prisma.user.count(),
     prisma.client.count({ where: clientWhere }),
     prisma.sessionNotesRequest.count({ where: pendingWhere }),
+    prisma.appointmentScheduleRequest.count({ where: pendingScheduleRequestWhere }),
     prisma.sessionNote.count({ where: pendingNoteApprovalsWhere }),
     prisma.notification.count({
       where: { userId: session.user.id, readAt: null },
@@ -94,6 +106,7 @@ export default defineEventHandler(async (event) => {
     userCount,
     clientCount,
     pendingSessionNotesRequests,
+    pendingAppointmentScheduleRequests,
     pendingNoteApprovals,
     unreadNotifications,
     displayName,

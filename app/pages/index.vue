@@ -15,6 +15,7 @@
     userCount: number
     clientCount: number
     pendingSessionNotesRequests: number
+    pendingAppointmentScheduleRequests: number
     pendingNoteApprovals: number
     unreadNotifications: number
     displayName: string
@@ -133,7 +134,7 @@
     </div>
 
     <template v-else-if="adminStats">
-      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div
           class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
         >
@@ -154,6 +155,17 @@
           </div>
           <p class="mt-2 text-3xl font-semibold text-gray-900 tabular-nums dark:text-white">
             {{ adminStats.pendingSessionNotesRequests }}
+          </p>
+        </div>
+        <div
+          class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+        >
+          <div class="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
+            <UIcon name="i-heroicons-calendar-days-20-solid" class="h-5 w-5" />
+            Session time requests
+          </div>
+          <p class="mt-2 text-3xl font-semibold text-gray-900 tabular-nums dark:text-white">
+            {{ adminStats.pendingAppointmentScheduleRequests ?? 0 }}
           </p>
         </div>
         <NuxtLink
@@ -209,6 +221,23 @@
               {{ adminStats.pendingSessionNotesRequests }} pending
             </UBadge>
           </div>
+          <div class="inline-flex flex-wrap items-center gap-2">
+            <UButton
+              to="/clients/appointment-schedule-requests"
+              label="Session time requests"
+              color="primary"
+              variant="soft"
+              icon="i-heroicons-calendar-days-20-solid"
+            />
+            <UBadge
+              v-if="(adminStats.pendingAppointmentScheduleRequests ?? 0) > 0"
+              color="warning"
+              variant="subtle"
+              size="sm"
+            >
+              {{ adminStats.pendingAppointmentScheduleRequests ?? 0 }} pending
+            </UBadge>
+          </div>
           <UButton
             to="/notes-test"
             label="Notes"
@@ -260,6 +289,7 @@
       :pending="pending"
       :appointments="clientStats?.upcomingAppointments ?? []"
     />
+    <ClientScheduleRequestsSection v-if="!error && clientStats?.clinicalStatus != null" />
     <ClientSessionNotesSection />
   </main>
 </template>

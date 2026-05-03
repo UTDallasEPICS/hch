@@ -4,28 +4,7 @@ import { prisma } from '../../utils/prisma'
 import { readBody, createError, defineEventHandler } from 'h3'
 import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/video-conference'
 import type { VideoConferenceProvider } from '../../../prisma/generated/enums'
-
-function sanitizeNamePart(part: string | null | undefined) {
-  const normalized = (part ?? '').trim().replace(/\s+/g, '_')
-  return normalized.replace(/[^A-Za-z0-9_]/g, '')
-}
-
-function deriveSessionName(fullName: string | null | undefined, sessionNumber: number) {
-  const raw = (fullName ?? '').trim()
-  const pieces = raw.split(/\s+/).filter(Boolean)
-
-  const first = sanitizeNamePart(pieces[0] ?? 'Client') || 'Client'
-  const last = sanitizeNamePart(pieces.slice(1).join('_') || 'Unknown') || 'Unknown'
-
-  return `${first}_${last}_${String(sessionNumber).padStart(2, '0')}`
-}
-
-function nextAvailableNumber(used: number[]) {
-  const usedSet = new Set(used.filter((n) => Number.isInteger(n) && n > 0))
-  let candidate = 1
-  while (usedSet.has(candidate)) candidate += 1
-  return candidate
-}
+import { createStaffAppointment } from '../../utils/create-staff-appointment'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -82,66 +61,25 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    const [clientUser, existingAppointments] = await Promise.all([
-      prisma.user.findUnique({
-        where: { id: clientId },
-        select: { name: true, role: true },
-      }),
-      prisma.appointment.findMany({
-        where: { clientId },
-        select: { sessionNumber: true, status: true },
-      }),
-    ])
-
-    if (!clientUser || clientUser.role !== 'CLIENT') {
-      throw createError({
-        statusCode: 400,
-        statusMessage: 'Invalid client ID',
-      })
-    }
-
-    const activeSessionNumbers = existingAppointments
-      .filter((a) => {
-        const normalized = String(a.status ?? '').toUpperCase()
-        return normalized !== 'CANCELED' && normalized !== 'CANCELLED'
-      })
-      .map((a) => a.sessionNumber)
-
-    const sessionNumber = nextAvailableNumber(activeSessionNumbers)
-    const sessionName = deriveSessionName(clientUser.name, sessionNumber)
-
-    const appointment = await prisma.appointment.create({
-      data: {
-        clientId,
-        adminId,
-        title: sessionName,
-        sessionName,
-        sessionNumber,
-        description,
+    let appointment
+    try {
+      appointment = await createStaffAppointment(prisma, {
+        staffUserId: adminId,
+        clientUserId: clientId,
         startTime: start,
         endTime: end,
-        status: 'SCHEDULED',
+        description,
         videoProvider: parsedProvider ?? null,
         videoJoinUrl: normalizedJoin ?? null,
-      },
-    })
-
-    const clientRow = await prisma.client.findUnique({
-      where: { userId: clientId },
-      select: { id: true },
-    })
-
-    if (clientRow) {
-      await prisma.sessionNote.create({
-        data: {
-          clientId: clientRow.id,
-          appointmentId: appointment.id,
-          sessionName,
-          sessionNumber,
-          content: '',
-          attendanceStatus: 'show',
-        },
       })
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'INVALID_CLIENT') {
+        throw createError({
+          statusCode: 400,
+          statusMessage: 'Invalid client ID',
+        })
+      }
+      throw e
     }
 
     return {
