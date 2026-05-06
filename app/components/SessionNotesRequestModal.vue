@@ -17,6 +17,8 @@
   }>()
 
   const toast = useToast()
+  const colorMode = useColorMode()
+  const signaturePenColor = computed(() => (colorMode.value === 'dark' ? '#ffffff' : '#000000'))
 
   const requestKind = ref<'FULL' | 'SUMMARY'>('FULL')
   const declarationAccepted = ref(false)
@@ -50,6 +52,11 @@
   const isDrawing = ref(false)
   const sigCtx = ref<CanvasRenderingContext2D | null>(null)
 
+  watch(signaturePenColor, (color) => {
+    const ctx = sigCtx.value
+    if (ctx) ctx.strokeStyle = color
+  })
+
   function initSignatureCanvas() {
     const canvas = sigCanvasRef.value
     if (!canvas) return
@@ -67,7 +74,7 @@
     ctx.clearRect(0, 0, rect.width, rect.height)
 
     sigCtx.value = ctx
-    ctx.strokeStyle = '#111827'
+    ctx.strokeStyle = signaturePenColor.value
     ctx.lineWidth = 2
     ctx.lineCap = 'round'
   }
