@@ -103,8 +103,8 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const attendanceStatus = body.attendanceStatus ?? 'show'
-  const hasAttendance = attendanceStatus === 'show'
+  const attendanceStatus = body.attendanceStatus ?? ''
+  const hasAttendance = attendanceStatus.length > 0
 
   const dbUser = await prisma.user.findFirst({
     where: { id: clientUserId, role: 'CLIENT' },
