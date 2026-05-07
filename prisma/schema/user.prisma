@@ -36,6 +36,8 @@ model User {
   sessionNotesRequestsDecided           SessionNotesRequest[]
   appointmentsAsClient                  Appointment[]                          @relation("ClientAppointments")
   appointmentsAsAdmin                   Appointment[]                          @relation("AdminAppointments")
+  clientScheduleRequests                AppointmentScheduleRequest[]           @relation("ClientScheduleRequests")
+  staffScheduleRequestDecisions         AppointmentScheduleRequest[]           @relation("StaffScheduleRequestDecisions")
   physicianStatementForm                PhysicianStatementForm?
   releaseOfInformationAuthorizationForm ReleaseOfInformationAuthorizationForm?
   clientFormScoreHistory              ClientFormScoreHistory[]

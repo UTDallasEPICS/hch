@@ -630,14 +630,11 @@
             Client Tasks
           </h3>
           <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-            Click a form to view the client's answers. For ACE, GAD-7, PHQ-9, and PCL-5, use Email link
-            to send a portal link and clear their saved answers so they start fresh. Application,
-            physician statement, and ROI cannot be sent from here.
+            Click a form to view the client's answers. For ACE, GAD-7, PHQ-9, and PCL-5, use Email
+            link to send a portal link and clear their saved answers so they start fresh.
+            Application, physician statement, and ROI cannot be sent from here.
           </p>
-          <div
-            v-if="incompleteSendableKeys.length"
-            class="mb-3 flex flex-wrap items-center gap-2"
-          >
+          <div v-if="incompleteSendableKeys.length" class="mb-3 flex flex-wrap items-center gap-2">
             <UButton
               size="xs"
               color="primary"
@@ -656,7 +653,7 @@
               class="rounded border border-gray-200 dark:border-gray-700"
             >
               <div
-                class="flex w-full flex-wrap items-center gap-2 border-b border-gray-100 px-3 py-2 dark:border-gray-800 sm:flex-nowrap sm:justify-between"
+                class="flex w-full flex-wrap items-center gap-2 border-b border-gray-100 px-3 py-2 sm:flex-nowrap sm:justify-between dark:border-gray-800"
               >
                 <button
                   type="button"
@@ -681,7 +678,10 @@
                     icon="i-heroicons-envelope"
                     label="Email link"
                     :loading="sendingFormKey === task.key"
-                    :disabled="sendingIncompleteLinks || (sendingFormKey !== null && sendingFormKey !== task.key)"
+                    :disabled="
+                      sendingIncompleteLinks ||
+                      (sendingFormKey !== null && sendingFormKey !== task.key)
+                    "
                     @click.stop="sendFormLink(task.key)"
                   />
                   <button
@@ -737,7 +737,10 @@
                 </div>
                 <template v-if="!isClinicalFormKey(task.key) || expandedFormSubTab === 'answers'">
                   <div v-if="formAnswersLoading" class="flex justify-center py-4">
-                    <UIcon name="i-heroicons-arrow-path" class="h-6 w-6 animate-spin text-gray-400" />
+                    <UIcon
+                      name="i-heroicons-arrow-path"
+                      class="h-6 w-6 animate-spin text-gray-400"
+                    />
                   </div>
                   <div v-else-if="formAnswers" class="space-y-3">
                     <div
@@ -795,19 +798,14 @@
               <p class="text-sm whitespace-pre-wrap">{{ note.content }}</p>
               <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p class="text-xs font-semibold text-primary-600 dark:text-primary-400">
+                  <p class="text-primary-600 dark:text-primary-400 text-xs font-semibold">
                     {{ note.sessionName }}
                   </p>
-                  <p class="text-xs text-gray-500">{{ new Date(note.createdAt).toLocaleString() }}</p>
+                  <p class="text-xs text-gray-500">
+                    {{ new Date(note.createdAt).toLocaleString() }}
+                  </p>
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
-                  <NuxtLink
-                    :to="`/clients/${clientId}/notes/${note.id}`"
-                    target="_blank"
-                    class="text-primary-600 hover:text-primary-700 dark:text-primary-400 text-xs font-medium"
-                  >
-                    Open in new tab
-                  </NuxtLink>
                   <NuxtLink
                     :to="`/clients/${clientId}/notes-editor?focus=${encodeURIComponent(note.id)}`"
                     class="text-primary-600 hover:text-primary-700 dark:text-primary-400 text-xs font-medium"
