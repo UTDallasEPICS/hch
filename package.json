@@ -48,14 +48,6 @@
     "tsx": "^4.21.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": [
-      "@parcel/watcher",
-      "@prisma/engines",
-      "better-sqlite3",
-      "esbuild",
-      "prisma",
-      "vue-demi"
-    ],
     "overrides": {
       "prosemirror-model": "^1.22.2",
       "prosemirror-state": "^1.4.3",
