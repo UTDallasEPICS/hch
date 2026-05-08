@@ -65,6 +65,8 @@
     videoProvider: string | null
     videoJoinUrl: string | null
     assignedClinicianName: string | null
+    seriesId: string | null
+    recurrence: string
   }
 
   type SelectedCalendarEvent = {
@@ -82,6 +84,7 @@
     videoJoinUrl: string | null
     assignedClinicianName: string | null
     seriesId?: string | null
+    recurrence?: string
   }
 
   const { data: clinicians } = await useFetch<ClinicianOption[]>('/api/clinicians', {
@@ -146,6 +149,8 @@
           videoProvider: e.videoProvider,
           videoJoinUrl: e.videoJoinUrl,
           assignedClinicianName: e.assignedClinicianName,
+          seriesId: e.seriesId,
+          recurrence: e.recurrence,
         },
       }))
     } catch (err) {
@@ -308,6 +313,8 @@
   const isViewModalOpen = ref(false)
   const selectedEvent = ref<SelectedCalendarEvent | null>(null)
   const isEditMode = ref(false)
+  const editType = ref<'ONE' | 'FUTURE' | 'ALL' | null>(null)
+  const isEditTypeModalOpen = ref(false)
   const isDeleteConfirming = ref(false)
   const mobileView = ref('week')
   const currentRangeLabel = ref('')
@@ -349,7 +356,10 @@
     includeVideo: false,
     videoProvider: '' as '' | 'GOOGLE_MEET' | 'ZOOM' | 'OTHER',
     videoJoinUrl: '',
+    recurrence: '' as '' | 'DAILY' | 'WEEKLY' | 'MONTHLY',
+    recurrenceEndDate: '',
   })
+  const editRecurrenceEndDateTouched = ref(false)
   const createTimeRangeError = ref('')
   const editTimeRangeError = ref('')
   const createModalError = ref('')
@@ -454,6 +464,7 @@
     },
     height: 'auto',
     eventClick: onEventClick,
+    dateClick: onDateClick,
   })
 
   function onEventClick(info: any) {
@@ -483,6 +494,7 @@
       description: ext.description,
       status: ext.status,
       seriesId: ext.seriesId ?? null,
+      recurrence: ext.recurrence ?? 'NONE',
 
       videoProvider: ext.videoProvider ?? null,
       videoJoinUrl: ext.videoJoinUrl ?? null,
@@ -508,22 +520,39 @@
     editForm.videoProvider = editForm.includeVideo
       ? (event.videoProvider as typeof editForm.videoProvider) || 'OTHER'
       : ''
+    editForm.recurrence =
+      event.recurrence && ['DAILY', 'WEEKLY', 'MONTHLY'].includes(event.recurrence)
+        ? (event.recurrence as typeof editForm.recurrence)
+        : ''
+    editForm.recurrenceEndDate = getSeriesEndDate(event.seriesId, event.start)
+    editRecurrenceEndDateTouched.value = false
     editTimeRangeError.value = ''
     editModalError.value = ''
+    editType.value = null
   }
 
   function cancelEdit() {
     isEditMode.value = false
     editTimeRangeError.value = ''
     editModalError.value = ''
+    isEditTypeModalOpen.value = false
+    editType.value = null
   }
 
-  async function saveEdit() {
+  async function submitEdit(type: 'ONE' | 'FUTURE' | 'ALL') {
     editModalError.value = ''
     const event = selectedEvent.value
     if (!event) return
     if (editForm.includeVideo && !editForm.videoJoinUrl?.trim()) {
       setEditModalError('Add a video link or uncheck Video.')
+      return
+    }
+    if (editForm.recurrence && !editForm.recurrenceEndDate) {
+      setEditModalError('Please set a recurrence end date.')
+      return
+    }
+    if (editForm.recurrence && editForm.recurrenceEndDate < editForm.date) {
+      setEditModalError('Recurrence end date must be on or after the session date.')
       return
     }
     editTimeRangeError.value = getTimeRangeError(
@@ -546,11 +575,16 @@
       await $fetch(`/api/appointments/${event.id}`, {
         method: 'PUT',
         body: {
+          type,
+          seriesId: event.seriesId || null,
+          startTime: event.start.toISOString(),
           id: event.id,
           description: editForm.description,
           date: editForm.date,
-          startTime: editForm.startTime,
+          startTimeOfDay: editForm.startTime,
           endTime: editForm.endTime,
+          recurrence: editForm.recurrence || 'NONE',
+          recurrenceEndDate: editForm.recurrence ? editForm.recurrenceEndDate : null,
           videoProvider: editForm.includeVideo ? editForm.videoProvider || 'OTHER' : null,
           videoJoinUrl: editForm.includeVideo ? editForm.videoJoinUrl.trim() || null : null,
         },
@@ -563,6 +597,8 @@
 
       isEditMode.value = false
       isViewModalOpen.value = false
+      isEditTypeModalOpen.value = false
+      editType.value = null
 
       await loadEvents()
     } catch (error) {
@@ -578,6 +614,33 @@
         color: 'error',
       })
     }
+  }
+
+  async function saveEdit() {
+    const event = selectedEvent.value
+    if (!event) return
+
+    if (event.seriesId) {
+      isViewModalOpen.value = false
+      setTimeout(() => {
+        isEditTypeModalOpen.value = true
+      }, 100)
+      return
+    }
+
+    await submitEdit('ONE')
+  }
+
+  async function selectEditType(type: 'ONE' | 'FUTURE' | 'ALL') {
+    editType.value = type
+    isEditTypeModalOpen.value = false
+    await submitEdit(type)
+  }
+
+  function cancelEditTypeSelection() {
+    isEditTypeModalOpen.value = false
+    isViewModalOpen.value = true
+    isEditMode.value = true
   }
 
   function onDeleteClick() {
@@ -646,10 +709,12 @@
     startTime: '',
     endTime: '',
     recurrence: '',
+    recurrenceEndDate: '',
     includeVideo: false,
     videoProvider: '' as '' | 'GOOGLE_MEET' | 'ZOOM' | 'OTHER',
     videoJoinUrl: '',
   })
+  const recurrenceEndDateTouched = ref(false)
 
   watch(
     () => form.includeVideo,
@@ -684,21 +749,56 @@
       }))
   )
 
+  const searchableClientOptions = computed(() =>
+    clientOptions.value.map((option) => ({
+      label: option.label,
+      value: option.value,
+    }))
+  )
+
   const selectedClientName = computed(() => {
     const name = selectedEvent.value?.clientName
     console.log('selectedClientName:', name)
     return name || 'Unknown Client'
   })
 
-  function openCreateModal() {
+  function formatDateForInput(date: Date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  }
+
+  function formatTimeForInput(date: Date) {
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  }
+
+  function getSeriesEndDate(seriesId: string | null | undefined, fallback: Date) {
+    if (!seriesId) return formatDateForInput(fallback)
+    const relatedEvents = events.value.filter(
+      (calendarEvent) => calendarEvent?.extendedProps?.seriesId === seriesId
+    )
+    if (relatedEvents.length === 0) return formatDateForInput(fallback)
+    const maxStart = relatedEvents.reduce((maxDate: Date, calendarEvent) => {
+      const candidate = new Date(calendarEvent.start)
+      return candidate > maxDate ? candidate : maxDate
+    }, new Date(fallback))
+    return formatDateForInput(maxStart)
+  }
+
+  function openCreateModal(prefill?: { date?: Date; startDate?: Date; endDate?: Date }) {
+    const firstDate = prefill?.date ? new Date(prefill.date) : null
+    if (firstDate) {
+      firstDate.setDate(firstDate.getDate() + 7 * 26)
+    }
     form.clientId = ''
     form.description = ''
-    form.date = ''
-    form.startTime = ''
-    form.endTime = ''
+    form.date = prefill?.date ? formatDateForInput(prefill.date) : ''
+    form.startTime = prefill?.startDate ? formatTimeForInput(prefill.startDate) : ''
+    form.endTime = prefill?.endDate ? formatTimeForInput(prefill.endDate) : ''
+    form.recurrence = ''
+    form.recurrenceEndDate = firstDate ? formatDateForInput(firstDate) : ''
     form.includeVideo = false
     form.videoProvider = ''
     form.videoJoinUrl = ''
+    recurrenceEndDateTouched.value = false
     createTimeRangeError.value = ''
     createModalError.value = ''
     isCreateModalOpen.value = true
@@ -708,6 +808,22 @@
     isCreateModalOpen.value = false
     createTimeRangeError.value = ''
     createModalError.value = ''
+  }
+
+  function onDateClick(info: any) {
+    if (!isAdmin.value) return
+    const start = new Date(info.date)
+    const viewType = info.view?.type ?? ''
+    const isMonthView = viewType.includes('Month')
+
+    if (isMonthView) {
+      openCreateModal({ date: start })
+      return
+    }
+
+    const end = new Date(start)
+    end.setMinutes(end.getMinutes() + 60)
+    openCreateModal({ date: start, startDate: start, endDate: end })
   }
 
   async function createSession() {
@@ -725,6 +841,14 @@
       })
       return
     }
+    if (form.recurrence && !form.recurrenceEndDate) {
+      setCreateModalError('Please set a recurrence end date.')
+      return
+    }
+    if (form.recurrence && form.recurrenceEndDate < form.date) {
+      setCreateModalError('Recurrence end date must be on or after the session date.')
+      return
+    }
     console.log('sending appointment', { ...form })
     try {
       await $fetch('/api/appointments', {
@@ -737,6 +861,7 @@
           endTime: form.endTime,
           isRecurring: !!form.recurrence,
           recurrence: form.recurrence || null,
+          recurrenceEndDate: form.recurrence ? form.recurrenceEndDate : null,
           videoProvider: form.includeVideo ? form.videoProvider || 'OTHER' : undefined,
           videoJoinUrl: form.includeVideo ? form.videoJoinUrl.trim() : undefined,
         },
@@ -774,12 +899,51 @@
   )
 
   watch(
+    () => form.date,
+    (date) => {
+      if (!date || recurrenceEndDateTouched.value) return
+      const start = new Date(`${date}T00:00:00`)
+      if (Number.isNaN(start.getTime())) return
+      start.setDate(start.getDate() + 7 * 26)
+      form.recurrenceEndDate = formatDateForInput(start)
+    }
+  )
+
+  watch(
     () => [editForm.date, editForm.startTime, editForm.endTime] as const,
     ([date, startTime, endTime]) => {
       if (!isEditMode.value) return
       editTimeRangeError.value = getTimeRangeError(date, startTime, endTime, {
         allowPastStart: true,
       })
+    }
+  )
+
+  watch(
+    () => editForm.date,
+    (date) => {
+      if (!isEditMode.value || !editForm.recurrence || editRecurrenceEndDateTouched.value) return
+      const start = new Date(`${date}T00:00:00`)
+      if (Number.isNaN(start.getTime())) return
+      start.setDate(start.getDate() + 7 * 26)
+      editForm.recurrenceEndDate = formatDateForInput(start)
+    }
+  )
+
+  watch(
+    () => editForm.recurrence,
+    (recurrence) => {
+      if (!isEditMode.value || editRecurrenceEndDateTouched.value) return
+      if (!recurrence) {
+        editForm.recurrenceEndDate = ''
+        return
+      }
+      if (!editForm.recurrenceEndDate) {
+        const start = new Date(`${editForm.date}T00:00:00`)
+        if (Number.isNaN(start.getTime())) return
+        start.setDate(start.getDate() + 7 * 26)
+        editForm.recurrenceEndDate = formatDateForInput(start)
+      }
     }
   )
 </script>
@@ -874,12 +1038,16 @@
         </div>
         <div>
           <label class="mb-2 block text-sm font-medium" for="client">Client</label>
-          <select id="client" v-model="form.clientId" class="w-full rounded border px-2 py-1">
-            <option value="" disabled>Select a client</option>
-            <option v-for="opt in clientOptions" :key="opt.value" :value="opt.value">
-              {{ opt.label }}
-            </option>
-          </select>
+          <USelectMenu
+            id="client"
+            v-model="form.clientId"
+            value-key="value"
+            :items="searchableClientOptions"
+            :search-input="{ placeholder: 'Search clients...' }"
+            searchable
+            placeholder="Select a client"
+            class="w-full"
+          />
           <p v-if="clientOptions.length === 0" class="mt-1 text-xs text-gray-500">
             No clients available. Make sure clients are registered in the system.
           </p>
@@ -952,6 +1120,17 @@
           <option value="WEEKLY">Weekly</option>
           <option value="MONTHLY">Monthly</option>
         </select>
+        <div v-if="form.recurrence">
+          <label class="mb-2 block text-sm font-medium" for="create-recurrence-end-date">
+            Recurrence end date
+          </label>
+          <UInput
+            id="create-recurrence-end-date"
+            v-model="form.recurrenceEndDate"
+            type="date"
+            @input="recurrenceEndDateTouched = true"
+          />
+        </div>
         <div class="flex justify-end gap-3 pt-2">
           <UButton variant="outline" @click="closeCreateModal"> Cancel </UButton>
 
@@ -975,6 +1154,18 @@
         <UButton @click="selectDeleteType('ONE')">This event only</UButton>
         <UButton @click="selectDeleteType('FUTURE')">This and future events</UButton>
         <UButton @click="selectDeleteType('ALL')">All events in series</UButton>
+      </div>
+    </template>
+  </UModal>
+
+  <UModal v-model:open="isEditTypeModalOpen">
+    <template #title>Edit Recurring Session</template>
+    <template #content>
+      <div class="flex flex-col gap-3 p-4">
+        <UButton @click="selectEditType('ONE')">This event only</UButton>
+        <UButton @click="selectEditType('FUTURE')">This and future events</UButton>
+        <UButton @click="selectEditType('ALL')">All events in series</UButton>
+        <UButton variant="outline" @click="cancelEditTypeSelection">Cancel</UButton>
       </div>
     </template>
   </UModal>
@@ -1132,6 +1323,26 @@
                 placeholder="https://meet.google.com/..."
               />
             </div>
+          </div>
+          <div>
+            <label class="mb-2 block text-sm font-medium">Recurrence</label>
+            <select v-model="editForm.recurrence" class="w-full rounded border px-2 py-2">
+              <option value="">Does not repeat</option>
+              <option value="DAILY">Daily</option>
+              <option value="WEEKLY">Weekly</option>
+              <option value="MONTHLY">Monthly</option>
+            </select>
+          </div>
+          <div v-if="editForm.recurrence">
+            <label class="mb-2 block text-sm font-medium" for="edit-recurrence-end-date">
+              Recurrence end date
+            </label>
+            <UInput
+              id="edit-recurrence-end-date"
+              v-model="editForm.recurrenceEndDate"
+              type="date"
+              @input="editRecurrenceEndDateTouched = true"
+            />
           </div>
         </div>
 
