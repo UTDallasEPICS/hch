@@ -356,17 +356,26 @@
   const formPanelSubTab = ref<'answers' | 'history'>('answers')
 
   const CLINICAL_FORM_KEYS = new Set(['ace', 'gad', 'phq', 'pcl'])
-  const appointmentOptions = computed(() =>
-    props.appointments
+  const appointmentOptions = computed(() => {
+    const submittedAppointmentIds = new Set(
+      localSessionNotes.value
+        .filter((sn) => sn.status === 'CLINICIAN_SIGNED' || sn.status === 'FULLY_APPROVED')
+        .map((sn) => sn.appointmentId)
+        .filter((id): id is string => !!id)
+    )
+
+    return props.appointments
       .filter((a) => {
         const normalized = String(a.status ?? '').toUpperCase()
-        return normalized !== 'CANCELED' && normalized !== 'CANCELLED'
+        if (normalized === 'CANCELED' || normalized === 'CANCELLED') return false
+        if (submittedAppointmentIds.has(a.id)) return false
+        return true
       })
       .map((a) => ({
         label: `${a.sessionName} (${new Date(a.startTime).toLocaleDateString('en-US')})`,
         value: a.id,
       }))
-  )
+  })
   const appointmentsById = computed(() => {
     const map = new Map<string, { id: string; startTime: string }>()
     for (const a of props.appointments) {
@@ -408,7 +417,7 @@
     canMarkAttendanceOnOrAfterSessionStart(selectedAppointment.value?.startTime ?? null)
   )
   const currentNoteLockMessage = computed(() => {
-    if (!selectedAppointment.value) return 'Select a session to start or edit notes.'
+    if (!selectedAppointment.value) return 'Select a note to edit or create an appointment to start a new note.'
     if (canEditCurrentNote.value) return ''
     const when = selectedAppointment.value?.startTime
       ? new Date(selectedAppointment.value.startTime).toLocaleDateString('en-US')
@@ -421,7 +430,7 @@
     const when = selectedAppointment.value?.startTime
       ? new Date(selectedAppointment.value.startTime).toLocaleString('en-US')
       : 'the session start time'
-    return `Present/absent is locked until ${when}.`
+    return `Present/absent and submit button is locked until ${when}.`
   })
   watch(
     appointmentOptions,
@@ -1697,7 +1706,10 @@
 
               <!-- Attendance Dropdown from stage -->
               <div class="mt-43">
-              <AttendanceDropdown v-model="attendanceStatus" />
+              <AttendanceDropdown
+                v-model="attendanceStatus"
+                :disabled="!canMarkAttendance"
+              />
               </div> 
               </div>
 

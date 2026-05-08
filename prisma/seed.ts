@@ -126,11 +126,13 @@ async function ensureBobBuilderSessionNotes(bobUserId: string, clinicianUserId: 
   return client
 }
 
+
+/*
 async function seedApprovalWorkflowNotes(
   clientId: string,
   clinicianUserId: string,
   adminUserId: string
-) {
+){
   const existing = await prisma.sessionNote.count({ where: { clientId } })
   if (existing > 0) {
     console.log('Session notes already exist; skipping approval-workflow seed.')
@@ -206,6 +208,7 @@ async function seedApprovalWorkflowNotes(
 
   console.log('Seeded 5 session notes across DRAFT / CLINICIAN_SIGNED / FULLY_APPROVED.')
 }
+*/
 
 async function main() {
   console.log('Start seeding...')
@@ -264,8 +267,8 @@ async function main() {
   })
   console.log('Seeded Client: bob@b.com')
 
-  const bobClient = await ensureBobBuilderSessionNotes(bob.id, carl.id)
-  await seedApprovalWorkflowNotes(bobClient.id, carl.id, alice.id)
+  //const bobClient = await ensureBobBuilderSessionNotes(bob.id, carl.id)
+  //await seedApprovalWorkflowNotes(bobClient.id, carl.id, alice.id)
 
   console.log('Seeding finished.')
 }
