@@ -122,6 +122,7 @@ export default defineEventHandler(async (event) => {
     description: a.description,
     status: a.status,
     seriesId: a.seriesId,
+    recurrence: a.recurrence,
     videoProvider: a.videoProvider,
     videoJoinUrl: a.videoJoinUrl,
     assignedClinicianName:
