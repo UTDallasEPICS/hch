@@ -27,3 +27,15 @@ export function requireStaff(event: H3Event) {
   }
   return user
 }
+
+/** Authenticated portal user who is not staff (typical client account). */
+export function requireClientUser(event: H3Event) {
+  const user = requireUser(event)
+  if (event.context.isStaff) {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
+  }
+  if (user.role !== 'CLIENT') {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
+  }
+  return user
+}

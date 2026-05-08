@@ -1,23 +1,47 @@
 <script setup lang="ts">
   import { authClient } from './utils/auth-client'
 
+  type SessionUser = {
+    id: string
+    role?: string | null
+  }
+
   const route = useRoute()
   const colorMode = useColorMode()
   const { data: session } = await authClient.useSession(useFetch)
+  const sessionUser = computed(() => (session.value?.user as SessionUser | null) ?? null)
 
-  const { data: adminData, refresh: refreshAdminData } = await useFetch<{
+  const {
+    data: adminData,
+    refresh: refreshAdminData,
+    clear: clearAdminData,
+  } = await useAsyncData<{
     isAdmin: boolean
     isClinician: boolean
     isStaff: boolean
-  }>('/api/users/me/is-admin', {
-    server: false,
-    default: () => ({ isAdmin: false, isClinician: false, isStaff: false }),
-  })
+  } | null>(
+    'app-admin-role',
+    async () => {
+      if (!sessionUser.value?.id) return null
+      return await $fetch('/api/users/me/is-admin')
+    },
+    {
+      default: () => null,
+    }
+  )
   const isAuthenticated = computed(() => Boolean(session.value?.user))
+  const inferredIsAdmin = computed(() => sessionUser.value?.role === 'ADMIN')
+  const inferredIsStaff = computed(
+    () => inferredIsAdmin.value || sessionUser.value?.role === 'CLINICIAN'
+  )
 
   watch(
-    () => session.value?.user?.id,
-    () => {
+    () => sessionUser.value?.id,
+    (userId) => {
+      if (!userId) {
+        clearAdminData()
+        return
+      }
       refreshAdminData()
     },
     { immediate: true }
@@ -26,12 +50,13 @@
   watch(
     () => route.fullPath,
     () => {
+      if (!sessionUser.value?.id) return
       refreshAdminData()
     }
   )
 
-  const isAdmin = computed(() => adminData.value?.isAdmin ?? false)
-  const isStaff = computed(() => adminData.value?.isStaff ?? false)
+  const isAdmin = computed(() => adminData.value?.isAdmin ?? inferredIsAdmin.value)
+  const isStaff = computed(() => adminData.value?.isStaff ?? inferredIsStaff.value)
 
   const isTasksPage = computed(() => route.path === '/taskPage')
   const isDashboardPage = computed(() => route.path === '/')

@@ -123,6 +123,17 @@
   )
   const pendingNoteRequestCount = computed(() => pendingNoteRequests.value?.length ?? 0)
 
+  type ScheduleQueue = { pending: unknown[]; history: unknown[] }
+  const { data: scheduleRequestQueue } = await useFetch<ScheduleQueue>(
+    '/api/appointment-schedule-requests',
+    {
+      getCachedData: () => undefined,
+    }
+  )
+  const pendingScheduleRequestCount = computed(
+    () => scheduleRequestQueue.value?.pending?.length ?? 0
+  )
+
   /** Per-client most-urgent pending records request (earliest expiry wins). */
   const pendingByClient = computed(() => {
     const map = new Map<string, PendingNoteRequest>()
@@ -388,15 +399,26 @@
           Browse clients by status. Manage status and therapy progress.
         </p>
       </div>
-      <NuxtLink
-        to="/clients/session-notes-requests"
-        class="text-primary-600 hover:text-primary-700 dark:text-primary-400 inline-flex items-center gap-2 text-sm font-medium"
-      >
-        Records requests
-        <UBadge v-if="pendingNoteRequestCount > 0" color="warning" variant="subtle" size="sm">
-          {{ pendingNoteRequestCount }} pending
-        </UBadge>
-      </NuxtLink>
+      <div class="flex flex-wrap items-center gap-3">
+        <NuxtLink
+          to="/clients/session-notes-requests"
+          class="text-primary-600 hover:text-primary-700 dark:text-primary-400 inline-flex items-center gap-2 text-sm font-medium"
+        >
+          Records requests
+          <UBadge v-if="pendingNoteRequestCount > 0" color="warning" variant="subtle" size="sm">
+            {{ pendingNoteRequestCount }} pending
+          </UBadge>
+        </NuxtLink>
+        <NuxtLink
+          to="/clients/appointment-schedule-requests"
+          class="text-primary-600 hover:text-primary-700 dark:text-primary-400 inline-flex items-center gap-2 text-sm font-medium"
+        >
+          Session time requests
+          <UBadge v-if="pendingScheduleRequestCount > 0" color="warning" variant="subtle" size="sm">
+            {{ pendingScheduleRequestCount }} pending
+          </UBadge>
+        </NuxtLink>
+      </div>
     </div>
 
     <div

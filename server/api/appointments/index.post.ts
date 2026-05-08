@@ -5,6 +5,7 @@ import { readBody, createError, defineEventHandler } from 'h3'
 import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/video-conference'
 import type { VideoConferenceProvider } from '../../../prisma/generated/enums'
 import { randomUUID } from 'node:crypto'
+import { createStaffAppointment } from '../../utils/create-staff-appointment'
 
 function sanitizeNamePart(part: string | null | undefined) {
   const normalized = (part ?? '').trim().replace(/\s+/g, '_')
