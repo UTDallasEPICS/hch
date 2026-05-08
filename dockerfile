@@ -6,7 +6,7 @@ ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
-RUN PNPM_SKIP_CHECK_ONLY_BUILT_DEPS=true pnpm i --no-frozen-lockfile
+RUN pnpm i --no-frozen-lockfile
 RUN pnpm prisma generate
 RUN npx esbuild prisma/seed.ts --bundle --platform=node --format=esm --packages=external --outfile=prisma/seed.mjs
 RUN pnpm run build
