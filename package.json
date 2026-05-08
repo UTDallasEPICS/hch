@@ -40,6 +40,7 @@
     "@iconify-json/heroicons": "^1.2.3",
     "@types/better-sqlite3": "^7.6.13",
     "concurrently": "^9.2.1",
+    "esbuild": "^0.28.0",
     "prettier": "3.7.4",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "prisma": "^7.2.0",
