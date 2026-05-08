@@ -8,7 +8,7 @@ RUN corepack enable
 
 RUN pnpm i --no-frozen-lockfile
 RUN pnpm prisma generate
-RUN npx esbuild prisma/seed.ts --bundle --platform=node --format=esm --packages=external --outfile=prisma/seed.mjs
+RUN pnpm exec esbuild prisma/seed.ts --bundle --platform=node --format=esm --packages=external --outfile=prisma/seed.mjs
 RUN pnpm run build
 
 # Deployment container
