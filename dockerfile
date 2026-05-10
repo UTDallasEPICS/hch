@@ -29,7 +29,10 @@ COPY --from=builder /app/pnpm-workspace.yaml ./
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./
 RUN npm i -g pnpm
+
+# Install Prisma without running any scripts to avoid running nuxt scripts
 RUN pnpm i --dev --ignore-scripts --frozen-lockfile
+# Run the build scripts needed for prisma to work (for migrations and seeding)
 RUN pnpm rebuild esbuild better-sqlite3 @prisma/engines prisma
 RUN pnpm prisma generate
 COPY --from=builder /app/entrypoint.sh /entrypoint
