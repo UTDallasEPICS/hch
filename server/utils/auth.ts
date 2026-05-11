@@ -15,13 +15,47 @@ const trustedOrigins = [
   'http://127.0.0.1:3002',
 ]
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-})
+const emailUser = process.env.EMAIL_USER
+const emailPass = process.env.EMAIL_PASS
+const smtpReady = Boolean(emailUser && emailPass)
+
+function wantsEmailOtpViaSmtp(): boolean {
+  const v = process.env.EMAIL_OTP_USE_SMTP?.trim().toLowerCase()
+  return v === 'true' || v === '1' || v === 'yes'
+}
+
+/**
+ * Detect local dev without relying on import.meta.dev (often false in Nitro server bundles).
+ * Evaluated at OTP send time so nitro:config can set NUXT_HCH_NITRO_DEV first.
+ */
+function isLocalAuthDevRuntime(): boolean {
+  if (import.meta.dev) return true
+  if (process.env.NUXT_HCH_NITRO_DEV === '1') return true
+  const ev = process.env.npm_lifecycle_event
+  if (ev === 'dev' || ev === 'nuxt:dev') return true
+  return false
+}
+
+/** In dev: log OTP unless EMAIL_OTP_USE_SMTP is truthy and Gmail credentials exist. Prod: never. */
+function shouldLogEmailOtpToConsole(): boolean {
+  if (!isLocalAuthDevRuntime()) return false
+  if (smtpReady && wantsEmailOtpViaSmtp()) return false
+  return true
+}
+
+let transporter: nodemailer.Transporter | null = null
+function getSmtpTransporter(): nodemailer.Transporter {
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: emailUser,
+        pass: emailPass,
+      },
+    })
+  }
+  return transporter
+}
 
 function escapeHtml(s: string): string {
   return s
@@ -63,8 +97,19 @@ export const auth = betterAuth({
   plugins: [
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
+        if (shouldLogEmailOtpToConsole()) {
+          console.info(
+            `[email-otp] to=${email} type=${type} code=${String(otp)} (dev: not using SMTP; set EMAIL_USER, EMAIL_PASS, and EMAIL_OTP_USE_SMTP=true to send via Gmail)`,
+          )
+          return
+        }
+        if (!smtpReady) {
+          throw new Error(
+            'Email OTP is not configured: set EMAIL_USER and EMAIL_PASS (production), or run in dev without SMTP.',
+          )
+        }
+        await getSmtpTransporter().sendMail({
+          from: emailUser,
           to: email,
           subject: '[HCH] Your sign-in code',
           html: `<p>Your verification code is:</p><p><strong>${escapeHtml(String(otp))}</strong></p>`,
