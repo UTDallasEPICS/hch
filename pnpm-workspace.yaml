@@ -6,4 +6,5 @@ allowBuilds:
   prisma: true
   sharp: true
   vue-demi: true
-shamefullyHoist: true
+publicHoistPattern:
+  - '*tailwind*'
