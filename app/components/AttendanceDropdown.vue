@@ -1,6 +1,7 @@
 <script setup lang="ts">
   const props = defineProps<{
     modelValue: string
+    disabled?: boolean
   }>()
 
   const emit = defineEmits<{
@@ -21,6 +22,9 @@
   })
 
   const selectClass = computed(() => {
+  if (props.disabled) {
+    return 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500'
+  }
   if (selected.value === 'show') {
     return 'border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400'
   }
@@ -36,7 +40,8 @@
   <div class="relative w-48">
     <select
       v-model="selected"
-      class="w-full cursor-pointer appearance-none rounded-lg border px-3 py-1.5 text-sm font-medium focus:outline-none transition-colors"
+      :disabled="disabled"
+      class="w-full appearance-none rounded-lg border px-3 py-1.5 text-sm font-medium focus:outline-none transition-colors disabled:cursor-not-allowed"
       :class="selectClass"
     >
       <option value="" disabled hidden>Attendance Status</option>

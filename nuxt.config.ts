@@ -4,6 +4,16 @@ export default defineNuxtConfig({
   builder: 'vite',
   devtools: { enabled: true },
 
+  hooks: {
+    'nitro:config'(nitroConfig) {
+      if (nitroConfig.dev) {
+        process.env.NUXT_HCH_NITRO_DEV = '1'
+      } else {
+        delete process.env.NUXT_HCH_NITRO_DEV
+      }
+    },
+  },
+
   modules: ['@nuxt/ui'],
 
   css: ['~/assets/css/main.css'],
