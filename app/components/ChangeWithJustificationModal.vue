@@ -68,7 +68,6 @@
         documentationError.value = ''
         signatureDataUrl.value = ''
         signatureError.value = ''
-        nextTick(() => initSignatureCanvas())
       }
     }
   )
@@ -127,94 +126,57 @@
   }
 
   function hasValidSignature(): boolean {
-    return !!signatureDataUrl.value
+    //return !!signatureDataUrl.value
+    return !!signatureDataUrl.value && sigName.value.trim().length > 0
   }
 
-  // Signature pad (canvas-based)
-  const sigCanvasRef = ref<HTMLCanvasElement | null>(null)
   const docUploadRef = ref<HTMLInputElement | null>(null)
-  const isDrawing = ref(false)
-  const sigCtx = ref<CanvasRenderingContext2D | null>(null)
+ 
+  // Font signature
+  const SIG_FONTS = [
+    { label: 'Classic', value: 'Dancing Script' },
+    { label: 'Elegant', value: 'Great Vibes' },
+    { label: 'Bold', value: 'Pacifico' },
+    { label: 'Refined', value: 'Pinyon Script' },
+    { label: 'Modern', value: 'Sacramento' },
+  ]
+  const sigName = ref('')
+  const sigCredentials = ref('')
+  const sigFont = ref('Dancing Script')
+  const justSavedSig = ref(false)
+  const savedSignature = ref<{ name: string; credentials: string; font: string } | null>(null)
 
-  watch(signaturePenColor, (color) => {
-    const ctx = sigCtx.value
-    if (ctx) ctx.strokeStyle = color
+  onMounted(() => {
+    const saved = localStorage.getItem('epics_signature')
+    if (saved) try { savedSignature.value = JSON.parse(saved) } catch {}
   })
 
-  function initSignatureCanvas() {
-    const canvas = sigCanvasRef.value
-    if (!canvas) return
-
-    const rect = canvas.getBoundingClientRect()
-    const dpr = window.devicePixelRatio || 1
-    canvas.width = Math.max(1, Math.floor(rect.width * dpr))
-    canvas.height = Math.max(1, Math.floor(rect.height * dpr))
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    ctx.setTransform(1, 0, 0, 1, 0, 0)
-    ctx.scale(dpr, dpr)
-    ctx.clearRect(0, 0, rect.width, rect.height)
-
-    sigCtx.value = ctx
-    ctx.strokeStyle = signaturePenColor.value
-    ctx.lineWidth = 2
-    ctx.lineCap = 'round'
+  function updateSignatureData() {
+    if (!sigName.value.trim()) { signatureDataUrl.value = ''; return }
+    signatureDataUrl.value = JSON.stringify({
+      type: 'font-signature',
+      name: sigName.value.trim(),
+      credentials: sigCredentials.value.trim(),
+      font: sigFont.value,
+    })
   }
 
-  function getCanvasCoords(e: MouseEvent | TouchEvent): { x: number; y: number } {
-    const canvas = sigCanvasRef.value
-    if (!canvas) return { x: 0, y: 0 }
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = canvas.width / rect.width
-    const scaleY = canvas.height / rect.height
+  watch([sigName, sigCredentials, sigFont], updateSignatureData)
 
-    if ('touches' in e) {
-      const touch = e.touches[0]
-      if (!touch) return { x: 0, y: 0 }
-      return {
-        x: ((touch.clientX - rect.left) * scaleX) / (window.devicePixelRatio || 1),
-        y: ((touch.clientY - rect.top) * scaleY) / (window.devicePixelRatio || 1),
-      }
-    }
-    return {
-      x: ((e.clientX - rect.left) * scaleX) / (window.devicePixelRatio || 1),
-      y: ((e.clientY - rect.top) * scaleY) / (window.devicePixelRatio || 1),
-    }
+  function applySignature() {
+    if (!savedSignature.value) return
+    sigName.value = savedSignature.value.name
+    sigCredentials.value = savedSignature.value.credentials
+    sigFont.value = savedSignature.value.font
   }
 
-  function startDrawing(e: MouseEvent | TouchEvent) {
-    e.preventDefault()
-    const { x, y } = getCanvasCoords(e)
-    sigCtx.value?.beginPath()
-    sigCtx.value?.moveTo(x, y)
-    isDrawing.value = true
-    signatureError.value = ''
-  }
-
-  function draw(e: MouseEvent | TouchEvent) {
-    e.preventDefault()
-    if (!isDrawing.value) return
-    const { x, y } = getCanvasCoords(e)
-    sigCtx.value?.lineTo(x, y)
-    sigCtx.value?.stroke()
-  }
-
-  function stopDrawing() {
-    isDrawing.value = false
-    const canvas = sigCanvasRef.value
-    if (canvas) {
-      signatureDataUrl.value = canvas.toDataURL('image/png')
-    }
-  }
-
-  function clearSignature() {
-    const canvas = sigCanvasRef.value
-    const ctx = sigCtx.value
-    if (!canvas || !ctx) return
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    signatureDataUrl.value = ''
+  function saveDefaultSignature() {
+    if (!sigName.value.trim()) return
+    const sig = { name: sigName.value.trim(), credentials: sigCredentials.value.trim(), font: sigFont.value }
+    savedSignature.value = sig
+    localStorage.setItem('epics_signature', JSON.stringify(sig))
+    justSavedSig.value = true
+    setTimeout(() => { justSavedSig.value = false }, 2000)
   }
 
   async function fileToBase64(file: File): Promise<string> {
@@ -266,7 +228,7 @@
     :title="title"
     :ui="{
       overlay: 'z-[200]',
-      content: 'max-w-xl w-full z-[210]',
+      content: 'max-w-2xl w-full z-[210]',
       body: 'max-h-[85vh] overflow-y-auto p-6',
     }"
     @update:open="(v: boolean) => !v && emit('close')"
@@ -279,7 +241,7 @@
         v-if="!signatureOnly && requiresEditReason"
         class="mb-4 text-sm font-medium text-gray-700 dark:text-gray-300"
       >
-        Enter a reason for this edit and your digital signature below.
+        Enter a reason for this edit and your signature below.
       </p>
       <p
         v-else-if="!signatureOnly"
@@ -359,52 +321,133 @@
           </p>
         </div>
       </template>
-
-      <!-- Digital signature -->
+    
+      <!-- Font-based signature -->
       <div class="mb-6">
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Admin signature <span class="text-red-500">*</span>
+          {{ signatureOnly ? 'Admin signature' : 'Clinician signature' }} <span class="text-red-500">*</span>
         </label>
-        <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">
-          Sign in the box below using your mouse or touchscreen.
-        </p>
-        <div
-          class="relative h-32 w-full overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800"
-          :class="{ 'border-red-400': signatureError }"
-        >
-          <canvas
-            ref="sigCanvasRef"
-            class="block h-32 w-full cursor-crosshair touch-none"
-            @mousedown="startDrawing"
-            @mousemove="draw"
-            @mouseup="stopDrawing"
-            @mouseleave="stopDrawing"
-            @touchstart.prevent="startDrawing"
-            @touchmove.prevent="draw"
-            @touchend.prevent="stopDrawing"
-          />
-          <div
-            v-if="!signatureDataUrl"
-            class="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-gray-400"
-          >
-            Draw your signature here
-          </div>
-        </div>
-        <div class="mt-1 flex items-center gap-2">
-          <UButton variant="ghost" size="xs" @click="clearSignature">Clear signature</UButton>
-          <p v-if="signatureError" class="text-sm text-red-600 dark:text-red-400">
-            {{ signatureError }}
-          </p>
-        </div>
-      </div>
 
-      <!-- Actions -->
-      <div class="flex justify-end gap-2">
-        <UButton variant="ghost" @click="emit('close')">Cancel</UButton>
-        <UButton color="primary" :loading="loading" @click="handleSubmit">
-          {{ submitLabel }}
-        </UButton>
+        <!-- Saved signature apply banner -->
+        <div
+          v-if="savedSignature"
+          class="mb-3 flex items-center justify-between rounded-xl border border-primary-200 bg-primary-50 px-3 py-2.5 dark:border-primary-800 dark:bg-primary-900/20"
+        >
+          <div class="min-w-0">
+            <p class="text-xs font-semibold text-primary-700 dark:text-primary-300">Saved signature</p>
+            <p class="mt-0.5 truncate text-xs text-primary-600 dark:text-primary-400">
+              {{ savedSignature.name }}<span v-if="savedSignature.credentials">, {{ savedSignature.credentials }}</span>
+            </p>
+          </div>
+          <button
+            type="button"
+            @click="applySignature"
+            class="ml-3 shrink-0 rounded-lg bg-primary-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-600 transition-colors"
+          >
+            Apply
+          </button>
+        </div>
+
+        <!-- Two-column: inputs left, preview right -->
+        <div class="grid grid-cols-2 gap-4">
+
+          <!-- Left: inputs -->
+          <div class="space-y-3">
+            <!-- Name -->
+            <div>
+              <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                Name <span class="text-red-500">*</span>
+              </label>
+              <input
+                v-model="sigName"
+                type="text"
+                placeholder="Full name"
+                class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:placeholder-gray-500"
+              />
+            </div>
+
+            <!-- Credentials -->
+            <div>
+              <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Credentials</label>
+              <input
+                v-model="sigCredentials"
+                type="text"
+                placeholder="e.g. LCSW, LPC"
+                class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:placeholder-gray-500"
+              />
+            </div>
+
+            <!-- Font dropdown -->
+            <div>
+              <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Signature font</label>
+              <select
+                v-model="sigFont"
+                class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              >
+                <option v-for="font in SIG_FONTS" :key="font.value" :value="font.value">
+                  {{ font.label }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Save default -->
+            <button
+              type="button"
+              @click="saveDefaultSignature"
+              :disabled="!sigName.trim()"
+              class="flex items-center gap-1.5 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              :class="justSavedSig ? 'text-green-600 dark:text-green-400' : 'text-primary-600 hover:text-primary-700 dark:text-primary-400'"
+            >
+              {{ justSavedSig ? '✓ Saved!' : 'Save as default signature' }}
+            </button>
+          </div>
+
+          <!-- Right: preview -->
+          <div class="flex flex-col">
+            <p class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">Preview</p>
+            <div class="flex-1 rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
+              
+              <!-- Name in selected font -->
+              <div
+                :style="{ fontFamily: `'${sigFont}', cursive`, fontSize: '28px', lineHeight: '1.3' }"
+                class="break-words text-gray-800 dark:text-gray-100"
+              >
+                {{ sigName || 'Your Name' }}
+              </div>
+
+              <!-- Signed by / credentials / date in normal font -->
+              <div class="mt-3 space-y-1">
+                <p class="text-xs font-medium text-gray-900 dark:text-white">
+                  Signed by {{ sigName || ' ' }}
+                </p>
+                <p class="text-xs font-medium text-gray-900 dark:text-white">
+                  {{ sigCredentials || ' ' }}
+                </p>
+                <p class="text-xs font-medium text-gray-600 dark:text-white">
+                  {{ new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <p v-if="signatureError" class="mt-2 text-sm text-red-600 dark:text-red-400">
+          {{ signatureError }}
+        </p>
       </div>
+      
+        <!-- Actions -->
+        <div class="flex justify-end gap-2">
+          <UButton variant="ghost" @click="emit('close')">Cancel</UButton>
+          <UButton color="primary" :loading="loading" @click="handleSubmit">
+            {{ submitLabel }}
+          </UButton>
+        </div>
     </template>
   </UModal>
 </template>
+
+<style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Great+Vibes&family=Pacifico&family=Pinyon+Script&family=Sacramento&display=swap');
+</style>

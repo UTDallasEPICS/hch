@@ -24,7 +24,9 @@ export default defineEventHandler(async (event) => {
   }>(event)
 
   const sig = body?.adminSignatureData ?? ''
-  if (!sig.startsWith('data:image/png;base64,') || sig.length < 100) {
+  const isBase64Png = sig.startsWith('data:image/png;base64,') && sig.length >= 100
+  const isFontSignature = sig.startsWith('{') && sig.includes('"type":"font-signature"')
+  if (!isBase64Png && !isFontSignature) {
     throw createError({ statusCode: 400, statusMessage: 'A valid admin signature is required' })
   }
 
@@ -60,6 +62,12 @@ export default defineEventHandler(async (event) => {
       adminSignedById: user.id,
       adminSignatureData: sig,
       adminApprovalNote: body?.approvalNote?.trim() || null,
+    },
+    select: {
+      id: true,
+      status: true,
+      adminSignedAt: true,
+      attendanceStatus: true, 
     },
   })
 
