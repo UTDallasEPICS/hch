@@ -21,6 +21,7 @@ const smtpReady = Boolean(emailUser && emailPass)
 
 function wantsEmailOtpViaSmtp(): boolean {
   const v = process.env.EMAIL_OTP_USE_SMTP?.trim().toLowerCase()
+  if (!v) return smtpReady
   return v === 'true' || v === '1' || v === 'yes'
 }
 
@@ -39,8 +40,7 @@ function isLocalAuthDevRuntime(): boolean {
 /** In dev: log OTP unless EMAIL_OTP_USE_SMTP is truthy and Gmail credentials exist. Prod: never. */
 function shouldLogEmailOtpToConsole(): boolean {
   if (!isLocalAuthDevRuntime()) return false
-  if (smtpReady && wantsEmailOtpViaSmtp()) return false
-  return true
+  return !wantsEmailOtpViaSmtp()
 }
 
 let transporter: nodemailer.Transporter | null = null
@@ -99,7 +99,7 @@ export const auth = betterAuth({
       async sendVerificationOTP({ email, otp, type }) {
         if (shouldLogEmailOtpToConsole()) {
           console.info(
-            `[email-otp] to=${email} type=${type} code=${String(otp)} (dev: not using SMTP; set EMAIL_USER, EMAIL_PASS, and EMAIL_OTP_USE_SMTP=true to send via Gmail)`,
+            `[email-otp] to=${email} type=${type} code=${String(otp)} (dev: not using SMTP; set EMAIL_USER and EMAIL_PASS to send via Gmail, or set EMAIL_OTP_USE_SMTP=false to force console logging)`,
           )
           return
         }
