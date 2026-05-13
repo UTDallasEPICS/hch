@@ -63,6 +63,12 @@ export default defineEventHandler(async (event) => {
       adminSignatureData: sig,
       adminApprovalNote: body?.approvalNote?.trim() || null,
     },
+    select: {
+      id: true,
+      status: true,
+      adminSignedAt: true,
+      attendanceStatus: true, 
+    },
   })
 
   if (note.clinicianSignedById) {

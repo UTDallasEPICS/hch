@@ -942,6 +942,9 @@
 
   const selectedNoteAttendance = computed(() => {
     if (!selectedNoteData.value || selectedNoteData.value.source !== 'session') return null
+    if (isEditingPreviousPanel.value && editingSessionNoteId.value === selectedNoteData.value.id) {
+      return editingAttendanceStatus.value || null
+    }
     const sn = localSessionNotes.value.find((n) => n.id === selectedNoteData.value?.id)
     return sn?.attendanceStatus ?? null
   })
@@ -1055,6 +1058,7 @@
         id: string
         status: NoteStatus
         adminSignedAt: string | null
+        attendanceStatus: string
       }
       const idx = localSessionNotes.value.findIndex((n) => n.id === approvingNoteId.value)
       if (idx !== -1) {
@@ -1063,6 +1067,7 @@
           ...row,
           status: res.status,
           adminSignedAt: res.adminSignedAt ?? null,
+          attendanceStatus: res.attendanceStatus ?? row.attendanceStatus,
         }
       }
       showApproveModal.value = false
