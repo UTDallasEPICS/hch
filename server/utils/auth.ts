@@ -99,13 +99,13 @@ export const auth = betterAuth({
       async sendVerificationOTP({ email, otp, type }) {
         if (shouldLogEmailOtpToConsole()) {
           console.info(
-            `[email-otp] to=${email} type=${type} code=${String(otp)} (dev: not using SMTP; set EMAIL_USER and EMAIL_PASS to send via Gmail, or set EMAIL_OTP_USE_SMTP=false to force console logging)`,
+            `[email-otp] to=${email} type=${type} code=${String(otp)} (dev: not using SMTP; set EMAIL_USER and EMAIL_PASS to send via Gmail, or set EMAIL_OTP_USE_SMTP=false to force console logging)`
           )
           return
         }
         if (!smtpReady) {
           throw new Error(
-            'Email OTP is not configured: set EMAIL_USER and EMAIL_PASS (production), or run in dev without SMTP.',
+            'Email OTP is not configured: set EMAIL_USER and EMAIL_PASS (production), or run in dev without SMTP.'
           )
         }
         await getSmtpTransporter().sendMail({
