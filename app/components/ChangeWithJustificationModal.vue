@@ -49,6 +49,8 @@
   }>()
 
   const toast = useToast()
+  const colorMode = useColorMode()
+  const signaturePenColor = computed(() => (colorMode.value === 'dark' ? '#ffffff' : '#000000'))
 
   const reasoning = ref('')
   const documentationFile = ref<File | null>(null)
