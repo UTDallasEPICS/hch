@@ -239,7 +239,7 @@
         v-if="!signatureOnly && requiresEditReason"
         class="mb-4 text-sm font-medium text-gray-700 dark:text-gray-300"
       >
-        Enter a reason for this edit and your digital signature below.
+        Enter a reason for this edit and your signature below.
       </p>
       <p
         v-else-if="!signatureOnly"
@@ -323,7 +323,7 @@
       <!-- Font-based signature -->
       <div class="mb-6">
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Clinician signature <span class="text-red-500">*</span>
+          {{ signatureOnly ? 'Admin signature' : 'Clinician signature' }} <span class="text-red-500">*</span>
         </label>
 
         <!-- Saved signature apply banner -->
@@ -416,10 +416,10 @@
               <!-- Signed by / credentials / date in normal font -->
               <div class="mt-3 space-y-1">
                 <p class="text-xs font-medium text-gray-900 dark:text-white">
-                  Signed by {{ sigName || '—' }}
+                  Signed by {{ sigName || ' ' }}
                 </p>
                 <p class="text-xs font-medium text-gray-900 dark:text-white">
-                  {{ sigCredentials || '—' }}
+                  {{ sigCredentials || ' ' }}
                 </p>
                 <p class="text-xs font-medium text-gray-600 dark:text-white">
                   {{ new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) }}
