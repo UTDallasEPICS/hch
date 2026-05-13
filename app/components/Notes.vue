@@ -624,6 +624,24 @@
     isEditingPreviousPanel.value = false
   }
 
+  const renderer = new marked.Renderer()
+  marked.use({
+    extensions: [{
+      name: 'underline',
+      level: 'inline',
+      start(src: string) { return src.indexOf('++') },
+      tokenizer(src: string) {
+        const match = src.match(/^\+\+([^+]+)\+\+/)
+        if (match) {
+          return { type: 'underline', raw: match[0], text: match[1]! }
+        }
+      },
+      renderer(token: any) {
+        return `<u>${token.text}</u>`
+      }
+    }]
+  })
+
   const renderedNoteContent = computed(() =>
     selectedNoteData.value
       ? DOMPurify.sanitize(marked.parse(selectedNoteData.value.content) as string)
@@ -822,7 +840,7 @@
           body: {
             content: draft,
             reason: meta.reason,
-            signature: meta.signature,
+            signatureData: meta.signature,
             attendanceStatus: editingAttendanceStatus.value,
           },
         })

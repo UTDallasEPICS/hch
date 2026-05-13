@@ -95,10 +95,10 @@ export default defineEventHandler(async (event) => {
         statusMessage: 'Clinician signature is required to sign a note',
       })
     }
-    if (
-      !clinicianSignature.startsWith('data:image/png;base64,') ||
-      clinicianSignature.length < 100
-    ) {
+    const isBase64Png = clinicianSignature.startsWith('data:image/png;base64,') && clinicianSignature.length >= 100
+    const isFontSignature = clinicianSignature.startsWith('{') && clinicianSignature.includes('"type":"font-signature"')
+
+    if (!isBase64Png && !isFontSignature) {
       throw createError({ statusCode: 400, statusMessage: 'Invalid signature data format' })
     }
   }

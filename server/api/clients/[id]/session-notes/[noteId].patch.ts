@@ -37,20 +37,16 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Reason is required' })
   }
 
-  const signatureFromData =
-    typeof body.signatureData === 'string' && body.signatureData.startsWith('data:image/png;base64,')
-      ? body.signatureData.trim()
-      : ''
-  const signatureText =
-    typeof body.signature === 'string' && body.signature.trim() ? body.signature.trim() : ''
-  const signatureStored = signatureFromData || signatureText
+  const sig = body.signatureData?.trim() || body.signature?.trim() || ''
 
-  if (!signatureStored) {
+  const isBase64Png = sig.startsWith('data:image/png;base64,') && sig.length >= 100
+  const isFontSignature = sig.startsWith('{') && sig.includes('"type":"font-signature"')
+
+  if (!sig || (!isBase64Png && !isFontSignature)) {
     throw createError({ statusCode: 400, statusMessage: 'Signature is required' })
   }
-  if (signatureFromData && signatureFromData.length < 100) {
-    throw createError({ statusCode: 400, statusMessage: 'Invalid signature data format' })
-  }
+  
+  const signatureStored = sig
 
   const note = await prisma.sessionNote.findFirst({
     where: {
