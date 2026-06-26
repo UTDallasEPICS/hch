@@ -1,6 +1,6 @@
 import { betterAuth } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
-import { prisma } from './prisma'
+import prisma from './prisma'
 import { emailOTP } from 'better-auth/plugins/email-otp'
 import nodemailer from 'nodemailer'
 

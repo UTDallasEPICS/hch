@@ -9,7 +9,7 @@ This guide covers how to create authenticated file upload and serving endpoints 
 ```typescript
 import path from 'path'
 import fs from 'fs'
-import { prisma } from '~~/server/utils/prisma'
+import prisma from '~~/server/utils/prisma'
 import { auth } from '~~/server/utils/auth'
 
 export default defineEventHandler(async (event) => {

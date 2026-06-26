@@ -4,4 +4,13 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: ['@nuxt/ui', '@nuxt/image'],
   css: ['./assets/css/main.css'],
+  vite: {
+    optimizeDeps: {
+      include: [
+        'better-auth/client/plugins',
+        'better-auth/vue',
+        'zod',
+      ]
+    }
+  }
 })
