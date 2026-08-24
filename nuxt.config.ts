@@ -4,6 +4,13 @@ export default defineNuxtConfig({
   builder: 'vite',
   devtools: { enabled: true },
 
+  // Port for the dev server, set via PORT in .env (defaults to 3000).
+  // The built production server (node server/index.mjs) reads PORT/NITRO_PORT
+  // at runtime, so the same variable controls both dev and production.
+  devServer: {
+    port: Number(process.env.PORT) || 3000,
+  },
+
   hooks: {
     'nitro:config'(nitroConfig) {
       if (nitroConfig.dev) {
