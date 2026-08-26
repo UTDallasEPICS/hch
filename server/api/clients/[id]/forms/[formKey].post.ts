@@ -7,6 +7,7 @@ import {
 } from '../../../../utils/form-score-history'
 import { loadClinicalFormQuestions } from '../../../../utils/clinical-form-display'
 import { isAdmin } from '../../../../utils/is-admin'
+import { assertStaffCanAccessClient } from '../../../../utils/clinician-access'
 
 export default defineEventHandler(async (event) => {
   const user = requireUser(event)
@@ -24,6 +25,9 @@ export default defineEventHandler(async (event) => {
   if (!isAdmin(currentUser?.role ?? null, currentUser?.email ?? null)) {
     throw createError({ statusCode: 403, statusMessage: 'Admin only' })
   }
+
+  // Enforce clinic scope on the client, matching the sibling PATCH route (#89).
+  await assertStaffCanAccessClient(event, clientUserId)
 
   if (!isScoreHistoryFormKey(formKey)) {
     throw createError({ statusCode: 400, statusMessage: 'Invalid form key' })
