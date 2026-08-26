@@ -1,9 +1,7 @@
 import { requireStaff } from '../../utils/guard'
-import { createError, defineEventHandler, getHeaders, getQuery } from 'h3'
+import { defineEventHandler, getQuery } from 'h3'
 import { prisma } from '../../utils/prisma'
-import { isAdmin } from '../../utils/is-admin'
 import {
-  isAllFormsComplete,
   areAllFormsComplete,
   isWaitlistFormsComplete,
   getIncompleteForms,

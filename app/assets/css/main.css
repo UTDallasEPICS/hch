@@ -225,23 +225,23 @@
 }
 
 /* Style tiptap task list checkboxes to match Nuxt UI */
-.tiptap ul[data-type="taskList"] {
+.tiptap ul[data-type='taskList'] {
   list-style: none;
   padding-left: 0;
 }
 
-.tiptap ul[data-type="taskList"] li {
+.tiptap ul[data-type='taskList'] li {
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
 }
 
-.tiptap ul[data-type="taskList"] li > label {
+.tiptap ul[data-type='taskList'] li > label {
   margin-top: 2px;
   flex-shrink: 0;
 }
 
-.tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
+.tiptap ul[data-type='taskList'] li > label input[type='checkbox'] {
   width: 1rem;
   height: 1rem;
   border-radius: 4px;
@@ -250,11 +250,11 @@
   accent-color: var(--color-primary-500);
 }
 
-.tiptap ul[data-type="taskList"] li > div {
+.tiptap ul[data-type='taskList'] li > div {
   flex: 1;
 }
 
-.tiptap ul[data-type="taskList"] li[data-checked="true"] > div {
+.tiptap ul[data-type='taskList'] li[data-checked='true'] > div {
   text-decoration: line-through;
   color: #9ca3af;
 }

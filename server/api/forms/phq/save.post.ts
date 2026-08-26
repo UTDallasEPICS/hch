@@ -1,5 +1,5 @@
 import { requireUser } from '../../../utils/guard'
-import { createError, defineEventHandler, getHeaders, readBody } from 'h3'
+import { createError, defineEventHandler, readBody } from 'h3'
 import { prisma } from '../../../utils/prisma'
 
 type AnswersBody = {
@@ -18,7 +18,6 @@ type AnswersBody = {
 const TOTAL_QUESTIONS = 10
 
 export default defineEventHandler(async (event) => {
-
   const user = requireUser(event)
 
   const userId = user.id
@@ -66,7 +65,7 @@ export default defineEventHandler(async (event) => {
   const data: Record<string, number | null> = {}
   let totalScore = 0
   for (let index = 1; index <= TOTAL_QUESTIONS; index += 1) {
-    const dbKey = `q${(index)}`
+    const dbKey = `q${index}`
     const payloadKey = `q${index}` as keyof AnswersBody
     const value = body?.[payloadKey]
     const numVal = typeof value === 'number' ? value : null
@@ -90,12 +89,12 @@ export default defineEventHandler(async (event) => {
   await prisma.phqForm.update({
     where: { id: form.id },
     data: {
-      status: 'COMPLETE',      // ← was 'IN_PROGRESS'
+      status: 'COMPLETE', // ← was 'IN_PROGRESS'
       submittedAt: new Date(), // ← was null
       totalScore,
       severity,
     },
   })
 
-  return { saved: true } 
+  return { saved: true }
 })

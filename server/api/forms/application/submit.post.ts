@@ -1,5 +1,5 @@
 import { requireUser } from '../../../utils/guard'
-import { createError, defineEventHandler, getHeaders } from 'h3'
+import { createError, defineEventHandler } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { joinName } from '../../../utils/name'
 

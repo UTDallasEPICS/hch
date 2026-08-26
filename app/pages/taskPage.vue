@@ -608,9 +608,7 @@
               size="sm"
               icon="i-heroicons-paper-airplane"
               :disabled="sessionNotesAccess.hasPendingRequest"
-              :label="
-                sessionNotesAccess.hasPendingRequest ? 'Request pending' : 'Request records'
-              "
+              :label="sessionNotesAccess.hasPendingRequest ? 'Request pending' : 'Request records'"
               @click="sessionNotesRequestModalOpen = true"
             />
             <UButton

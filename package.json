@@ -8,7 +8,11 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "prisma:reset": "prisma migrate reset -f && prisma db seed"
+    "prisma:reset": "prisma migrate reset -f && prisma db seed",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@fullcalendar/daygrid": "^6.1.20",
@@ -41,11 +45,16 @@
   "devDependencies": {
     "@iconify-json/heroicons": "^1.2.3",
     "@types/better-sqlite3": "^7.6.13",
+    "@typescript-eslint/parser": "^8.68.0",
     "concurrently": "^9.2.1",
     "esbuild": "^0.28.0",
+    "eslint": "^9.39.5",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "globals": "^16.5.0",
     "prettier": "3.7.4",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "prisma": "^7.2.0",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "vue-eslint-parser": "^10.4.1"
   }
 }

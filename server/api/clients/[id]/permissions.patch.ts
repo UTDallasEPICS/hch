@@ -1,10 +1,8 @@
 import { requireAdmin } from '../../../utils/guard'
-import { createError, defineEventHandler, getHeaders, getRouterParam, readBody } from 'h3'
+import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { prisma } from '../../../utils/prisma'
-import { isAdmin } from '../../../utils/is-admin'
 
 export default defineEventHandler(async (event) => {
-
   const user = requireAdmin(event)
 
   const clientUserId = getRouterParam(event, 'id')

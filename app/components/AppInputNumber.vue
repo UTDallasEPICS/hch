@@ -14,7 +14,7 @@
       max: 999,
       size: 'md',
       step: 1,
-    inputWidth: 'w-16',
+      inputWidth: 'w-16',
     }
   )
 
@@ -78,7 +78,7 @@
       :max="max"
       :placeholder="placeholder"
       :class="[
-        'h-10 shrink-0 border-0 bg-transparent px-2 text-center text-gray-900 outline-none [appearance:textfield] placeholder:text-gray-500 dark:text-gray-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+        'h-10 shrink-0 [appearance:textfield] border-0 bg-transparent px-2 text-center text-gray-900 outline-none placeholder:text-gray-500 dark:text-gray-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
         inputWidth,
       ]"
       inputmode="numeric"
@@ -86,7 +86,7 @@
     />
     <button
       type="button"
-      class="flex h-10 shrink-0 items-center justify-center border-l border-gray-300 px-3 text-primary-600 transition hover:bg-primary-50 dark:border-gray-600 dark:text-primary-400 dark:hover:bg-primary-900/30"
+      class="text-primary-600 hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-900/30 flex h-10 shrink-0 items-center justify-center border-l border-gray-300 px-3 transition dark:border-gray-600"
       aria-label="Increase"
       :disabled="(numValue ?? min) >= max"
       @click="increment"

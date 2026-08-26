@@ -24,7 +24,7 @@ Use the matrix below to track requirements throughout the project lifecycle.
 | REQ-F-07  | Unauthenticated `/api/health` endpoint returns HTTP 200 for load-balancer probes                 | Verified | 2026F           | `server/api/health.ts`                       |
 | REQ-NF-01 | Persistence is type-safe: Drizzle ORM schema with generated Zod select/insert schemas            | Verified | 2026F           | `server/db/schema.ts`                        |
 | REQ-NF-02 | CI runs lint, type-check, and the Vitest suite on every PR and on `dev`/`stage`/`prod` pushes    | Verified | 2026F           | `.github/workflows/test.yml`                 |
-| REQ-NF-03 | Deploy pipeline order is build → migrate → push → deploy, so a failed migration never ships       | Verified | 2026F           | `.github/workflows/deploy.yml`               |
+| REQ-NF-03 | Deploy pipeline order is build → migrate → push → deploy, so a failed migration never ships      | Verified | 2026F           | `.github/workflows/deploy.yml`               |
 | REQ-NF-04 | `stage`/`prod` auto-deploy to AWS ECS via GitHub OIDC — no static AWS keys stored                | Verified | 2026F           | `.github/workflows/{stage,prod}.yml`         |
 | REQ-NF-05 | App ships as a container image with the toolchain to compile native modules in the builder       | Verified | 2026F           | `Dockerfile`                                 |
 | REQ-NF-06 | Test baseline runs with no `.env`, database, email, or browser (`pnpm test` works on clone)      | Verified | 2026F           | `vitest.config.ts`, `tests/`                 |
@@ -34,8 +34,8 @@ Use the matrix below to track requirements throughout the project lifecycle.
 
 Track major changes, additions, or deprecations to the project scope.
 
-| Date       | Requirement ID | Change Description                                                                   | Author      | Approved By |
-| ---------- | -------------- | ------------------------------------------------------------------------------------ | ----------- | ----------- |
-| 2026-08-23 | REQ-F/NF-\*    | Established the initial requirements register from the template baseline             | @TusharW4ni | —           |
+| Date       | Requirement ID | Change Description                                                                                             | Author      | Approved By |
+| ---------- | -------------- | -------------------------------------------------------------------------------------------------------------- | ----------- | ----------- |
+| 2026-08-23 | REQ-F/NF-\*    | Established the initial requirements register from the template baseline                                       | @TusharW4ni | —           |
 | 2026-08-23 | REQ-NF-07      | Pinned `better-auth@1.6.23` and `better-sqlite3@12.11.1` to keep the deploy build and migration Lambda working | @TusharW4ni | —           |
-| 2026-08-23 | REQ-NF-05      | Added `python3`/`make`/`g++` to the Docker builder so native modules compile         | @TusharW4ni | —           |
+| 2026-08-23 | REQ-NF-05      | Added `python3`/`make`/`g++` to the Docker builder so native modules compile                                   | @TusharW4ni | —           |

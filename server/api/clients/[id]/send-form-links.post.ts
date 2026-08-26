@@ -80,10 +80,7 @@ export default defineEventHandler(async (event) => {
   const greeting = initials ? `Hello ${escapeHtml(initials)},` : 'Hello,'
 
   const listItems = entries
-    .map(
-      (e) =>
-        `<li><a href="${escapeHtml(e.href)}">${escapeHtml(e.label)}</a></li>`
-    )
+    .map((e) => `<li><a href="${escapeHtml(e.href)}">${escapeHtml(e.label)}</a></li>`)
     .join('\n')
 
   const html = `

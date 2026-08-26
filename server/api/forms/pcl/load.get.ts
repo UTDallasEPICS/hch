@@ -3,7 +3,6 @@ import { createError, defineEventHandler } from 'h3'
 import { prisma } from '../../../utils/prisma'
 
 export default defineEventHandler(async (event) => {
-
   const user = requireUser(event)
 
   const userId = user.id

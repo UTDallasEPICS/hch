@@ -11,14 +11,11 @@
     data: profile,
     pending,
     error,
-  } = await useFetch(
-    () => `/api/clients/${clientId.value}/profile`,
-    {
-      key: `client-profile-notes-${clientId.value}`,
-      watch: [clientId],
-      getCachedData: () => undefined,
-    }
-  )
+  } = await useFetch(() => `/api/clients/${clientId.value}/profile`, {
+    key: `client-profile-notes-${clientId.value}`,
+    watch: [clientId],
+    getCachedData: () => undefined,
+  })
 
   const note = computed(() => {
     const notes = profile.value?.sessionNotes ?? []
@@ -28,7 +25,7 @@
   function displayName() {
     const p = profile.value
     if (!p) return ''
-    const raw = p.lname ? `${p.fname} ${p.lname}` : (p.fname || p.name || '')
+    const raw = p.lname ? `${p.fname} ${p.lname}` : p.fname || p.name || ''
     return capitalizeName(raw)
   }
 </script>
@@ -64,14 +61,18 @@
       </template>
     </UAlert>
 
-    <div v-else-if="!note" class="rounded-xl border border-gray-200 bg-white p-8 dark:border-gray-800 dark:bg-gray-900">
+    <div
+      v-else-if="!note"
+      class="rounded-xl border border-gray-200 bg-white p-8 dark:border-gray-800 dark:bg-gray-900"
+    >
       <p class="text-gray-500 dark:text-gray-400">Note not found.</p>
-      <UButton to="/clients" variant="soft" size="sm" class="mt-4">
-        Back to Clients
-      </UButton>
+      <UButton to="/clients" variant="soft" size="sm" class="mt-4"> Back to Clients </UButton>
     </div>
 
-    <div v-else class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <div
+      v-else
+      class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+    >
       <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 class="text-xl font-semibold text-gray-900 dark:text-white">
@@ -89,7 +90,9 @@
           label="Edit in notes editor"
         />
       </div>
-      <div class="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+      <div
+        class="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800"
+      >
         <p class="whitespace-pre-wrap text-gray-900 dark:text-gray-100">{{ note.content }}</p>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { requireUser } from '../../../utils/guard'
-import { createError, defineEventHandler, getHeaders, readBody } from 'h3'
+import { defineEventHandler, readBody } from 'h3'
 import { prisma } from '../../../utils/prisma'
 
 type GadBody = {
@@ -20,11 +20,8 @@ function toNullableInt(value: number | string | null | undefined) {
 }
 
 export default defineEventHandler(async (event) => {
-
   const user = requireUser(event)
   const userId = user.id
-
-  
 
   const body = await readBody<GadBody>(event)
 
@@ -64,14 +61,7 @@ export default defineEventHandler(async (event) => {
   const g8 = toNullableInt(body.g8)
 
   // calculate score
-  const total =
-    (g1 ?? 0) +
-    (g2 ?? 0) +
-    (g3 ?? 0) +
-    (g4 ?? 0) +
-    (g5 ?? 0) +
-    (g6 ?? 0) +
-    (g7 ?? 0)
+  const total = (g1 ?? 0) + (g2 ?? 0) + (g3 ?? 0) + (g4 ?? 0) + (g5 ?? 0) + (g6 ?? 0) + (g7 ?? 0)
 
   let severity = 'Minimal'
 

@@ -37,7 +37,13 @@
     previousNotes: { id: number; date: string; preview: string; content: string }[]
     sessionNotes: { id: string; content: string; createdAt: string }[]
     forms: { label?: string; status: 'complete' | 'pending' }[]
-    appointments?: { id: string; sessionName: string; sessionNumber: number; startTime: string; status: string }[]
+    appointments?: {
+      id: string
+      sessionName: string
+      sessionNumber: number
+      startTime: string
+      status: string
+    }[]
   }
 
   const { data, pending, error } = await useFetch(
@@ -55,7 +61,7 @@
     v-if="clientsPending"
     class="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950"
   >
-    <UIcon name="i-heroicons-arrow-path" class="h-8 w-8 animate-spin text-primary-500" />
+    <UIcon name="i-heroicons-arrow-path" class="text-primary-500 h-8 w-8 animate-spin" />
   </div>
   <UAlert
     v-else-if="!clientPickerOptions.length"
@@ -74,7 +80,7 @@
     v-else-if="clientId && pending"
     class="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950"
   >
-    <UIcon name="i-heroicons-arrow-path" class="h-8 w-8 animate-spin text-primary-500" />
+    <UIcon name="i-heroicons-arrow-path" class="text-primary-500 h-8 w-8 animate-spin" />
   </div>
   <UAlert
     v-else-if="error"
@@ -93,7 +99,9 @@
     :previous-notes="data.previousNotes"
     :session-notes="data.sessionNotes"
     :appointments="data.appointments"
-    :forms="(data.forms as { label: string; status: 'complete' | 'pending' }[]).filter(f => !!f.label)"
+    :forms="
+      (data.forms as { label: string; status: 'complete' | 'pending' }[]).filter((f) => !!f.label)
+    "
     :client-picker-options="clientPickerOptions"
     client-picker-mode="notes-test"
     back-href="/"

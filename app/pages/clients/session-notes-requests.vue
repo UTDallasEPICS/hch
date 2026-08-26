@@ -257,13 +257,17 @@
                 </dd>
               </div>
               <div class="flex flex-col">
-                <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Requested range</dt>
+                <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                  Requested range
+                </dt>
                 <dd class="text-gray-700 dark:text-gray-300">
                   {{ formatRequestedRange(r) }}
                 </dd>
               </div>
               <div class="flex flex-col">
-                <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Date of request</dt>
+                <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                  Date of request
+                </dt>
                 <dd class="text-gray-700 dark:text-gray-300">
                   {{ formatDateTime(r.createdAt) }}
                 </dd>
@@ -328,7 +332,9 @@
       <template #body>
         <div v-if="selected" class="space-y-4 p-6">
           <!-- Summary of the request being decided -->
-          <dl class="grid grid-cols-1 gap-x-6 gap-y-2 rounded-lg border border-gray-200 p-3 text-sm sm:grid-cols-2 dark:border-gray-700">
+          <dl
+            class="grid grid-cols-1 gap-x-6 gap-y-2 rounded-lg border border-gray-200 p-3 text-sm sm:grid-cols-2 dark:border-gray-700"
+          >
             <div class="flex flex-col">
               <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Client name</dt>
               <dd class="font-medium text-gray-900 dark:text-white">
@@ -342,9 +348,7 @@
               </dd>
             </div>
             <div class="flex flex-col">
-              <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Date approved
-              </dt>
+              <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Date approved</dt>
               <dd class="text-gray-700 dark:text-gray-300">
                 {{ decideAction === 'approve' ? formatDateTime(new Date().toISOString()) : '—' }}
               </dd>
@@ -397,11 +401,7 @@
                 Enter the summary text the client is allowed to see (this is not the full clinical
                 record).
               </p>
-              <UFormField
-                label="Approved summary"
-                required
-                help="Minimum 5 characters."
-              >
+              <UFormField label="Approved summary" required help="Minimum 5 characters.">
                 <UTextarea
                   v-model="approvedSummaryText"
                   :rows="8"

@@ -1,18 +1,19 @@
 <script setup lang="ts">
-import type { ApplicationForm } from '~/types/application'
+  import type { ApplicationForm } from '~/types/application'
 
-defineProps<{
-  form: ApplicationForm
-  yesNoOptions: { label: string; value: string }[]
-  siblingOptions: { label: string; value: string }[]
-}>()
+  defineProps<{
+    form: ApplicationForm
+    yesNoOptions: { label: string; value: string }[]
+    siblingOptions: { label: string; value: string }[]
+  }>()
 </script>
 
 <template>
   <div class="space-y-5 [&_label]:block">
     <div>
       <label class="text-sm font-semibold text-gray-200">
-        If the child has or had siblings—did any witness something scary or traumatic (e.g. seizures, unresponsiveness, or other medical emergencies)?
+        If the child has or had siblings—did any witness something scary or traumatic (e.g.
+        seizures, unresponsiveness, or other medical emergencies)?
       </label>
       <URadioGroup
         v-model="form.q38"
@@ -43,7 +44,9 @@ defineProps<{
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">Who called the shots on medical decisions?</label>
+      <label class="text-sm font-semibold text-gray-200"
+        >Who called the shots on medical decisions?</label
+      >
       <UInput
         v-model="form.q40"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
@@ -51,7 +54,9 @@ defineProps<{
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">Who was mostly at the hospital during treatment?</label>
+      <label class="text-sm font-semibold text-gray-200"
+        >Who was mostly at the hospital during treatment?</label
+      >
       <UInput
         v-model="form.q41"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
@@ -59,7 +64,9 @@ defineProps<{
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">How long was the child in treatment?</label>
+      <label class="text-sm font-semibold text-gray-200"
+        >How long was the child in treatment?</label
+      >
       <UInput
         v-model="form.q42"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
@@ -81,7 +88,9 @@ defineProps<{
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">Any extended hospital stays? If so, how long?</label>
+      <label class="text-sm font-semibold text-gray-200"
+        >Any extended hospital stays? If so, how long?</label
+      >
       <UInput
         v-model="form.q44"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
@@ -89,7 +98,9 @@ defineProps<{
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">Did the child have a relapse or secondary cancer?</label>
+      <label class="text-sm font-semibold text-gray-200"
+        >Did the child have a relapse or secondary cancer?</label
+      >
       <URadioGroup
         v-model="form.q45"
         class="mt-2"

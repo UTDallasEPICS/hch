@@ -55,12 +55,12 @@ export default defineNuxtConfig({
       ],
     },
     optimizeDeps: {
-    include: [
-      '@vue/devtools-core',
-      '@vue/devtools-kit',
-      'better-auth/vue',
-      'better-auth/client/plugins',
-    ]
-   },
+      include: [
+        '@vue/devtools-core',
+        '@vue/devtools-kit',
+        'better-auth/vue',
+        'better-auth/client/plugins',
+      ],
+    },
   },
 })

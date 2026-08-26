@@ -21,7 +21,18 @@
 
   const options = ['Yes', 'No']
 
-  const questionKeys = ['a01', 'a02', 'a03', 'a04', 'a05', 'a06', 'a07', 'a08', 'a09', 'a10'] as const
+  const questionKeys = [
+    'a01',
+    'a02',
+    'a03',
+    'a04',
+    'a05',
+    'a06',
+    'a07',
+    'a08',
+    'a09',
+    'a10',
+  ] as const
   const TOTAL_QUESTIONS = 10
 
   const questionsText = [
@@ -111,7 +122,7 @@
       })
       return
     }
-    
+
     try {
       isSaving.value = true
       await $fetch('/api/forms/ace/save', {
@@ -186,16 +197,12 @@
           :key="questionKey"
           class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
         >
-          <p class="font-medium text-gray-900 dark:text-white mb-3">
+          <p class="mb-3 font-medium text-gray-900 dark:text-white">
             {{ index + 1 }}.
             {{ questionsText[index] }}
           </p>
-          <div class="flex gap-4 mt-4">
-            <label
-              v-for="opt in options"
-              :key="opt"
-              class="flex items-center gap-2 cursor-pointer"
-            >
+          <div class="mt-4 flex gap-4">
+            <label v-for="opt in options" :key="opt" class="flex cursor-pointer items-center gap-2">
               <input
                 type="radio"
                 :value="opt"

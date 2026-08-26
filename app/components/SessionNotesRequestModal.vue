@@ -237,10 +237,7 @@
             <span>Entire available record</span>
           </label>
         </div>
-        <div
-          v-if="!wholeRecord"
-          class="grid grid-cols-1 gap-3 sm:grid-cols-2"
-        >
+        <div v-if="!wholeRecord" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label class="block">
             <span class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
               Start date
@@ -283,20 +280,20 @@
         </p>
         <ul class="list-disc space-y-1 pl-5">
           <li>
-            The clinic has up to <strong>fourteen (14) calendar days</strong> from my signed
-            request to approve, deny, or extend this request.
+            The clinic has up to <strong>fourteen (14) calendar days</strong> from my signed request
+            to approve, deny, or extend this request.
           </li>
           <li>
-            Records I receive may contain sensitive clinical information. I am responsible for how
-            I store, share, or disclose any copy released to me.
+            Records I receive may contain sensitive clinical information. I am responsible for how I
+            store, share, or disclose any copy released to me.
           </li>
           <li>
             Psychotherapy (process) notes maintained separately from the medical record are not
             required to be released and may be withheld or summarized.
           </li>
           <li>
-            This request and my digital signature are retained with my clinical file as a
-            compliance record.
+            This request and my digital signature are retained with my clinical file as a compliance
+            record.
           </li>
         </ul>
       </div>

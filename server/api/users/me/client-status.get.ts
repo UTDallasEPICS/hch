@@ -1,10 +1,9 @@
 import { requireUser } from '../../../utils/guard'
-import { createError, defineEventHandler, getHeaders } from 'h3'
+import { defineEventHandler } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { toClientStatusLabel } from '../../../utils/client-status'
 
 export default defineEventHandler(async (event) => {
-
   const user = requireUser(event)
 
   const client = await prisma.client.findUnique({

@@ -155,7 +155,7 @@
         <USkeleton class="h-24 w-full" />
       </div>
       <div
-        v-else-if="!(queue?.pending?.length)"
+        v-else-if="!queue?.pending?.length"
         class="mb-10 rounded-xl border border-gray-200 bg-white p-6 text-center dark:border-gray-800 dark:bg-gray-900"
       >
         <p class="text-gray-600 dark:text-gray-400">No pending session time requests.</p>
@@ -196,7 +196,7 @@
 
       <h2 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Recent decisions</h2>
       <div
-        v-if="!loading && !(queue?.history?.length)"
+        v-if="!loading && !queue?.history?.length"
         class="rounded-xl border border-gray-200 bg-white p-6 text-center dark:border-gray-800 dark:bg-gray-900"
       >
         <p class="text-sm text-gray-600 dark:text-gray-400">No recent decisions yet.</p>
@@ -236,7 +236,9 @@
       <template #body>
         <div v-if="selected" class="space-y-4 p-6">
           <p class="text-sm text-gray-600 dark:text-gray-400">
-            <span class="font-medium text-gray-900 dark:text-white">{{ displayName(selected) }}</span>
+            <span class="font-medium text-gray-900 dark:text-white">{{
+              displayName(selected)
+            }}</span>
             · {{ formatRange(selected.requestedStartTime, selected.requestedEndTime) }}
           </p>
 
@@ -245,7 +247,12 @@
               This message is emailed to the client.
             </p>
             <UFormField label="Reason" required>
-              <UTextarea v-model="staffResponseNote" :rows="5" class="w-full" placeholder="Required" />
+              <UTextarea
+                v-model="staffResponseNote"
+                :rows="5"
+                class="w-full"
+                placeholder="Required"
+              />
             </UFormField>
           </template>
 

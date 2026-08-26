@@ -1,9 +1,7 @@
 import { requireUser } from '../../../utils/guard'
-import { getHeaders } from 'h3'
 import { prisma } from '../../../utils/prisma'
 
 export default defineEventHandler(async (event) => {
-
   const user = requireUser(event)
 
   const client = await prisma.client.findUnique({

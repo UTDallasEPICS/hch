@@ -64,7 +64,9 @@ export default defineEventHandler(async (event) => {
     let questions: { label: string; answer: string }[] = []
     if (r.answersJson) {
       try {
-        const parsed = JSON.parse(r.answersJson) as { questions?: { label: string; answer: string }[] }
+        const parsed = JSON.parse(r.answersJson) as {
+          questions?: { label: string; answer: string }[]
+        }
         if (Array.isArray(parsed?.questions)) questions = parsed.questions
       } catch {
         questions = []

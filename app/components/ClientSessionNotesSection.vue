@@ -126,9 +126,7 @@
     >
       <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2
-            class="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white"
-          >
+          <h2 class="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
             <UIcon name="i-heroicons-document-text" class="h-5 w-5" />
             Session notes
           </h2>
@@ -202,7 +200,11 @@
     </div>
 
     <div
-      v-if="sessionNotesAccess.hasAccess && sessionNotesAccess.mode === 'summary' && !sessionNotesAccess.summaryText"
+      v-if="
+        sessionNotesAccess.hasAccess &&
+        sessionNotesAccess.mode === 'summary' &&
+        !sessionNotesAccess.summaryText
+      "
       id="session-notes-summary"
       class="mt-6 scroll-mt-24"
     >
@@ -213,7 +215,11 @@
     </div>
 
     <div
-      v-else-if="sessionNotesAccess.hasAccess && sessionNotesAccess.mode === 'summary' && sessionNotesAccess.summaryText"
+      v-else-if="
+        sessionNotesAccess.hasAccess &&
+        sessionNotesAccess.mode === 'summary' &&
+        sessionNotesAccess.summaryText
+      "
       id="session-notes-summary"
       class="mt-6 scroll-mt-24"
     >
@@ -233,7 +239,11 @@
     </div>
 
     <div
-      v-else-if="sessionNotesAccess.hasAccess && sessionNotesAccess.mode === 'full' && profile?.sessionNotes?.length"
+      v-else-if="
+        sessionNotesAccess.hasAccess &&
+        sessionNotesAccess.mode === 'full' &&
+        profile?.sessionNotes?.length
+      "
       id="session-notes"
       class="mt-6 scroll-mt-24"
     >
@@ -260,7 +270,11 @@
     </div>
 
     <div
-      v-else-if="sessionNotesAccess.hasAccess && sessionNotesAccess.mode === 'full' && !profile?.sessionNotes?.length"
+      v-else-if="
+        sessionNotesAccess.hasAccess &&
+        sessionNotesAccess.mode === 'full' &&
+        !profile?.sessionNotes?.length
+      "
       id="session-notes"
       class="mt-6 scroll-mt-24"
     >

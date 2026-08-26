@@ -15,10 +15,7 @@ const dateOnlySchema = z
   .trim()
   .nullish()
   .transform((v) => (v && v.length ? v : null))
-  .refine(
-    (v) => v == null || /^\d{4}-\d{2}-\d{2}$/.test(v),
-    'Dates must be in YYYY-MM-DD format'
-  )
+  .refine((v) => v == null || /^\d{4}-\d{2}-\d{2}$/.test(v), 'Dates must be in YYYY-MM-DD format')
   .transform((v) => (v ? new Date(`${v}T00:00:00.000Z`) : null))
 
 const bodySchema = z
@@ -75,10 +72,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const declarationTemplateId = await getLatestDeclarationTemplateId(
-    prisma,
-    body.data.requestKind
-  )
+  const declarationTemplateId = await getLatestDeclarationTemplateId(prisma, body.data.requestKind)
 
   const created = await prisma.sessionNotesRequest.create({
     data: {

@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import type { ApplicationForm } from '~/types/application'
+  import type { ApplicationForm } from '~/types/application'
 
-defineProps<{
-  form: ApplicationForm
-  yesNoOptions: { label: string; value: string }[]
-  supportGroupOptions: { label: string; value: string }[]
-  referralOptions: { label: string; value: string }[]
-  insuranceOptions: { label: string; value: string }[]
-}>()
+  defineProps<{
+    form: ApplicationForm
+    yesNoOptions: { label: string; value: string }[]
+    supportGroupOptions: { label: string; value: string }[]
+    referralOptions: { label: string; value: string }[]
+    insuranceOptions: { label: string; value: string }[]
+  }>()
 </script>
 
 <template>

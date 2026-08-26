@@ -33,11 +33,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
     // Physician statement & ROI: prospective, waitlist, and active clients may open these pages.
     if (DOCUMENT_PATHS.has(to.path)) {
-      if (
-        data.status === 'Prospective' ||
-        data.status === 'Waitlist' ||
-        data.status === 'Active'
-      ) {
+      if (data.status === 'Prospective' || data.status === 'Waitlist' || data.status === 'Active') {
         return
       }
       return navigateTo('/taskPage')
