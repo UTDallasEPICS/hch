@@ -8,7 +8,6 @@ interface AuditRecord {
   reasoning: string | null
   hasDocumentation: boolean
   documentationName: string | null
-  documentationPath: string | null
   signedAt: string
   signedBy: { id: string; name: string; email: string }
 }
@@ -68,11 +67,9 @@ function formatEntityType(type: string): string {
 
 function getDocumentUrl(): string {
   if (!props.audit) return ''
-  // Use direct URL if available (stored as full URL in database)
-  if (props.audit.documentationPath) {
-    return props.audit.documentationPath
-  }
-  // Fallback to API endpoint
+  // Always serve through the admin-gated API route. The raw documentationPath
+  // points at an unauthenticated on-disk location and must never be used to
+  // fetch PHI directly (see #87).
   return `/api/audit-docs/${props.audit.id}`
 }
 

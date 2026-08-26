@@ -39,7 +39,9 @@ export default defineEventHandler(async (event) => {
     reasoning: audit.reasoning,
     hasDocumentation: !!audit.documentationPath,
     documentationName: audit.documentationName,
-    documentationPath: audit.documentationPath,
+    // documentationPath is intentionally NOT serialized: it is a raw on-disk
+    // path to PHI. Documents are fetched via the gated /api/audit-docs/[id]
+    // route, which resolves the path server-side from the audit id (see #87).
     signedAt: audit.signedAt.toISOString(),
     signedBy: audit.signedBy,
   }))
