@@ -26,6 +26,35 @@ export function calculatePhqScore(questions: Record<string, any> | undefined): {
   return { score, severity }
 }
 
+export function calculateGadScore(questions: Record<string, any> | undefined): {
+  score: number | null
+  severity: string | null
+} {
+  if (!questions) return { score: null, severity: null }
+
+  // GAD-7 is scored on items g01–g07 (g08 is the functional-difficulty item and is
+  // not part of the total).
+  let score = 0
+  let answered = false
+  for (let i = 1; i <= 7; i++) {
+    const key = `g${String(i).padStart(2, '0')}`
+    const val = questions[key]
+    if (typeof val === 'number' && val >= 0) {
+      score += val
+      answered = true
+    }
+  }
+
+  if (!answered) return { score: null, severity: null }
+
+  let severity = 'Minimal'
+  if (score >= 15) severity = 'Severe'
+  else if (score >= 10) severity = 'Moderate'
+  else if (score >= 5) severity = 'Mild'
+
+  return { score, severity }
+}
+
 export function calculatePclScore(questions: Record<string, any> | undefined): {
   score: number | null
   severity: string | null
