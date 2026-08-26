@@ -108,7 +108,7 @@ export async function loadClinicalFormQuestions(
     })
     let q = aceForm?.questions ?? null
     if (!q && aceForm) {
-      q = await prisma.aceQuestion.findFirst({ where: { userId } })
+      q = await prisma.aceQuestion.findFirst({ where: { formId: aceForm.id } })
     }
     if (!q) return []
     const answers = [q.a01, q.a02, q.a03, q.a04, q.a05, q.a06, q.a07, q.a08, q.a09, q.a10]
@@ -126,9 +126,7 @@ export async function loadClinicalFormQuestions(
     })
     let q = gadForm?.questions ?? null
     if (!q && gadForm) {
-      q =
-        (await prisma.gadQuestion.findFirst({ where: { formId: gadForm.id } })) ??
-        (await prisma.gadQuestion.findFirst({ where: { userId } }))
+      q = await prisma.gadQuestion.findFirst({ where: { formId: gadForm.id } })
     }
     if (!q) return []
     const answers = [q.g01, q.g02, q.g03, q.g04, q.g05, q.g06, q.g07, q.g08]
@@ -171,9 +169,7 @@ export async function loadClinicalFormQuestions(
   })
   let q = pclForm?.questions ?? null
   if (!q && pclForm) {
-    q =
-      (await prisma.pclQuestion.findFirst({ where: { formId: pclForm.id } })) ??
-      (await prisma.pclQuestion.findFirst({ where: { userId } }))
+    q = await prisma.pclQuestion.findFirst({ where: { formId: pclForm.id } })
   }
   if (!q) return []
   const questions: ClinicalFormQuestionRow[] = [

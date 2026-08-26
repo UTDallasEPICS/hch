@@ -47,14 +47,6 @@
     { immediate: true }
   )
 
-  watch(
-    () => route.fullPath,
-    () => {
-      if (!sessionUser.value?.id) return
-      refreshAdminData()
-    }
-  )
-
   const isAdmin = computed(() => adminData.value?.isAdmin ?? inferredIsAdmin.value)
   const isStaff = computed(() => adminData.value?.isStaff ?? inferredIsStaff.value)
 
