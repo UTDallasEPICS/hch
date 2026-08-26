@@ -3,6 +3,10 @@ import { defineEventHandler, getQuery } from 'h3'
 import { prisma } from '../../utils/prisma'
 
 export default defineEventHandler(async (event) => {
+  // Access policy (#96): the ChangeAudit trail is admin-only. If the clinic decides
+  // clinicians need scoped read access to audits for their own clients, switch this to
+  // requireStaff + filter by assigned clients (assertStaffCanAccessClient / clinician
+  // scope) rather than opening the full trail. Kept requireAdmin pending that decision.
   const user = requireAdmin(event)
 
   const query = getQuery(event)

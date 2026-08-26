@@ -83,7 +83,9 @@ export async function createStaffAppointment(
       startTime,
       endTime,
       status: 'SCHEDULED',
-      recurrence: '',
+      // 'NONE' is the no-recurrence sentinel used everywhere else (index.post.ts,
+      // [id].put.ts, calendar.vue); '' left this path inconsistent. (#96)
+      recurrence: 'NONE',
       videoProvider,
       videoJoinUrl,
     },

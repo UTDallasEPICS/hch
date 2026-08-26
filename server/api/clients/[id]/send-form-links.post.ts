@@ -7,6 +7,7 @@ import {
   isSendableEmailFormKey,
   resolveClientFormLinkEntries,
   resetClientFormDataForEmail,
+  type SendableEmailFormKey,
 } from '../../../utils/client-forms'
 import { sendAppEmail, isEmailConfigured } from '../../../utils/mail'
 import { formatStoredUserNameInitials } from '../../../utils/name'
@@ -54,14 +55,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Client has no email address' })
   }
 
-  const uniqueKeys = [...new Set(formKeys)]
-  for (const key of uniqueKeys) {
+  const uniqueKeys: SendableEmailFormKey[] = []
+  for (const key of [...new Set(formKeys)]) {
     if (!isSendableEmailFormKey(key)) {
       throw createError({
         statusCode: 400,
         statusMessage: `Form "${key}" cannot be sent by email (only clinical assessments: ACE, GAD-7, PHQ-9, PCL-5).`,
       })
     }
+    uniqueKeys.push(key)
   }
 
   for (const key of uniqueKeys) {
