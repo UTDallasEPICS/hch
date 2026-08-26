@@ -852,10 +852,29 @@
         const idx = localSessionNotes.value.findIndex((n) => n.id === sid)
         if (idx !== -1) {
           const row = localSessionNotes.value[idx]!
+          // The server reverts an edited signed/approved note to CLINICIAN_SIGNED and
+          // clears the admin counter-sign (#88). Mirror that optimistically so this
+          // clinician's own view doesn't keep showing a stale "Fully Approved" badge
+          // over content that is now pending re-approval. Gate on an actual change so a
+          // no-op re-save leaves a real approval intact, exactly like the server does.
+          const contentChanged = draft.trim() !== row.content
+          const attendanceChanged =
+            !!editingAttendanceStatus.value &&
+            editingAttendanceStatus.value !== row.attendanceStatus
+          const resetApproval =
+            (row.status === 'CLINICIAN_SIGNED' || row.status === 'FULLY_APPROVED') &&
+            (contentChanged || attendanceChanged)
           localSessionNotes.value[idx] = {
             ...row,
             content: draft,
             attendanceStatus: editingAttendanceStatus.value,
+            ...(resetApproval && {
+              status: 'CLINICIAN_SIGNED' as const,
+              clinicianSignedAt: new Date().toISOString(),
+              adminSignedAt: null,
+              adminSignedById: null,
+              adminApprovalNote: null,
+            }),
           }
         }
 
