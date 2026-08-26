@@ -12,7 +12,6 @@ interface AuditRecord {
   reasoning: string | null
   hasDocumentation: boolean
   documentationName: string | null
-  documentationPath: string | null
   signedAt: string
   signedBy: { id: string; name: string; email: string }
 }
