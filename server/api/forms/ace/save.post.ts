@@ -14,8 +14,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing body' })
   }
 
-  let form = await prisma.aceForm.findUnique({
+  // userId is indexed but not unique, so use findFirst on the latest form (#91).
+  let form = await prisma.aceForm.findFirst({
     where: { userId },
+    orderBy: { id: 'desc' },
     include: { questions: true },
   })
 

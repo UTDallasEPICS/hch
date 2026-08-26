@@ -2,6 +2,7 @@ import { requireUser } from '../../../utils/guard'
 import { createError, defineEventHandler } from 'h3'
 import { loadClinicalFormQuestions } from '../../../utils/clinical-form-display'
 import { prisma } from '../../../utils/prisma'
+import { calculateGadScore } from '../../../utils/scoring'
 import { recordClientFormScoreSubmission } from '../../../utils/form-score-history'
 
 const TOTAL = 7
@@ -31,22 +32,27 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  // Recompute at submit time so the score/severity never depend on a prior /save
+  // having run — mirrors phq/pcl. (#91)
+  const { score, severity } = calculateGadScore(q)
+
   const submittedAt = new Date()
   await prisma.gadForm.update({
     where: { id: form.id },
     data: {
       status: 'COMPLETE',
       submittedAt,
+      totalScore: score,
+      severity,
     },
   })
 
-  const after = await prisma.gadForm.findUnique({ where: { id: form.id } })
   const questions = await loadClinicalFormQuestions(prisma, userId, 'gad')
   await recordClientFormScoreSubmission(prisma, {
     userId,
     formKey: 'gad',
-    score: after?.totalScore ?? null,
-    severity: after?.severity ?? null,
+    score,
+    severity,
     recordedAt: submittedAt,
     questions,
   })

@@ -76,6 +76,7 @@ export default defineEventHandler(async (event) => {
       status: 'COMPLETE',
       submittedAt,
       totalScore,
+      severity: phqSeverity,
     },
   })
 

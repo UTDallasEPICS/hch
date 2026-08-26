@@ -2,6 +2,7 @@ import { requireUser } from '../../../../utils/guard'
 import { assertStaffCanAccessClient } from '../../../../utils/clinician-access'
 import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { prisma } from '../../../../utils/prisma'
+import { calculateGadScore, calculatePhqScore } from '../../../../utils/scoring'
 
 const PHQ_OPTIONS: Record<string, number> = {
   'Not at all': 0,
@@ -106,14 +107,9 @@ export default defineEventHandler(async (event) => {
     })
     await prisma.gadQuestion.update({ where: { formId: form.id }, data })
 
-    // Recalculate score (g01-g07 only, g08 is difficulty)
-    const total = ['g01', 'g02', 'g03', 'g04', 'g05', 'g06', 'g07'].reduce(
-      (sum, k) => sum + (data[k] ?? 0),
-      0
-    )
-    const severity =
-      total <= 4 ? 'Minimal' : total <= 9 ? 'Mild' : total <= 14 ? 'Moderate' : 'Severe'
-    await prisma.gadForm.update({ where: { id: form.id }, data: { totalScore: total, severity } })
+    // Single source of truth for GAD-7 scoring (#91).
+    const { score, severity } = calculateGadScore(data)
+    await prisma.gadForm.update({ where: { id: form.id }, data: { totalScore: score, severity } })
     return { ok: true }
   }
 
@@ -134,22 +130,9 @@ export default defineEventHandler(async (event) => {
     })
     await prisma.phqQuestion.update({ where: { formId: form.id }, data })
 
-    // Recalculate score (q1-q9 only, q10 is difficulty)
-    const total = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9'].reduce(
-      (sum, k) => sum + (data[k] ?? 0),
-      0
-    )
-    const severity =
-      total <= 4
-        ? 'Minimal'
-        : total <= 9
-          ? 'Mild'
-          : total <= 14
-            ? 'Moderate depression'
-            : total <= 19
-              ? 'Moderately severe depression'
-              : 'Severe depression'
-    await prisma.phqForm.update({ where: { id: form.id }, data: { totalScore: total, severity } })
+    // Single source of truth for PHQ-9 scoring + severity labels (#91).
+    const { score, severity } = calculatePhqScore(data)
+    await prisma.phqForm.update({ where: { id: form.id }, data: { totalScore: score, severity } })
     return { ok: true }
   }
 

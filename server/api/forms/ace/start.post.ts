@@ -7,8 +7,10 @@ export default defineEventHandler(async (event) => {
 
   const userId = user.id
 
-  let existingForm = await prisma.aceForm.findUnique({
+  // userId is indexed but not unique, so use findFirst on the latest form (#91).
+  let existingForm = await prisma.aceForm.findFirst({
     where: { userId },
+    orderBy: { id: 'desc' },
     include: { questions: true },
   })
 
