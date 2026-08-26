@@ -362,7 +362,7 @@ export default defineEventHandler(async (event) => {
         },
       },
     }),
-    prisma.$queryRaw<Array<{ userId: string; archivedAt: Date | string | null }>>`
+    prisma.$queryRaw<Array<{ userId: string; waitlistedAt: Date | string | null }>>`
       SELECT userId, waitlistedAt
       FROM client
       WHERE waitlistedAt IS NOT NULL

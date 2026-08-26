@@ -457,8 +457,8 @@
   onMounted(async () => {
     try {
       await refreshProfile()
-    } catch {
-      // Error handling
+    } catch (err) {
+      console.error('Failed to refresh profile on mount:', err)
     }
   })
 </script>
