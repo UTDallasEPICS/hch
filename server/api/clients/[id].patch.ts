@@ -141,6 +141,8 @@ export default defineEventHandler(async (event) => {
     status?: ClientStatus
     therapyWeek?: number | null
     missedSessions?: number
+    waitlistedAt?: Date | null
+    archivedAt?: Date | null
   } = {}
   if (body.status !== undefined) {
     const nextStatus = toDbClientStatus(body.status)
@@ -152,41 +154,15 @@ export default defineEventHandler(async (event) => {
   }
   if (therapyWeek !== undefined) updateData.therapyWeek = therapyWeek
   if (missedSessions !== undefined) updateData.missedSessions = missedSessions
+  // Set the timestamps directly (Date or null) rather than a COALESCE UPDATE plus
+  // follow-up re-null UPDATEs. An omitted (undefined) value leaves the column
+  // unchanged, which is exactly the previous intent. (#95)
+  if (waitlistedAt !== undefined) updateData.waitlistedAt = waitlistedAt
+  if (archivedAt !== undefined) updateData.archivedAt = archivedAt
 
-  const updated = await prisma.$transaction(async (tx) => {
-    await tx.client.update({
-      where: { id: client.id },
-      data: updateData,
-    })
-
-    if (waitlistedAt !== undefined || archivedAt !== undefined) {
-      await tx.$executeRaw`
-        UPDATE client
-        SET waitlistedAt = COALESCE(${waitlistedAt}, waitlistedAt),
-            archivedAt = COALESCE(${archivedAt}, archivedAt)
-        WHERE id = ${client.id}
-      `
-
-      if (waitlistedAt === null) {
-        await tx.$executeRaw`
-          UPDATE client
-          SET waitlistedAt = NULL
-          WHERE id = ${client.id}
-        `
-      }
-
-      if (archivedAt === null) {
-        await tx.$executeRaw`
-          UPDATE client
-          SET archivedAt = NULL
-          WHERE id = ${client.id}
-        `
-      }
-    }
-
-    return tx.client.findUniqueOrThrow({
-      where: { id: client.id },
-    })
+  const updated = await prisma.client.update({
+    where: { id: client.id },
+    data: updateData,
   })
 
   return updated
