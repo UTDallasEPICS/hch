@@ -70,45 +70,51 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
   }
 
+  // Persist the absence change and its governed-change audit atomically: a failure
+  // between the two must never leave a mutation without an audit record. (#90)
   let client = dbUser.client
   if (!client) {
-    client = await prisma.client.create({
-      data: { userId: clientUserId, missedSessions: body.missedSessions },
-    })
-    const createAuditData: any = {
-      entityType: 'ABSENCE',
-      entityId: clientUserId,
-      oldValue: null,
-      newValue: JSON.stringify({ missedSessions: body.missedSessions }),
-      reasoning: body.reasoning?.trim() || null,
-      documentationPath,
-      documentationName,
-      signatureData: body.signatureData,
-      signedById: user.id,
-    }
-    await prisma.changeAudit.create({
-      data: createAuditData as any,
-    })
+    const [createdClient] = await prisma.$transaction([
+      prisma.client.create({
+        data: { userId: clientUserId, missedSessions: body.missedSessions },
+      }),
+      prisma.changeAudit.create({
+        data: {
+          entityType: 'ABSENCE',
+          entityId: clientUserId,
+          oldValue: null,
+          newValue: JSON.stringify({ missedSessions: body.missedSessions }),
+          reasoning: body.reasoning?.trim() || null,
+          documentationPath,
+          documentationName,
+          signatureData: body.signatureData,
+          signedById: user.id,
+        },
+      }),
+    ])
+    client = createdClient
   } else {
     const oldSessions = client.missedSessions
-    client = await prisma.client.update({
-      where: { id: client.id },
-      data: { missedSessions: body.missedSessions },
-    })
-    const createAuditData: any = {
-      entityType: 'ABSENCE',
-      entityId: clientUserId,
-      oldValue: JSON.stringify({ missedSessions: oldSessions }),
-      newValue: JSON.stringify({ missedSessions: body.missedSessions }),
-      reasoning: body.reasoning?.trim() || null,
-      documentationPath,
-      documentationName,
-      signatureData: body.signatureData,
-      signedById: user.id,
-    }
-    await prisma.changeAudit.create({
-      data: createAuditData as any,
-    })
+    const [updatedClient] = await prisma.$transaction([
+      prisma.client.update({
+        where: { id: client.id },
+        data: { missedSessions: body.missedSessions },
+      }),
+      prisma.changeAudit.create({
+        data: {
+          entityType: 'ABSENCE',
+          entityId: clientUserId,
+          oldValue: JSON.stringify({ missedSessions: oldSessions }),
+          newValue: JSON.stringify({ missedSessions: body.missedSessions }),
+          reasoning: body.reasoning?.trim() || null,
+          documentationPath,
+          documentationName,
+          signatureData: body.signatureData,
+          signedById: user.id,
+        },
+      }),
+    ])
+    client = updatedClient
   }
 
   return { missedSessions: client.missedSessions }
