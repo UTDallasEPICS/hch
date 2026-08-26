@@ -1,7 +1,7 @@
 import { requireAdmin } from '../../utils/guard'
 import { defineEventHandler, getQuery } from 'h3'
 import { prisma } from '../../utils/prisma'
-import { formatStoredUserNameForDisplay, parseName } from '../../utils/name'
+import { formatStoredUserNameForDisplay } from '../../utils/name'
 
 /**
  * Admin-only list of session notes that have been clinician-signed and are
@@ -11,8 +11,7 @@ export default defineEventHandler(async (event) => {
   requireAdmin(event)
 
   const query = getQuery(event)
-  const kindParam =
-    typeof query.kind === 'string' ? query.kind.toUpperCase() : ''
+  const kindParam = typeof query.kind === 'string' ? query.kind.toUpperCase() : ''
   const kindFilter =
     kindParam === 'PROGRESS' || kindParam === 'PSYCHOTHERAPY'
       ? { kind: kindParam as 'PROGRESS' | 'PSYCHOTHERAPY' }
@@ -38,12 +37,9 @@ export default defineEventHandler(async (event) => {
 
   return rows.map((r) => {
     const clientName =
-      formatStoredUserNameForDisplay(r.client?.user?.name ?? '') ||
-      r.client?.user?.name ||
-      'Client'
+      formatStoredUserNameForDisplay(r.client?.user?.name ?? '') || r.client?.user?.name || 'Client'
     const clinicianName = r.clinicianSigner
-      ? formatStoredUserNameForDisplay(r.clinicianSigner.name ?? '') ||
-        r.clinicianSigner.name
+      ? formatStoredUserNameForDisplay(r.clinicianSigner.name ?? '') || r.clinicianSigner.name
       : null
     return {
       id: r.id,

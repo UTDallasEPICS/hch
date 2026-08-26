@@ -44,7 +44,11 @@ function addRecurrenceStep(base: Date, recurrence: string, step: number) {
   return next
 }
 
-function getOccurrencesUntilEndDate(start: Date, recurrence: string, recurrenceEndDate: string | null) {
+function getOccurrencesUntilEndDate(
+  start: Date,
+  recurrence: string,
+  recurrenceEndDate: string | null
+) {
   if (!recurrenceEndDate || recurrence === 'NONE') return null
   const endBoundary = new Date(`${recurrenceEndDate}T23:59:59.999`)
   if (Number.isNaN(endBoundary.getTime()) || endBoundary < start) return 0
@@ -105,7 +109,11 @@ export default defineEventHandler(async (event) => {
 
     const startTimeDate = new Date(`${date}T${normalizedStartTimeOfDay}`)
     const endTimeDate = new Date(`${date}T${endTime}`)
-    if (Number.isNaN(startTimeDate.getTime()) || Number.isNaN(endTimeDate.getTime()) || endTimeDate <= startTimeDate) {
+    if (
+      Number.isNaN(startTimeDate.getTime()) ||
+      Number.isNaN(endTimeDate.getTime()) ||
+      endTimeDate <= startTimeDate
+    ) {
       throw createError({
         statusCode: 400,
         statusMessage: 'Invalid time range',
@@ -289,8 +297,11 @@ export default defineEventHandler(async (event) => {
       })
       const durationMs = endTimeDate.getTime() - startTimeDate.getTime()
       const desiredOccurrences =
-        getOccurrencesUntilEndDate(startTimeDate, normalizedRecurrence, recurrenceEndDate ?? null) ??
-        seriesAppointments.length
+        getOccurrencesUntilEndDate(
+          startTimeDate,
+          normalizedRecurrence,
+          recurrenceEndDate ?? null
+        ) ?? seriesAppointments.length
       const targetCount = Math.max(desiredOccurrences, normalizedRecurrence === 'NONE' ? 1 : 0)
       const toUpdate = seriesAppointments.slice(0, targetCount)
       const toDelete = seriesAppointments.slice(targetCount)

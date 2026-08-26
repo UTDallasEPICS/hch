@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import type { ApplicationForm } from '~/types/application'
+  import type { ApplicationForm } from '~/types/application'
 
-defineProps<{
-  form: ApplicationForm
-  yesNoOptions: { label: string; value: string }[]
-  caregiverOptions: { label: string; value: string }[]
-}>()
+  defineProps<{
+    form: ApplicationForm
+    yesNoOptions: { label: string; value: string }[]
+    caregiverOptions: { label: string; value: string }[]
+  }>()
 </script>
 
 <template>
   <div class="space-y-5 [&_label]:block">
-    <h3 class="text-base font-semibold text-gray-100 border-b border-gray-600 pb-2 mb-2">
+    <h3 class="mb-2 border-b border-gray-600 pb-2 text-base font-semibold text-gray-100">
       Legal Mother
     </h3>
     <div>
@@ -81,7 +81,9 @@ defineProps<{
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">Is legal mother the primary contact?</label>
+      <label class="text-sm font-semibold text-gray-200"
+        >Is legal mother the primary contact?</label
+      >
       <URadioGroup
         v-model="form.q28"
         class="mt-2"
@@ -95,7 +97,7 @@ defineProps<{
       />
     </div>
 
-    <h3 class="text-base font-semibold text-gray-100 border-b border-gray-600 pb-2 mt-6 mb-2">
+    <h3 class="mt-6 mb-2 border-b border-gray-600 pb-2 text-base font-semibold text-gray-100">
       Legal Father
     </h3>
     <div>

@@ -22,12 +22,7 @@
   const toast = useToast()
   const showOnlyUnread = ref(true)
 
-  const {
-    data,
-    pending,
-    error,
-    refresh,
-  } = await useFetch<NotificationResponse>(
+  const { data, pending, error, refresh } = await useFetch<NotificationResponse>(
     () => `/api/notifications?limit=10${showOnlyUnread.value ? '&unread=true' : ''}`,
     {
       watch: [showOnlyUnread],
@@ -154,10 +149,7 @@
       title="Could not load notifications"
     />
 
-    <p
-      v-else-if="!items.length"
-      class="mt-6 text-sm text-gray-500 dark:text-gray-400"
-    >
+    <p v-else-if="!items.length" class="mt-6 text-sm text-gray-500 dark:text-gray-400">
       {{ showOnlyUnread ? "You're all caught up." : 'No notifications yet.' }}
     </p>
 
@@ -166,9 +158,13 @@
         v-for="n in items"
         :key="n.id"
         class="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-800/40"
-        :class="!n.readAt ? 'border-primary-200 bg-primary-50/50 dark:border-primary-900/60 dark:bg-primary-950/30' : ''"
+        :class="
+          !n.readAt
+            ? 'border-primary-200 bg-primary-50/50 dark:border-primary-900/60 dark:bg-primary-950/30'
+            : ''
+        "
       >
-        <UIcon :name="iconFor(n.type)" class="mt-0.5 h-5 w-5 text-primary-500" />
+        <UIcon :name="iconFor(n.type)" class="text-primary-500 mt-0.5 h-5 w-5" />
         <div class="min-w-0 flex-1">
           <div class="flex flex-wrap items-center gap-2">
             <p class="truncate text-sm font-semibold text-gray-900 dark:text-white">

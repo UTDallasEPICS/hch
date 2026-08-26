@@ -1,6 +1,6 @@
 import { requireUser } from '../../utils/guard'
 import { assertStaffCanAccessClient } from '../../utils/clinician-access'
-import { createError, defineEventHandler, getHeaders, getRouterParam, readBody } from 'h3'
+import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { isAllFormsComplete } from '../../utils/client-forms'
 import type { ClientStatus } from '../../../prisma/generated/client'

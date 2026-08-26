@@ -104,8 +104,7 @@ export async function backfillClientFormScoreHistoryIfEmpty(
 
   for (const e of entries) {
     const questions = await loadClinicalFormQuestions(db, userId, e.formKey)
-    const answersJson =
-      questions.length > 0 ? JSON.stringify({ questions }) : null
+    const answersJson = questions.length > 0 ? JSON.stringify({ questions }) : null
     await db.clientFormScoreHistory.create({
       data: {
         userId,

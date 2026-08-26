@@ -67,7 +67,7 @@ export default defineEventHandler(async (event) => {
       id: true,
       status: true,
       adminSignedAt: true,
-      attendanceStatus: true, 
+      attendanceStatus: true,
     },
   })
 

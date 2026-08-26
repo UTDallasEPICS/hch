@@ -134,9 +134,11 @@ export async function loadClinicalFormQuestions(
     const answers = [q.g01, q.g02, q.g03, q.g04, q.g05, q.g06, q.g07, q.g08]
     return GAD_LABELS.slice(0, answers.length).map((label, i) => ({
       label,
-      answer: answers[i] != null
-        ? ((i === 7 ? DIFFICULTY_OPTIONS : GAD_OPTIONS)[answers[i] as number] ?? String(answers[i]))
-        : '',
+      answer:
+        answers[i] != null
+          ? ((i === 7 ? DIFFICULTY_OPTIONS : GAD_OPTIONS)[answers[i] as number] ??
+            String(answers[i]))
+          : '',
     }))
   }
 
@@ -154,9 +156,11 @@ export async function loadClinicalFormQuestions(
     const answers = [q.q1, q.q2, q.q3, q.q4, q.q5, q.q6, q.q7, q.q8, q.q9, q.q10]
     return PHQ_LABELS.slice(0, answers.length).map((label, i) => ({
       label,
-      answer: answers[i] != null
-        ? ((i === 9 ? DIFFICULTY_OPTIONS : PHQ_OPTIONS)[answers[i] as number] ?? String(answers[i]))
-        : '',
+      answer:
+        answers[i] != null
+          ? ((i === 9 ? DIFFICULTY_OPTIONS : PHQ_OPTIONS)[answers[i] as number] ??
+            String(answers[i]))
+          : '',
     }))
   }
 
@@ -179,7 +183,10 @@ export async function loadClinicalFormQuestions(
     const key = `q${String(i).padStart(2, '0')}` as keyof typeof q
     const val = q[key]
     const numVal = typeof val === 'number' ? val : null
-    questions.push({ label: PCL_LABELS[i - 1] ?? `Item ${i}`, answer: numVal != null ? (PCL_OPTIONS[numVal] ?? String(numVal)) : '' })
+    questions.push({
+      label: PCL_LABELS[i - 1] ?? `Item ${i}`,
+      answer: numVal != null ? (PCL_OPTIONS[numVal] ?? String(numVal)) : '',
+    })
   }
   return questions
 }

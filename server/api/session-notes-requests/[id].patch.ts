@@ -70,9 +70,7 @@ export default defineEventHandler(async (event) => {
 
   const clientInitials = formatStoredUserNameInitials(req.client.user.name)
   const greeting =
-    clientInitials.length > 0
-      ? `<p>Hello ${escapeHtml(clientInitials)},</p>`
-      : '<p>Hello,</p>'
+    clientInitials.length > 0 ? `<p>Hello ${escapeHtml(clientInitials)},</p>` : '<p>Hello,</p>'
 
   if (parsed.data.action === 'reject') {
     const reason = String(parsed.data.rejectionReason ?? '').trim()

@@ -151,7 +151,12 @@
   )
 
   async function addNoteWithSignature(payload: ChangeJustificationPayload) {
-    if (!clientId.value || !newNoteContent.value.trim() || addingNote.value || !selectedAppointmentId.value)
+    if (
+      !clientId.value ||
+      !newNoteContent.value.trim() ||
+      addingNote.value ||
+      !selectedAppointmentId.value
+    )
       return
 
     const updating = isUpdatingClientPageSessionNote.value
@@ -204,7 +209,10 @@
   watch(
     activeAppointmentOptions,
     (opts) => {
-      if (!selectedAppointmentId.value || !opts.some((o) => o.value === selectedAppointmentId.value)) {
+      if (
+        !selectedAppointmentId.value ||
+        !opts.some((o) => o.value === selectedAppointmentId.value)
+      ) {
         selectedAppointmentId.value = opts[0]?.value ?? ''
       }
     },
@@ -421,7 +429,9 @@
                 </span>
                 <UIcon
                   :name="
-                    expandedTaskKey === task.key ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'
+                    expandedTaskKey === task.key
+                      ? 'i-heroicons-chevron-up'
+                      : 'i-heroicons-chevron-down'
                   "
                   class="h-4 w-4 text-gray-400"
                 />
@@ -469,20 +479,28 @@
                     v-if="taskFormAnswers.score != null || taskFormAnswers.severity"
                     class="flex flex-wrap gap-2 text-sm"
                   >
-                    <span v-if="taskFormAnswers.score != null" class="font-semibold text-gray-900 dark:text-white">
+                    <span
+                      v-if="taskFormAnswers.score != null"
+                      class="font-semibold text-gray-900 dark:text-white"
+                    >
                       Score: {{ taskFormAnswers.score }}
                     </span>
                     <span v-if="taskFormAnswers.severity" class="text-gray-600 dark:text-gray-400">
                       {{ taskFormAnswers.severity }}
                     </span>
                   </div>
-                  <div v-if="taskFormAnswers.questions?.length" class="max-h-80 space-y-2 overflow-y-auto">
+                  <div
+                    v-if="taskFormAnswers.questions?.length"
+                    class="max-h-80 space-y-2 overflow-y-auto"
+                  >
                     <div
                       v-for="(q, i) in taskFormAnswers.questions"
                       :key="i"
                       class="rounded-lg border border-gray-200 bg-white p-3 text-sm dark:border-gray-700 dark:bg-gray-900"
                     >
-                      <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ q.label }}</p>
+                      <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {{ q.label }}
+                      </p>
                       <p class="mt-1 text-gray-900 dark:text-gray-100">{{ q.answer || '—' }}</p>
                     </div>
                   </div>
@@ -615,7 +633,7 @@
             <p class="text-sm whitespace-pre-wrap text-gray-900 dark:text-gray-100">
               {{ note.content }}
             </p>
-            <p class="mt-2 text-xs font-semibold text-primary-600 dark:text-primary-400">
+            <p class="text-primary-600 dark:text-primary-400 mt-2 text-xs font-semibold">
               {{ note.sessionName }}
             </p>
             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">

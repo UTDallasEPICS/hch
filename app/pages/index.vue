@@ -170,7 +170,7 @@
         </div>
         <NuxtLink
           to="/clients/session-notes-approvals"
-          class="hover:border-primary-300 focus:ring-primary-500 focus:outline-none focus-visible:ring-2 rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-600"
+          class="hover:border-primary-300 focus:ring-primary-500 rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-colors focus:outline-none focus-visible:ring-2 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-600"
         >
           <div class="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
             <UIcon name="i-heroicons-check-badge-20-solid" class="h-5 w-5" />

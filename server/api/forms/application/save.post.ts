@@ -1,5 +1,5 @@
 import { requireUser } from '../../../utils/guard'
-import { createError, defineEventHandler, getHeaders, readBody } from 'h3'
+import { createError, defineEventHandler, readBody } from 'h3'
 import { prisma } from '../../../utils/prisma'
 
 type AnswersBody = {
@@ -58,7 +58,6 @@ type AnswersBody = {
 const TOTAL_QUESTIONS = 50
 
 export default defineEventHandler(async (event) => {
-
   const user = requireUser(event)
 
   const userId = user.id

@@ -1,5 +1,4 @@
 import { requireUser } from '../../../utils/guard'
-import { getHeaders } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { isAdmin } from '../../../utils/is-admin'
 import { getClientPermissions } from '../../../utils/client-permissions'

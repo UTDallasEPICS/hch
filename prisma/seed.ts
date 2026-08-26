@@ -27,15 +27,32 @@ async function seedForms(userId: string) {
       q01: 'Bob',
       q02: 'Builder',
       q05: '1234567890',
-  },
-})
+    },
+  })
 
   // 2. GAD-7
   const gadForm = await prisma.gadForm.create({
-    data: { userId, status: 'COMPLETE', totalScore: 12, severity: 'Moderate', submittedAt: new Date() },
+    data: {
+      userId,
+      status: 'COMPLETE',
+      totalScore: 12,
+      severity: 'Moderate',
+      submittedAt: new Date(),
+    },
   })
   await prisma.gadQuestion.create({
-    data: { formId: gadForm.id, userId, g01: 2, g02: 1, g03: 2, g04: 1, g05: 2, g06: 2, g07: 2, g08: 1 },
+    data: {
+      formId: gadForm.id,
+      userId,
+      g01: 2,
+      g02: 1,
+      g03: 2,
+      g04: 1,
+      g05: 2,
+      g06: 2,
+      g07: 2,
+      g08: 1,
+    },
   })
 
   // 3. PHQ-9
@@ -49,18 +66,56 @@ async function seedForms(userId: string) {
     },
   })
   await prisma.phqQuestion.create({
-    data: { formId: phqForm.id, userId, q1: 2, q2: 1, q3: 2, q4: 1, q5: 2, q6: 2, q7: 2, q8: 1, q9: 1, q10: 1 },
+    data: {
+      formId: phqForm.id,
+      userId,
+      q1: 2,
+      q2: 1,
+      q3: 2,
+      q4: 1,
+      q5: 2,
+      q6: 2,
+      q7: 2,
+      q8: 1,
+      q9: 1,
+      q10: 1,
+    },
   })
 
   // 4. PCL-5
   const pclForm = await prisma.pclForm.create({
-    data: { userId, status: 'COMPLETE', totalScore: 45, severity: 'Moderate', submittedAt: new Date() },
+    data: {
+      userId,
+      status: 'COMPLETE',
+      totalScore: 45,
+      severity: 'Moderate',
+      submittedAt: new Date(),
+    },
   })
   await prisma.pclQuestion.create({
     data: {
-      formId: pclForm.id, userId,
-      q01: 3, q02: 2, q03: 3, q04: 2, q05: 2, q06: 3, q07: 2, q08: 2, q09: 2, q10: 2,
-      q11: 2, q12: 2, q13: 2, q14: 2, q15: 2, q16: 2, q17: 2, q18: 2, q19: 2, q20: 2,
+      formId: pclForm.id,
+      userId,
+      q01: 3,
+      q02: 2,
+      q03: 3,
+      q04: 2,
+      q05: 2,
+      q06: 3,
+      q07: 2,
+      q08: 2,
+      q09: 2,
+      q10: 2,
+      q11: 2,
+      q12: 2,
+      q13: 2,
+      q14: 2,
+      q15: 2,
+      q16: 2,
+      q17: 2,
+      q18: 2,
+      q19: 2,
+      q20: 2,
     },
   })
 
@@ -76,9 +131,18 @@ async function seedForms(userId: string) {
   })
   await prisma.aceQuestion.create({
     data: {
-      formId: aceForm.id, userId,
-      a01: 'Yes', a02: 'No', a03: 'No', a04: 'Yes', a05: 'Yes',
-      a06: 'Yes', a07: 'No', a08: 'Yes', a09: 'No', a10: 'No',
+      formId: aceForm.id,
+      userId,
+      a01: 'Yes',
+      a02: 'No',
+      a03: 'No',
+      a04: 'Yes',
+      a05: 'Yes',
+      a06: 'Yes',
+      a07: 'No',
+      a08: 'Yes',
+      a09: 'No',
+      a10: 'No',
     },
   })
 }
@@ -125,7 +189,6 @@ async function ensureBobBuilderSessionNotes(bobUserId: string, clinicianUserId: 
 
   return client
 }
-
 
 /*
 async function seedApprovalWorkflowNotes(
@@ -220,11 +283,13 @@ async function main() {
   const alice = await prisma.user.upsert({
     where: { email: 'alice@a.com' },
     update: { role: 'ADMIN', name: 'Alice Wonderland' },
-    create: { id: 'alice_id', 
-      email: 'alice@a.com', 
-      name: 'Alice Wonderland', 
-      emailVerified: true, 
-      role: 'ADMIN' },
+    create: {
+      id: 'alice_id',
+      email: 'alice@a.com',
+      name: 'Alice Wonderland',
+      emailVerified: true,
+      role: 'ADMIN',
+    },
   })
   console.log('Seeded Admin: alice@a.com')
 
@@ -256,14 +321,26 @@ async function main() {
   const carl = await prisma.user.upsert({
     where: { email: 'carl@c.com' },
     update: { role: 'CLINICIAN', name: 'Carl Karl' },
-    create: { id: 'carl_id', email: 'carl@c.com', name: 'Carl Karl', emailVerified: true, role: 'CLINICIAN' },
+    create: {
+      id: 'carl_id',
+      email: 'carl@c.com',
+      name: 'Carl Karl',
+      emailVerified: true,
+      role: 'CLINICIAN',
+    },
   })
   console.log('Seeded Clinician: carl@c.com')
 
   const bob = await prisma.user.upsert({
     where: { email: 'bob@b.com' },
     update: { role: 'CLIENT', name: 'Bob Builder' },
-    create: { id: 'bob_id', email: 'bob@b.com', name: 'Bob Builder', emailVerified: true, role: 'CLIENT' },
+    create: {
+      id: 'bob_id',
+      email: 'bob@b.com',
+      name: 'Bob Builder',
+      emailVerified: true,
+      role: 'CLIENT',
+    },
   })
   console.log('Seeded Client: bob@b.com')
 
@@ -282,4 +359,3 @@ main()
     await prisma.$disconnect()
     process.exit(1)
   })
-

@@ -29,7 +29,10 @@ export function useApplicationOptions() {
     { label: 'N/A', value: 'na' },
   ]
   const supportGroupOptions = [
-    { label: 'Adolescent child diagnosed with cancer', value: 'adolescent_child_diagnosed_with_cancer' },
+    {
+      label: 'Adolescent child diagnosed with cancer',
+      value: 'adolescent_child_diagnosed_with_cancer',
+    },
     { label: 'Adolescent sibling', value: 'adolescent_sibling' },
     { label: 'Parent', value: 'parent' },
     { label: 'No', value: 'no' },

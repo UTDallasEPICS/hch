@@ -1,7 +1,7 @@
 /**
  * Development-only seed data for form autofill.
  * Based on Luke Ross from the Disney Channel show "Jessie"
- * 
+ *
  * Character Background:
  * - Adopted from a group home in Detroit by Morgan and Christina Ross
  * - Born December 28, 2001
@@ -97,7 +97,7 @@ export const applicationSeedData: ApplicationSeedData = {
   q6Text: '',
   q7: '1975-06-15',
   q8: '725 Fifth Avenue|||New York|||NY|||10022',
-  
+
   // Step 2: Child's Information
   q9: 'Luke',
   q10: 'Ross',
@@ -111,8 +111,20 @@ export const applicationSeedData: ApplicationSeedData = {
     { firstName: 'Emma', middleInitial: '', lastName: 'Ross', age: '18', relationship: 'Sister' },
     { firstName: 'Ravi', middleInitial: '', lastName: 'Ross', age: '14', relationship: 'Brother' },
     { firstName: 'Zuri', middleInitial: '', lastName: 'Ross', age: '12', relationship: 'Sister' },
-    { firstName: 'Jessie', middleInitial: '', lastName: 'Prescott', age: '22', relationship: 'Nanny' },
-    { firstName: 'Bertram', middleInitial: '', lastName: 'Winkle', age: '55', relationship: 'Butler' }
+    {
+      firstName: 'Jessie',
+      middleInitial: '',
+      lastName: 'Prescott',
+      age: '22',
+      relationship: 'Nanny',
+    },
+    {
+      firstName: 'Bertram',
+      middleInitial: '',
+      lastName: 'Winkle',
+      age: '55',
+      relationship: 'Butler',
+    },
   ]),
   q17: 'no',
   q17Text: 'Luke was adopted from a group home in Detroit',
@@ -120,7 +132,7 @@ export const applicationSeedData: ApplicationSeedData = {
   q18Other: '',
   q19: 'yes',
   q19Text: '',
-  
+
   // Step 3: Guardian Information - Legal Mother
   q20: 'Christina',
   q21: 'Ross',
@@ -132,7 +144,7 @@ export const applicationSeedData: ApplicationSeedData = {
   q27: 'Fashion Designer / Supermodel',
   q28: 'yes',
   q28Text: '',
-  
+
   // Step 3: Guardian Information - Legal Father
   q29: 'Morgan',
   q30: 'Ross',
@@ -144,7 +156,7 @@ export const applicationSeedData: ApplicationSeedData = {
   q36: 'Film Director / Producer',
   q37: 'Mom',
   q37Other: '',
-  
+
   // Step 4: Treatment History
   q38: 'yes',
   q38Text: 'Emma witnessed Luke having a severe reaction during chemotherapy',
@@ -160,15 +172,21 @@ export const applicationSeedData: ApplicationSeedData = {
   q45Text: '',
   q46: 'no',
   q46Other: '',
-  
+
   // Step 5: Therapy Requests
   q47: 'yes',
   q47Text: '',
   q48: ['adolescent_child_diagnosed_with_cancer', 'adolescent_sibling'],
-  q49: JSON.stringify({ firstName: 'Luke', middleInitial: '', lastName: 'Ross', age: '14', relationship: 'Self (Patient)' }),
+  q49: JSON.stringify({
+    firstName: 'Luke',
+    middleInitial: '',
+    lastName: 'Ross',
+    age: '14',
+    relationship: 'Self (Patient)',
+  }),
   q50: 'need_referral',
   q50Text: '',
-  q51: 'yes_with_mental_health_benefits'
+  q51: 'yes_with_mental_health_benefits',
 }
 
 // ACE (Adverse Childhood Experiences) - 10 questions, Yes/No
@@ -185,16 +203,16 @@ export const applicationSeedData: ApplicationSeedData = {
 // 9. Mental illness in household
 // 10. Incarcerated household member
 export const aceSeedData: Record<string, string> = {
-  'ace_1': 'Yes',   // Verbal abuse - yes, in group home
-  'ace_2': 'No',    // Physical abuse
-  'ace_3': 'No',    // Sexual abuse
-  'ace_4': 'Yes',   // Felt unloved - yes, before adoption
-  'ace_5': 'Yes',   // Neglect - yes, in group home
-  'ace_6': 'Yes',   // Parents separated - biological parents
-  'ace_7': 'No',    // Mother abused
-  'ace_8': 'Yes',   // Substance abuse in household
-  'ace_9': 'No',    // Mental illness
-  'ace_10': 'No'    // Incarcerated household member
+  ace_1: 'Yes', // Verbal abuse - yes, in group home
+  ace_2: 'No', // Physical abuse
+  ace_3: 'No', // Sexual abuse
+  ace_4: 'Yes', // Felt unloved - yes, before adoption
+  ace_5: 'Yes', // Neglect - yes, in group home
+  ace_6: 'Yes', // Parents separated - biological parents
+  ace_7: 'No', // Mother abused
+  ace_8: 'Yes', // Substance abuse in household
+  ace_9: 'No', // Mental illness
+  ace_10: 'No', // Incarcerated household member
 }
 
 // PCL-5 (PTSD Checklist) - 20 questions, 0-4 scale
@@ -221,8 +239,8 @@ export const pclSeedData = {
     2, // q17: Being superalert
     1, // q18: Easily startled
     2, // q19: Difficulty concentrating
-    2  // q20: Trouble sleeping
-  ]
+    2, // q20: Trouble sleeping
+  ],
 }
 
 // PHQ-9 (Depression) - 9 questions + difficulty, 0-3 scale
@@ -237,9 +255,9 @@ export const phqSeedData = {
     1, // q6: Feeling bad about self
     1, // q7: Trouble concentrating
     0, // q8: Moving/speaking slowly or restless
-    0  // q9: Thoughts of self-harm
+    0, // q9: Thoughts of self-harm
   ],
-  difficulty: 1 // Somewhat difficult
+  difficulty: 1, // Somewhat difficult
 }
 
 // GAD-7 (Anxiety) - 7 questions + difficulty, 0-3 scale
@@ -252,7 +270,7 @@ export const gadSeedData = {
   g5: 1, // Restless
   g6: 1, // Easily annoyed
   g7: 2, // Feeling afraid
-  g8: 1  // Difficulty (somewhat difficult)
+  g8: 1, // Difficulty (somewhat difficult)
 }
 
 export function getApplicationSeedData(): ApplicationSeedData | null {

@@ -1,5 +1,5 @@
 import { requireUser } from '../../../utils/guard'
-import { createError, defineEventHandler, getHeaders } from 'h3'
+import { createError, defineEventHandler } from 'h3'
 import { loadClinicalFormQuestions } from '../../../utils/clinical-form-display'
 import { prisma } from '../../../utils/prisma'
 import { recordClientFormScoreSubmission } from '../../../utils/form-score-history'
@@ -7,11 +7,8 @@ import { recordClientFormScoreSubmission } from '../../../utils/form-score-histo
 const TOTAL = 7
 
 export default defineEventHandler(async (event) => {
-
   const user = requireUser(event)
   const userId = user.id
-
-  
 
   const form = await prisma.gadForm.findFirst({
     where: { userId },

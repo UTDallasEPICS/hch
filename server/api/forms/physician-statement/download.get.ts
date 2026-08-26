@@ -1,5 +1,5 @@
 import { requireUser } from '../../../utils/guard'
-import { createError, defineEventHandler, getHeaders, setHeader } from 'h3'
+import { createError, defineEventHandler, setHeader } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'

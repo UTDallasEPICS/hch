@@ -1,5 +1,5 @@
 import { requireUser } from '../../../utils/guard'
-import { createError, defineEventHandler, getHeaders, getRouterParam } from 'h3'
+import { createError, defineEventHandler, getRouterParam } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { isAdmin, isClinician } from '../../../utils/is-admin'
 import { isClinicalClient } from '../../../utils/is-clinical-client'
@@ -356,7 +356,9 @@ export default defineEventHandler(async (event) => {
   }))
 
   const canViewScores =
-    hasAdminAccess || isClinicianViewer || (isOwnProfile && clientProfile?.permissions?.canViewScores)
+    hasAdminAccess ||
+    isClinicianViewer ||
+    (isOwnProfile && clientProfile?.permissions?.canViewScores)
   const metrics = canViewScores
     ? tasks
         .filter((t) => t.submitted && (t.score != null || t.severity != null))
@@ -399,8 +401,8 @@ export default defineEventHandler(async (event) => {
       !legacyNotes &&
       latestApproved?.status === 'APPROVED' &&
       latestApproved.requestKind === 'FULL'
-    const rangeStart = restrictByRequestRange ? latestApproved?.startDate ?? null : null
-    const rangeEnd = restrictByRequestRange ? latestApproved?.endDate ?? null : null
+    const rangeStart = restrictByRequestRange ? (latestApproved?.startDate ?? null) : null
+    const rangeEnd = restrictByRequestRange ? (latestApproved?.endDate ?? null) : null
 
     try {
       sessionRows = await prisma.sessionNote.findMany({
@@ -417,9 +419,7 @@ export default defineEventHandler(async (event) => {
     }
 
     if (rangeStart || rangeEnd) {
-      const endExclusive = rangeEnd
-        ? new Date(rangeEnd.getTime() + 24 * 60 * 60 * 1000)
-        : null
+      const endExclusive = rangeEnd ? new Date(rangeEnd.getTime() + 24 * 60 * 60 * 1000) : null
       sessionRows = sessionRows.filter((s) => {
         const ts = s.appointment?.startTime ?? s.createdAt
         if (rangeStart && ts < rangeStart) return false
@@ -491,7 +491,9 @@ export default defineEventHandler(async (event) => {
       status: a.status,
     })),
     plan:
-      hasAdminAccess || isClinicianViewer || (isOwnProfile && clientProfile?.permissions?.canViewPlan)
+      hasAdminAccess ||
+      isClinicianViewer ||
+      (isOwnProfile && clientProfile?.permissions?.canViewPlan)
         ? clientProfile?.plan
         : null,
     clinicianUserId: clientProfile?.clinicianUserId ?? null,

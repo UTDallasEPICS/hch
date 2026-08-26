@@ -1,5 +1,5 @@
 import { requireUser } from '../../../utils/guard'
-import { createError, defineEventHandler, getHeaders } from 'h3'
+import { createError, defineEventHandler } from 'h3'
 import { loadClinicalFormQuestions } from '../../../utils/clinical-form-display'
 import { prisma } from '../../../utils/prisma'
 import { calculatePhqScore } from '../../../utils/scoring'

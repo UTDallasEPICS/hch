@@ -39,8 +39,11 @@
 </script>
 
 <template>
-  <div v-if="pending" class="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
-    <UIcon name="i-heroicons-arrow-path" class="h-8 w-8 animate-spin text-primary-500" />
+  <div
+    v-if="pending"
+    class="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950"
+  >
+    <UIcon name="i-heroicons-arrow-path" class="text-primary-500 h-8 w-8 animate-spin" />
   </div>
   <UAlert
     v-else-if="error"

@@ -1,8 +1,7 @@
 import { requireStaff } from '../../../../utils/guard'
 import { assertStaffCanAccessClient } from '../../../../utils/clinician-access'
-import { createError, defineEventHandler, getHeaders, getRouterParam, readBody } from 'h3'
+import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { prisma } from '../../../../utils/prisma'
-import { isAdmin } from '../../../../utils/is-admin'
 
 function canEditOnOrAfterSessionDay(sessionStart: Date, now = new Date()) {
   const sessionDay = new Date(sessionStart)
@@ -45,7 +44,7 @@ export default defineEventHandler(async (event) => {
   if (!sig || (!isBase64Png && !isFontSignature)) {
     throw createError({ statusCode: 400, statusMessage: 'Signature is required' })
   }
-  
+
   const signatureStored = sig
 
   const note = await prisma.sessionNote.findFirst({
@@ -84,7 +83,8 @@ export default defineEventHandler(async (event) => {
     }),
     prisma.sessionNote.update({
       where: { id: note.id },
-      data: { content: body.content.trim(), 
+      data: {
+        content: body.content.trim(),
         ...(body.attendanceStatus && { attendanceStatus: body.attendanceStatus }),
       },
     }),

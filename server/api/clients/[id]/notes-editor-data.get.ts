@@ -12,7 +12,6 @@ import { formatStoredUserNameForDisplay, parseName } from '../../../utils/name'
 const FORM_ORDER = ['application', 'ace', 'gad', 'phq', 'pcl'] as const
 
 export default defineEventHandler(async (event) => {
-
   const user = requireStaff(event)
 
   const clientUserId = getRouterParam(event, 'id')

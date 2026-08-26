@@ -67,9 +67,7 @@
       </template>
 
       <template v-else-if="form">
-        <div
-          class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-green-800"
-        >
+        <div class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
           You have already completed this assessment.
         </div>
         <div class="mb-8">
@@ -94,9 +92,7 @@
               <span class="text-primary-600 dark:text-primary-400 text-6xl font-bold">{{
                 form.score
               }}</span>
-              <span class="ml-2 text-2xl text-gray-500 dark:text-gray-400"
-                >/ 10</span
-              >
+              <span class="ml-2 text-2xl text-gray-500 dark:text-gray-400">/ 10</span>
             </div>
             <div v-if="interpretation" class="mt-6">
               <UBadge :color="interpretation.color" size="lg" variant="subtle" class="mb-2">
@@ -133,11 +129,7 @@
                   <div class="mt-2">
                     <UBadge
                       :color="
-                        q.answer === 'Yes'
-                          ? 'success'
-                          : q.answer === 'No'
-                            ? 'neutral'
-                            : 'warning'
+                        q.answer === 'Yes' ? 'success' : q.answer === 'No' ? 'neutral' : 'warning'
                       "
                       variant="subtle"
                       size="sm"
