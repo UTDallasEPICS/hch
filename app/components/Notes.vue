@@ -238,12 +238,10 @@
     editingNoteId.value = note.id
     isEditingPreviousPanel.value = hasPendingEdit(note.id)
 
+    // previousNotes is currently always empty (server-hardcoded []), and no
+    // /api/notes/[id]/edits endpoint exists — edit history for these rows loads
+    // elsewhere. Keep the list empty rather than calling a dead endpoint. (#94)
     selectedNoteEdits.value = []
-    try {
-      selectedNoteEdits.value = await $fetch(`/api/notes/${note.id}/edits`)
-    } catch (err) {
-      console.error('Failed to fetch edit history:', err)
-    }
 
     if (width.value < 768) {
       sidebarOpen.value = false
@@ -286,7 +284,6 @@
 
   const noteContent = ref(props.currentNote.content || '')
   /** Kind for the current in-progress note; progress notes are the default. */
-  watch(noteContent, (val) => console.log('noteContent changed:', val))
   const currentNoteKind = ref<NoteKind>('PROGRESS')
   /** Filter for the sidebar Notes tab: 'all' | 'PROGRESS' | 'PSYCHOTHERAPY'. */
   const notesKindFilter = ref<'all' | NoteKind>('all')
@@ -624,7 +621,6 @@
     isEditingPreviousPanel.value = false
   }
 
-  const renderer = new marked.Renderer()
   marked.use({
     extensions: [
       {
@@ -691,26 +687,6 @@
       saveStatus.value = 'error'
     }
   }
-  //   if (!noteContent.value.trim() || !selectedAppointmentId.value) return
-  //   saveStatus.value = 'saving'
-  //   try {
-  //     await $fetch(`/api/clients/${props.client.id}/notes`, {
-  //       method: 'POST',
-  //       body: {
-  //         content: noteContent.value,
-  //         appointmentId: selectedAppointmentId.value,
-  //         kind: currentNoteKind.value,
-  //         action: 'save-draft',
-  //       },
-  //     })
-  //     localStorage.setItem(`note_draft_${props.client.id}`, noteContent.value)
-  //     lastSaved.value = new Date()
-  //     saveStatus.value = 'saved'
-  //   } catch (err) {
-  //     console.error('Draft save failed:', err)
-  //     saveStatus.value = 'error'
-  //   }
-  //  }
 
   function startEditPrevious() {
     const sd = selectedNoteData.value
@@ -831,11 +807,6 @@
         alert('Reason and signature are required.')
         return
       }
-
-      const sig = meta.signature
-      const patchBody = sig.startsWith('data:image/png;base64,')
-        ? { content: draft, reason: meta.reason, signatureData: sig }
-        : { content: draft, reason: meta.reason, signature: sig }
 
       isSavingPrevious.value = true
       try {

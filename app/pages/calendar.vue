@@ -171,7 +171,6 @@
         query: clientOptionsQueryParams.value,
       })
 
-      console.log('CLIENTS:', data)
       clients.value = data
     } catch (err) {
       console.error('CLIENT LOAD FAILED:', err)
@@ -468,10 +467,6 @@
   })
 
   function onEventClick(info: any) {
-    console.log('calendar event clicked (listener)', info.event)
-    console.log('event extendedProps:', info.event.extendedProps)
-    console.log('event._def.extendedProps:', info.event._def?.extendedProps)
-
     isEditMode.value = false
 
     const clientName =
@@ -500,8 +495,6 @@
       videoJoinUrl: ext.videoJoinUrl ?? null,
       assignedClinicianName: ext.assignedClinicianName ?? null,
     }
-
-    console.log('selectedEvent after click:', selectedEvent.value)
 
     isViewModalOpen.value = true
   }
@@ -758,7 +751,6 @@
 
   const selectedClientName = computed(() => {
     const name = selectedEvent.value?.clientName
-    console.log('selectedClientName:', name)
     return name || 'Unknown Client'
   })
 
@@ -849,7 +841,6 @@
       setCreateModalError('Recurrence end date must be on or after the session date.')
       return
     }
-    console.log('sending appointment', { ...form })
     try {
       await $fetch('/api/appointments', {
         method: 'POST',

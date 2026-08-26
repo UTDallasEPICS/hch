@@ -15,8 +15,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // keep stage auth checks
-  const user = requireStaff(event)
-  const adminId = user.id // optional if needed elsewhere
+  requireStaff(event)
 
   const existing = await prisma.appointment.findUnique({
     where: { id },

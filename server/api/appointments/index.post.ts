@@ -254,8 +254,7 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    console.error('🔥 BACKEND FULL ERROR:', error)
-    console.error('🔥 BACKEND STACK:', error?.stack)
+    console.error('Error creating appointment:', error)
 
     throw createError({
       statusCode: 500,
