@@ -70,7 +70,7 @@ cp .env.example .env
 
 Open `.env` and configure the following:
 
-- `DATABASE_URL`: The SQLite connection string (default: file:./dev.db).
+- `DATABASE_URL`: The SQLite connection string (default: `file:./dev.db` at the project root). Prisma CLI loads this from `.env` in `prisma.config.ts`, so migrate, seed, and the app all use the same file.
 - `INITIAL_ADMIN_EMAIL`: Comma-separated emails that should be treated as initial admins.
 - `BETTER_AUTH_SECRET`: A secure random string for encryption. You can generate one using `openssl rand -hex 32`.
 - `BETTER_AUTH_URL`: The base URL of your application, (default; `http://localhost:3000`).
