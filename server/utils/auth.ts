@@ -20,8 +20,10 @@ const emailPass = process.env.EMAIL_PASS
 const smtpReady = Boolean(emailUser && emailPass)
 
 function wantsEmailOtpViaSmtp(): boolean {
+  // Default OFF: in dev we print the OTP to the console rather than emailing it.
+  // Set EMAIL_OTP_USE_SMTP=true to opt into real SMTP sending locally.
   const v = process.env.EMAIL_OTP_USE_SMTP?.trim().toLowerCase()
-  if (!v) return smtpReady
+  if (!v) return false
   return v === 'true' || v === '1' || v === 'yes'
 }
 
@@ -75,10 +77,16 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
+          // Bootstrap: the very first person to sign in (on an empty DB, e.g. a
+          // freshly reset stage or a local dev DB) becomes the ADMIN. Everyone
+          // after is a CLIENT. The window only exists while zero users exist, so
+          // once anyone has signed up no later signup can self-elevate.
+          const existingUsers = await prisma.user.count()
+          const role = existingUsers === 0 ? 'ADMIN' : 'CLIENT'
           return {
             data: {
               ...user,
-              role: 'CLIENT',
+              role,
             },
           }
         },
@@ -99,7 +107,7 @@ export const auth = betterAuth({
       async sendVerificationOTP({ email, otp, type }) {
         if (shouldLogEmailOtpToConsole()) {
           console.info(
-            `[email-otp] to=${email} type=${type} code=${String(otp)} (dev: not using SMTP; set EMAIL_USER and EMAIL_PASS to send via Gmail, or set EMAIL_OTP_USE_SMTP=false to force console logging)`
+            `[email-otp] to=${email} type=${type} code=${String(otp)} (dev: printing OTP to console instead of emailing; set EMAIL_OTP_USE_SMTP=true to send via SMTP)`
           )
           return
         }

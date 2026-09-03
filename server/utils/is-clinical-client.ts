@@ -2,13 +2,9 @@ import { isStaff } from './is-admin'
 
 /**
  * True for users who should appear on the clients list and use client-only flows.
- * Excludes ADMIN / CLINICIAN roles and users matched by isStaff (e.g. env-listed
- * staff emails) even if their DB role is still CLIENT.
+ * Excludes ADMIN / CLINICIAN roles (matched by isStaff) based purely on DB role.
  */
-export function isClinicalClient(
-  role: string | null | undefined,
-  email: string | null | undefined
-): boolean {
+export function isClinicalClient(role: string | null | undefined): boolean {
   if (role !== 'CLIENT') return false
-  return !isStaff(role, email)
+  return !isStaff(role)
 }

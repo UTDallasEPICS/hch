@@ -90,7 +90,7 @@ export default defineEventHandler(async (event) => {
     orderBy: { createdAt: 'desc' },
   })
 
-  const clinicalUsers = users.filter((u) => isClinicalClient(u.role, u.email))
+  const clinicalUsers = users.filter((u) => isClinicalClient(u.role))
 
   // Compute form completion for the whole roster in one batch (one findMany per
   // form table) instead of 6-8 queries per client. (#95)

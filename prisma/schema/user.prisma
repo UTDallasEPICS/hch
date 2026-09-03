@@ -98,3 +98,22 @@ model Verification {
   @@index([identifier])
   @@map("verification")
 }
+
+/**
+ * Append-only audit of role changes made from the staff-management screen.
+ * Email snapshots are stored (not FK relations) so the trail survives if a
+ * user is later deleted. Roles are stored as plain strings for the same reason.
+ */
+model RoleChangeAudit {
+  id             String   @id @default(cuid())
+  targetUserId   String
+  targetEmail    String
+  oldRole        String
+  newRole        String
+  changedById    String
+  changedByEmail String
+  createdAt      DateTime @default(now())
+
+  @@index([targetUserId])
+  @@map("role_change_audit")
+}

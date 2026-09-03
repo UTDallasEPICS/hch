@@ -94,7 +94,7 @@ export default defineEventHandler(async (event) => {
     },
   })
 
-  const admins = getAdminNotificationEmails()
+  const admins = await getAdminNotificationEmails()
   const clientInitials = formatStoredUserNameInitials(client.user.name)
   const kindLabel =
     body.data.requestKind === 'FULL' ? 'full session notes' : 'a summary of session notes'

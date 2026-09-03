@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
     where: { id: user.id },
     select: { role: true, email: true },
   })
-  if (!isAdmin(currentUser?.role ?? null, currentUser?.email ?? null)) {
+  if (!isAdmin(currentUser?.role ?? null)) {
     throw createError({ statusCode: 403, statusMessage: 'Admin only' })
   }
 
