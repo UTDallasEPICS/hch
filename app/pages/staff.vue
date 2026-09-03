@@ -64,16 +64,16 @@
   // --- Add user ---
   const addOpen = ref(false)
   const addSaving = ref(false)
-  const form = reactive<{ name: string; email: string; role: Role }>({
+  const addForm = reactive<{ name: string; email: string; role: Role }>({
     name: '',
     email: '',
     role: 'CLIENT',
   })
 
   function openAdd() {
-    form.name = ''
-    form.email = ''
-    form.role = 'CLIENT'
+    addForm.name = ''
+    addForm.email = ''
+    addForm.role = 'CLIENT'
     addOpen.value = true
   }
 
@@ -83,11 +83,11 @@
     try {
       await $fetch('/api/staff', {
         method: 'POST',
-        body: { name: form.name, email: form.email, role: form.role },
+        body: { name: addForm.name, email: addForm.email, role: addForm.role },
       })
       toast.add({
         title: 'User added',
-        description: `${form.email} added as ${roleLabel(form.role)}.`,
+        description: `${addForm.email} added as ${roleLabel(addForm.role)}.`,
         color: 'success',
       })
       addOpen.value = false
@@ -98,6 +98,46 @@
       toast.add({ title: 'Could not add user', description: msg, color: 'error' })
     } finally {
       addSaving.value = false
+    }
+  }
+
+  // --- Edit user ---
+  const editOpen = ref(false)
+  const editSaving = ref(false)
+  const editForm = reactive<{ id: string; name: string; email: string }>({
+    id: '',
+    name: '',
+    email: '',
+  })
+
+  function openEdit(user: StaffUser) {
+    editForm.id = user.id
+    editForm.name = user.name
+    editForm.email = user.email
+    editOpen.value = true
+  }
+
+  async function saveEdit() {
+    if (editSaving.value) return
+    editSaving.value = true
+    try {
+      await $fetch(`/api/users/${editForm.id}`, {
+        method: 'PATCH',
+        body: { name: editForm.name, email: editForm.email },
+      })
+      toast.add({
+        title: 'User updated',
+        description: `Saved changes for ${editForm.email}.`,
+        color: 'success',
+      })
+      editOpen.value = false
+      await refresh()
+    } catch (e: unknown) {
+      const msg =
+        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Failed to update user'
+      toast.add({ title: 'Could not save', description: msg, color: 'error' })
+    } finally {
+      editSaving.value = false
     }
   }
 </script>
@@ -136,6 +176,7 @@
             <th class="px-4 py-3 font-medium">Name</th>
             <th class="px-4 py-3 font-medium">Email</th>
             <th class="w-48 px-4 py-3 font-medium">Role</th>
+            <th class="w-16 px-4 py-3 text-right font-medium">Edit</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
@@ -163,9 +204,19 @@
                 @update:model-value="(val: Role) => changeRole(user, val)"
               />
             </td>
+            <td class="px-4 py-3 text-right">
+              <UButton
+                icon="i-heroicons-pencil-square"
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                :aria-label="`Edit ${user.email}`"
+                @click="openEdit(user)"
+              />
+            </td>
           </tr>
           <tr v-if="(users?.length ?? 0) === 0">
-            <td colspan="3" class="px-4 py-6 text-center text-gray-500">No users found.</td>
+            <td colspan="4" class="px-4 py-6 text-center text-gray-500">No users found.</td>
           </tr>
         </tbody>
       </table>
@@ -176,12 +227,12 @@
         <form class="space-y-4" @submit.prevent="addUser()">
           <div class="flex flex-col gap-1.5">
             <label class="text-xs font-medium tracking-wide text-gray-500 uppercase">Name</label>
-            <UInput v-model="form.name" placeholder="Jane Doe" class="w-full" />
+            <UInput v-model="addForm.name" placeholder="Jane Doe" class="w-full" />
           </div>
           <div class="flex flex-col gap-1.5">
             <label class="text-xs font-medium tracking-wide text-gray-500 uppercase">Email</label>
             <UInput
-              v-model="form.email"
+              v-model="addForm.email"
               type="email"
               placeholder="jane@example.com"
               class="w-full"
@@ -189,7 +240,7 @@
           </div>
           <div class="flex flex-col gap-1.5">
             <label class="text-xs font-medium tracking-wide text-gray-500 uppercase">Role</label>
-            <USelect v-model="form.role" :items="roleItems" class="w-full" />
+            <USelect v-model="addForm.role" :items="roleItems" class="w-full" />
           </div>
           <p class="text-xs text-gray-500 dark:text-gray-400">
             They can sign in with this email (a one-time code is emailed) and will have the role you
@@ -200,6 +251,33 @@
       <template #footer>
         <UButton label="Cancel" color="neutral" variant="outline" @click="addOpen = false" />
         <UButton label="Add user" color="primary" :loading="addSaving" @click="addUser()" />
+      </template>
+    </UModal>
+
+    <UModal v-model:open="editOpen" title="Edit user" :ui="{ footer: 'justify-end' }">
+      <template #body>
+        <form class="space-y-4" @submit.prevent="saveEdit()">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium tracking-wide text-gray-500 uppercase">Name</label>
+            <UInput v-model="editForm.name" placeholder="Jane Doe" class="w-full" />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium tracking-wide text-gray-500 uppercase">Email</label>
+            <UInput
+              v-model="editForm.email"
+              type="email"
+              placeholder="jane@example.com"
+              class="w-full"
+            />
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            Email is their sign-in identity — changing it changes how they log in.
+          </p>
+        </form>
+      </template>
+      <template #footer>
+        <UButton label="Cancel" color="neutral" variant="outline" @click="editOpen = false" />
+        <UButton label="Save changes" color="primary" :loading="editSaving" @click="saveEdit()" />
       </template>
     </UModal>
   </UContainer>
