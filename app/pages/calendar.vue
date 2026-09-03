@@ -456,7 +456,13 @@
       const clientColor = getClientColor(client)
       // Event color reflects the session's attendance status (#32); the small dot
       // keeps the per-client color so both signals survive.
-      const attendanceStatus = arg.event.extendedProps.attendanceStatus as string | null
+      const rawStatus = arg.event.extendedProps.attendanceStatus as string | null
+      // Appointments are seeded with a default 'show' note at creation, so a future
+      // session that only carries that default hasn't actually happened yet → show it
+      // blue (unrecorded). Cancellations set ahead of time still show their color.
+      const start = arg.event.start as Date | null
+      const isFuture = !!start && start.getTime() > Date.now()
+      const attendanceStatus = isFuture && (!rawStatus || rawStatus === 'show') ? null : rawStatus
       const statusColor = getAttendanceColor(attendanceStatus)
       const titleStyle = isAttendanceStrikethrough(attendanceStatus)
         ? 'text-decoration: line-through;'
