@@ -17,6 +17,13 @@ const appointmentInclude = {
       },
     },
   },
+  // Latest progress note's attendance status drives the calendar color (#32).
+  sessionNotes: {
+    where: { kind: 'PROGRESS' },
+    orderBy: { createdAt: 'desc' },
+    take: 1,
+    select: { attendanceStatus: true },
+  },
 } satisfies Prisma.AppointmentInclude
 
 type AppointmentWithClient = Prisma.AppointmentGetPayload<{
@@ -125,6 +132,7 @@ export default defineEventHandler(async (event) => {
     recurrence: a.recurrence,
     videoProvider: a.videoProvider,
     videoJoinUrl: a.videoJoinUrl,
+    attendanceStatus: a.sessionNotes[0]?.attendanceStatus ?? null,
     assignedClinicianName:
       a.client.client?.clinician?.name ?? a.client.client?.clinician?.email ?? null,
   }))
