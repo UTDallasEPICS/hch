@@ -66,7 +66,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
   }
 
-  if (!isClinicalClient(dbUser.role, dbUser.email)) {
+  if (!isClinicalClient(dbUser.role)) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
   }
 

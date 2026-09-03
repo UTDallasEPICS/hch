@@ -47,7 +47,7 @@ export default defineEventHandler(async (event) => {
     select: { id: true, role: true, email: true, name: true },
   })
 
-  if (!dbUser || !isClinicalClient(dbUser.role, dbUser.email)) {
+  if (!dbUser || !isClinicalClient(dbUser.role)) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
   }
 

@@ -14,10 +14,9 @@ export default defineEventHandler(async (event) => {
   const allFormsComplete = await areAllFormsComplete(prisma, user.id)
 
   return {
-    canViewScores:
-      isAdmin(dbUser?.role ?? null, dbUser?.email ?? null) || clientPerms.canViewScores,
-    canViewNotes: isAdmin(dbUser?.role ?? null, dbUser?.email ?? null) || clientPerms.canViewNotes,
-    canViewPlan: isAdmin(dbUser?.role ?? null, dbUser?.email ?? null) || clientPerms.canViewPlan,
+    canViewScores: isAdmin(dbUser?.role ?? null) || clientPerms.canViewScores,
+    canViewNotes: isAdmin(dbUser?.role ?? null) || clientPerms.canViewNotes,
+    canViewPlan: isAdmin(dbUser?.role ?? null) || clientPerms.canViewPlan,
     allFormsComplete,
   }
 })

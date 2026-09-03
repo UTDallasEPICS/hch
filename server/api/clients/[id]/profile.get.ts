@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
     select: { role: true, email: true },
   })
   const isOwnProfile = user.id === clientUserId
-  const hasAdminAccess = isAdmin(currentUser?.role ?? null, currentUser?.email ?? null)
+  const hasAdminAccess = isAdmin(currentUser?.role ?? null)
   const isClinicianViewer = isClinician(currentUser?.role ?? null) && !hasAdminAccess
   if (!isOwnProfile && !hasAdminAccess && !isClinicianViewer) {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
@@ -65,7 +65,7 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  if (!isClinicalClient(dbUser.role, dbUser.email)) {
+  if (!isClinicalClient(dbUser.role)) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
   }
 

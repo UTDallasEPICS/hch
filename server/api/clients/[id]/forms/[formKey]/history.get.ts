@@ -35,9 +35,8 @@ export default defineEventHandler(async (event) => {
     where: { id: user.id },
     select: { role: true, email: true },
   })
-  const email = currentUser?.email ?? user.email ?? null
   const isOwnProfile = user.id === clientUserId
-  const hasAdminAccess = isAdmin(currentUser?.role ?? null, email)
+  const hasAdminAccess = isAdmin(currentUser?.role ?? null)
   const isClinicianViewer = !hasAdminAccess && event.context.isClinician === true
   if (!isOwnProfile && !hasAdminAccess && !isClinicianViewer) {
     throw createError({ statusCode: 403, statusMessage: 'Staff only' })

@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
     select: { role: true, email: true },
   })
 
-  if (!user || !isClinicalClient(user.role, user.email)) {
+  if (!user || !isClinicalClient(user.role)) {
     return { status: null, hasClient: false, userId: session.user.id }
   }
 

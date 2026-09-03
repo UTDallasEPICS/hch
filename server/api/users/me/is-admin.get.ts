@@ -10,12 +10,11 @@ export default defineEventHandler(async (event) => {
   })
 
   const role = dbUser?.role ?? null
-  const email = dbUser?.email ?? null
 
   return {
-    isAdmin: isAdmin(role, email),
+    isAdmin: isAdmin(role),
     isClinician: isClinician(role),
-    isStaff: isStaff(role, email),
+    isStaff: isStaff(role),
     role,
   }
 })

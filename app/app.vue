@@ -60,6 +60,7 @@
   const isNotesTestPage = computed(
     () => route.path === '/notes-test' || route.path.startsWith('/notes-test/')
   )
+  const isStaffPage = computed(() => route.path === '/staff' || route.path.startsWith('/staff/'))
 
   function goTo(path: string) {
     if (route.path !== path) {
@@ -170,6 +171,14 @@
                   class="shrink-0"
                   :variant="isNotesTestPage ? 'solid' : 'soft'"
                   @click="goTo('/notes-test')"
+                />
+                <UButton
+                  v-if="isAdmin"
+                  label="Staff"
+                  color="primary"
+                  class="shrink-0"
+                  :variant="isStaffPage ? 'solid' : 'soft'"
+                  @click="goTo('/staff')"
                 />
               </div>
               <UButton
