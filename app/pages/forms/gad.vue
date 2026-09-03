@@ -150,8 +150,7 @@
   async function submitForm() {
     try {
       isSubmitting.value = true
-      await $fetch('/api/forms/gad/save', { method: 'POST', body: form })
-      await $fetch('/api/forms/gad/submit', { method: 'POST' })
+      await $fetch('/api/forms/gad/save', { method: 'POST', body: { ...form, isSubmit: true } })
       toast.add({ title: 'GAD-7 Submitted', color: 'success' })
       await navigateTo('/taskPage')
     } catch (error: any) {

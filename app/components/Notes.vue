@@ -8,6 +8,8 @@
   import DOMPurify from 'dompurify'
   import { useWindowSize } from '@vueuse/core'
 
+  const toast = useToast()
+
   type NoteKind = 'PROGRESS' | 'PSYCHOTHERAPY'
   type NoteStatus = 'DRAFT' | 'CLINICIAN_SIGNED' | 'FULLY_APPROVED'
 
@@ -261,7 +263,10 @@
       return
     }
     if (sn.appointmentId && sn.appointmentId === selectedAppointmentId.value) {
-      alert('This session is already open in the current note editor.')
+      toast.add({
+        title: 'This session is already open in the current note editor.',
+        color: 'warning',
+      })
       return
     }
     selectedPreviousNote.value = null
@@ -334,7 +339,7 @@
       historyPanelRef.value?.refresh()
     } catch (err) {
       console.error('Failed to create new form version:', err)
-      alert('Could not create new submission – check console')
+      toast.add({ title: 'Could not create new submission – check console', color: 'error' })
     } finally {
       newFormSubmitting.value = false
     }
@@ -704,7 +709,10 @@
             : null
         )
       if (!canEdit) {
-        alert('This note is locked until the session day. You can edit on or after that date.')
+        toast.add({
+          title: 'This note is locked until the session day. You can edit on or after that date.',
+          color: 'warning',
+        })
         return
       }
       editingSessionNoteId.value = sd.id
@@ -804,7 +812,7 @@
       const meta = pendingSessionMeta.value.get(sid)
       if (!draft?.trim()) return
       if (!meta?.reason.trim() || !meta?.signature.trim()) {
-        alert('Reason and signature are required.')
+        toast.add({ title: 'Reason and signature are required.', color: 'error' })
         return
       }
 
@@ -865,7 +873,7 @@
       } catch (err) {
         console.error('Save failed:', err)
         previousSaveStatus.value = 'error'
-        alert('Failed to save session note – check console')
+        toast.add({ title: 'Failed to save session note – check console', color: 'error' })
       } finally {
         isSavingPrevious.value = false
       }
@@ -879,7 +887,7 @@
 
     if (!draft?.trim()) return
     if (!meta?.reason.trim() || !meta?.signature.trim()) {
-      alert('Reason and signature are required.')
+      toast.add({ title: 'Reason and signature are required.', color: 'error' })
       return
     }
 
@@ -916,7 +924,7 @@
     } catch (err) {
       console.error('Save failed:', err)
       previousSaveStatus.value = 'error'
-      alert('Failed to save note – check console')
+      toast.add({ title: 'Failed to save note – check console', color: 'error' })
     } finally {
       isSavingPrevious.value = false
     }
@@ -948,18 +956,24 @@
   async function confirmSaveNote(signatureData: string, editReason?: string) {
     saveStatus.value = 'saving'
     if (!selectedAppointmentId.value) {
-      alert('Please select a session before saving this note.')
+      toast.add({ title: 'Please select a session before saving this note.', color: 'warning' })
       saveStatus.value = 'idle'
       return
     }
 
     if (requiresEditReasonForSignSubmit.value && !editReason?.trim()) {
-      alert('A reason is required to update an existing note for this session.')
+      toast.add({
+        title: 'A reason is required to update an existing note for this session.',
+        color: 'error',
+      })
       saveStatus.value = 'idle'
       return
     }
     if (!canMarkAttendance.value) {
-      alert('You can only mark present or absent on or after the session start time.')
+      toast.add({
+        title: 'You can only mark present or absent on or after the session start time.',
+        color: 'warning',
+      })
       saveStatus.value = 'idle'
       return
     }
@@ -1020,7 +1034,7 @@
     } catch (err) {
       console.error('Save failed:', err)
       saveStatus.value = 'error'
-      alert('Failed to save note – check console')
+      toast.add({ title: 'Failed to save note – check console', color: 'error' })
     }
 
     isEditingPreviousPanel.value = false
@@ -1068,10 +1082,13 @@
       approvingNoteId.value = null
     } catch (err) {
       console.error('Approval failed:', err)
-      alert(
-        (err as { data?: { statusMessage?: string } })?.data?.statusMessage ??
-          'Failed to approve note – check console'
-      )
+      toast.add({
+        title: 'Failed to approve note',
+        description:
+          (err as { data?: { statusMessage?: string } })?.data?.statusMessage ??
+          'Failed to approve note – check console',
+        color: 'error',
+      })
     } finally {
       approving.value = false
     }

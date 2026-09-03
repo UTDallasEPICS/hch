@@ -55,6 +55,16 @@ export function calculateGadScore(questions: Record<string, any> | undefined): {
   return { score, severity }
 }
 
+/**
+ * Canonical PCL-5 answer keys as stored on PclQuestion (`q01`–`q20`). Single
+ * source of truth for the DB column format, shared by scoring and the form
+ * save/submit handlers (#96).
+ */
+export const PCL_QUESTION_KEYS: string[] = Array.from(
+  { length: 20 },
+  (_, i) => `q${String(i + 1).padStart(2, '0')}`
+)
+
 export function calculatePclScore(questions: Record<string, any> | undefined): {
   score: number | null
   severity: string | null
@@ -63,8 +73,7 @@ export function calculatePclScore(questions: Record<string, any> | undefined): {
 
   let score = 0
   let answered = false
-  for (let i = 1; i <= 20; i++) {
-    const key = `q${String(i).padStart(2, '0')}`
+  for (const key of PCL_QUESTION_KEYS) {
     const val = questions[key]
     if (typeof val === 'number' && val >= 0) {
       score += val
