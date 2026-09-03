@@ -1,17 +1,22 @@
 import { requireUser } from '../../../utils/guard'
 import { createError, defineEventHandler, readBody } from 'h3'
+import { loadClinicalFormQuestions } from '../../../utils/clinical-form-display'
 import { prisma } from '../../../utils/prisma'
+import { calculatePclScore, PCL_QUESTION_KEYS } from '../../../utils/scoring'
+import { recordClientFormScoreSubmission } from '../../../utils/form-score-history'
 
+// Keys are zero-padded (q01..q20) to match both the client payload
+// (pcl.vue buildPayload) and the PclQuestion columns.
 type AnswersBody = {
-  q1?: number
-  q2?: number
-  q3?: number
-  q4?: number
-  q5?: number
-  q6?: number
-  q7?: number
-  q8?: number
-  q9?: number
+  q01?: number
+  q02?: number
+  q03?: number
+  q04?: number
+  q05?: number
+  q06?: number
+  q07?: number
+  q08?: number
+  q09?: number
   q10?: number
   q11?: number
   q12?: number
@@ -24,9 +29,10 @@ type AnswersBody = {
   q19?: number
   q20?: number
   worstEvent?: string
+  // The PCL UI submits through this handler with `isSubmit: true` (mirrors ACE),
+  // so save + submit is one atomic request instead of two.
+  isSubmit?: boolean
 }
-
-const TOTAL_QUESTIONS = 20
 
 export default defineEventHandler(async (event) => {
   const user = requireUser(event)
@@ -74,21 +80,23 @@ export default defineEventHandler(async (event) => {
   const body = await readBody<AnswersBody>(event)
 
   const data: Record<string, number | null> = {}
-  let totalScore = 0
-  for (let index = 1; index <= TOTAL_QUESTIONS; index += 1) {
-    const dbKey = `q${String(index).padStart(2, '0')}`
-    const payloadKey = `q${index}` as keyof AnswersBody
-    const value = body?.[payloadKey]
+  let answeredCount = 0
+  PCL_QUESTION_KEYS.forEach((dbKey) => {
+    const value = body?.[dbKey as keyof AnswersBody]
     const numVal = typeof value === 'number' ? value : null
     data[dbKey] = numVal
-    totalScore += numVal ?? 0
-  }
+    if (numVal !== null) answeredCount += 1
+  })
 
-  let severity: string | null = null
-  if (totalScore <= 20) severity = 'Minimal'
-  else if (totalScore <= 40) severity = 'Mild'
-  else if (totalScore <= 60) severity = 'Moderate'
-  else severity = 'Severe'
+  const worstEvent = typeof body?.worstEvent === 'string' ? body.worstEvent : ''
+  const isComplete = answeredCount === PCL_QUESTION_KEYS.length && worstEvent.trim().length > 0
+
+  if (body?.isSubmit && !isComplete) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Please complete all required questions before submitting',
+    })
+  }
 
   await prisma.pclQuestion.update({
     where: { id: existingQuestions.id },
@@ -98,15 +106,33 @@ export default defineEventHandler(async (event) => {
     },
   })
 
+  const shouldComplete = Boolean(body?.isSubmit) && isComplete
+
+  // Single source of truth for PCL-5 scoring (#91). Recompute from the persisted
+  // answers so the stored score never depends on a prior request.
+  const { score: totalScore, severity } = calculatePclScore({ ...data })
+  const submittedAt = shouldComplete ? new Date() : null
+
   await prisma.pclForm.update({
     where: { id: form.id },
     data: {
-      status: 'COMPLETE',
-      submittedAt: new Date(),
       totalScore,
       severity,
+      ...(shouldComplete ? { status: 'COMPLETE', submittedAt } : {}),
     },
   })
 
-  return { saved: true }
+  if (shouldComplete) {
+    const historyQuestions = await loadClinicalFormQuestions(prisma, userId, 'pcl')
+    await recordClientFormScoreSubmission(prisma, {
+      userId,
+      formKey: 'pcl',
+      score: totalScore,
+      severity,
+      recordedAt: submittedAt ?? new Date(),
+      questions: historyQuestions,
+    })
+  }
+
+  return shouldComplete ? { submitted: true, totalScore, severity } : { saved: true }
 })

@@ -1,7 +1,9 @@
 import { requireUser } from '../../../utils/guard'
-import { defineEventHandler, readBody } from 'h3'
+import { createError, defineEventHandler, readBody } from 'h3'
+import { loadClinicalFormQuestions } from '../../../utils/clinical-form-display'
 import { prisma } from '../../../utils/prisma'
 import { calculateGadScore } from '../../../utils/scoring'
+import { recordClientFormScoreSubmission } from '../../../utils/form-score-history'
 
 type GadBody = {
   g1?: number | string | null
@@ -12,6 +14,9 @@ type GadBody = {
   g6?: number | string | null
   g7?: number | string | null
   g8?: number | string | null
+  // The GAD UI submits through this handler with `isSubmit: true` (mirrors ACE),
+  // so save + submit is one atomic request instead of two.
+  isSubmit?: boolean
 }
 
 function toNullableInt(value: number | string | null | undefined) {
@@ -66,20 +71,55 @@ export default defineEventHandler(async (event) => {
   // Single source of truth for GAD-7 scoring (#91).
   const { score: totalScore, severity } = calculateGadScore(answerData)
 
+  // GAD-7 total is items g01–g07; g08 is the functional-difficulty item.
+  const allMainAnswered = [
+    answerData.g01,
+    answerData.g02,
+    answerData.g03,
+    answerData.g04,
+    answerData.g05,
+    answerData.g06,
+    answerData.g07,
+  ].every((v) => v !== null)
+
+  if (body.isSubmit && !allMainAnswered) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Please complete all required questions before submitting',
+    })
+  }
+
+  const wasAlreadyComplete = form.status === 'COMPLETE'
+  const shouldComplete = Boolean(body.isSubmit) && allMainAnswered
+  const submittedAt = shouldComplete ? new Date() : form.submittedAt
+
   // save answers
   await prisma.gadQuestion.update({
     where: { id: questions.id },
     data: answerData,
   })
 
-  // save score
+  // save score (and complete the form when submitting)
   await prisma.gadForm.update({
     where: { id: form.id },
     data: {
       totalScore,
       severity,
+      ...(shouldComplete ? { status: 'COMPLETE', submittedAt } : {}),
     },
   })
 
-  return { saved: true }
+  if (shouldComplete && !wasAlreadyComplete) {
+    const historyQuestions = await loadClinicalFormQuestions(prisma, userId, 'gad')
+    await recordClientFormScoreSubmission(prisma, {
+      userId,
+      formKey: 'gad',
+      score: totalScore,
+      severity,
+      recordedAt: submittedAt ?? new Date(),
+      questions: historyQuestions,
+    })
+  }
+
+  return shouldComplete ? { submitted: true } : { saved: true }
 })

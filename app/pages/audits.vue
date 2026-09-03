@@ -1,6 +1,8 @@
 <script setup lang="ts">
   definePageMeta({
-    middleware: ['auth'],
+    // Page gating must match the /api/audits guard (requireAdmin, #96). `auth` is
+    // already applied globally (auth.global.ts); this restricts the page to admins.
+    middleware: ['admin-only'],
   })
 
   interface AuditRecord {

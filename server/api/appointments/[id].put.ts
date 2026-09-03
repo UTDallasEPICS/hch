@@ -4,6 +4,7 @@ import { assertStaffCanAccessClient } from '../../utils/clinician-access'
 import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/video-conference'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import type { VideoConferenceProvider } from '../../../prisma/generated/enums'
+import { MAX_RECURRING_OCCURRENCES } from '../../utils/appointment-constants'
 
 function sanitizeNamePart(part: string | null | undefined) {
   const normalized = (part ?? '').trim().replace(/\s+/g, '_')
@@ -53,7 +54,7 @@ function getOccurrencesUntilEndDate(
   const endBoundary = new Date(`${recurrenceEndDate}T23:59:59.999`)
   if (Number.isNaN(endBoundary.getTime()) || endBoundary < start) return 0
   let count = 0
-  for (let i = 0; i < 260; i += 1) {
+  for (let i = 0; i < MAX_RECURRING_OCCURRENCES; i += 1) {
     const nextStart = addRecurrenceStep(start, recurrence, i)
     if (nextStart > endBoundary) break
     count += 1
