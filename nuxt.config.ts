@@ -29,14 +29,10 @@ export default defineNuxtConfig({
   nitro: {
     // Allow larger payloads for justification flows (reasoning + signature + optional PDF/Word)
     bodyLimit: '15mb',
-    // Serve uploaded files as static assets (for development)
-    publicAssets: [
-      {
-        dir: 'uploads',
-        baseURL: '/uploads',
-        maxAge: 60 * 60 * 24, // 1 day cache
-      },
-    ],
+    // NOTE: do NOT statically serve the `uploads/` directory. It holds audit
+    // documentation (PHI) and a public static mount would expose it with no
+    // authentication (see #87). Audit docs are served only through the
+    // admin-gated /api/audit-docs/[id] routes.
   },
 
   typescript: {
@@ -59,12 +55,12 @@ export default defineNuxtConfig({
       ],
     },
     optimizeDeps: {
-    include: [
-      '@vue/devtools-core',
-      '@vue/devtools-kit',
-      'better-auth/vue',
-      'better-auth/client/plugins',
-    ]
-   },
+      include: [
+        '@vue/devtools-core',
+        '@vue/devtools-kit',
+        'better-auth/vue',
+        'better-auth/client/plugins',
+      ],
+    },
   },
 })

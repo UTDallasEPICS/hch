@@ -362,7 +362,7 @@ export default defineEventHandler(async (event) => {
         },
       },
     }),
-    prisma.$queryRaw<Array<{ userId: string; archivedAt: Date | string | null }>>`
+    prisma.$queryRaw<Array<{ userId: string; waitlistedAt: Date | string | null }>>`
       SELECT userId, waitlistedAt
       FROM client
       WHERE waitlistedAt IS NOT NULL
@@ -373,7 +373,7 @@ export default defineEventHandler(async (event) => {
     users
       .filter(
         (user) =>
-          isClinicalClient(user.role, user.email) &&
+          isClinicalClient(user.role) &&
           (user.client?.status === 'WAITLIST' || user.client?.status === 'ACTIVE')
       )
       .map((user) => user.id)
@@ -384,7 +384,7 @@ export default defineEventHandler(async (event) => {
     .map((form) => form.questions as CompletedApplicationRow)
 
   const allClinicalClientIds = new Set(
-    users.filter((user) => isClinicalClient(user.role, user.email)).map((user) => user.id)
+    users.filter((user) => isClinicalClient(user.role)).map((user) => user.id)
   )
 
   const applicationDates = applicationForms

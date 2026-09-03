@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { ApplicationForm } from '~/types/application'
+  import type { ApplicationForm } from '~/types/application'
 
-defineProps<{
-  form: ApplicationForm
-  genderOptions: { label: string; value: string }[]
-  yesNoOptions: { label: string; value: string }[]
-  custodyOptions: { label: string; value: string }[]
-}>()
+  defineProps<{
+    form: ApplicationForm
+    genderOptions: { label: string; value: string }[]
+    yesNoOptions: { label: string; value: string }[]
+    custodyOptions: { label: string; value: string }[]
+  }>()
 </script>
 
 <template>
@@ -28,7 +28,9 @@ defineProps<{
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">When did they enter this chaotic masterpiece?</label>
+      <label class="text-sm font-semibold text-gray-200"
+        >When did they enter this chaotic masterpiece?</label
+      >
       <UInput
         v-model="form.q11"
         type="date"
@@ -50,7 +52,9 @@ defineProps<{
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">Child's address—same as yours or different?</label>
+      <label class="text-sm font-semibold text-gray-200"
+        >Child's address—same as yours or different?</label
+      >
       <UTextarea
         v-model="form.q13"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
@@ -59,7 +63,9 @@ defineProps<{
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">Give it to us straight—what are we dealing with?</label>
+      <label class="text-sm font-semibold text-gray-200"
+        >Give it to us straight—what are we dealing with?</label
+      >
       <UInput
         v-model="form.q14"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
@@ -75,7 +81,9 @@ defineProps<{
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">Who else is in the house? Names and ages.</label>
+      <label class="text-sm font-semibold text-gray-200"
+        >Who else is in the house? Names and ages.</label
+      >
       <UTextarea
         v-model="form.q16"
         class="mt-2 border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500"
@@ -84,7 +92,9 @@ defineProps<{
       />
     </div>
     <div>
-      <label class="text-sm font-semibold text-gray-200">Does the child live with both biological parents?</label>
+      <label class="text-sm font-semibold text-gray-200"
+        >Does the child live with both biological parents?</label
+      >
       <URadioGroup
         v-model="form.q17"
         class="mt-2"

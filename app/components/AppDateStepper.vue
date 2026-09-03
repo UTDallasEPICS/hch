@@ -71,21 +71,11 @@
   <div class="flex flex-wrap items-center gap-3">
     <div class="flex flex-col gap-1">
       <label class="text-xs text-gray-500 dark:text-gray-400">Month</label>
-      <AppInputNumber
-        v-model="month"
-        :min="1"
-        :max="12"
-        placeholder="MM"
-      />
+      <AppInputNumber v-model="month" :min="1" :max="12" placeholder="MM" />
     </div>
     <div class="flex flex-col gap-1">
       <label class="text-xs text-gray-500 dark:text-gray-400">Day</label>
-      <AppInputNumber
-        v-model="day"
-        :min="1"
-        :max="31"
-        placeholder="DD"
-      />
+      <AppInputNumber v-model="day" :min="1" :max="31" placeholder="DD" />
     </div>
     <div class="flex flex-col gap-1">
       <label class="text-xs text-gray-500 dark:text-gray-400">Year</label>

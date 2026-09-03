@@ -35,9 +35,8 @@ export default defineEventHandler(async (event) => {
     where: { id: user.id },
     select: { role: true, email: true },
   })
-  const email = currentUser?.email ?? user.email ?? null
   const isOwnProfile = user.id === clientUserId
-  const hasAdminAccess = isAdmin(currentUser?.role ?? null, email)
+  const hasAdminAccess = isAdmin(currentUser?.role ?? null)
   const isClinicianViewer = !hasAdminAccess && event.context.isClinician === true
   if (!isOwnProfile && !hasAdminAccess && !isClinicianViewer) {
     throw createError({ statusCode: 403, statusMessage: 'Staff only' })
@@ -64,7 +63,9 @@ export default defineEventHandler(async (event) => {
     let questions: { label: string; answer: string }[] = []
     if (r.answersJson) {
       try {
-        const parsed = JSON.parse(r.answersJson) as { questions?: { label: string; answer: string }[] }
+        const parsed = JSON.parse(r.answersJson) as {
+          questions?: { label: string; answer: string }[]
+        }
         if (Array.isArray(parsed?.questions)) questions = parsed.questions
       } catch {
         questions = []

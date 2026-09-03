@@ -5,7 +5,7 @@ import { readBody, createError, defineEventHandler } from 'h3'
 import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/video-conference'
 import type { VideoConferenceProvider } from '../../../prisma/generated/enums'
 import { randomUUID } from 'node:crypto'
-import { createStaffAppointment } from '../../utils/create-staff-appointment'
+import { MAX_RECURRING_OCCURRENCES } from '../../utils/appointment-constants'
 
 function sanitizeNamePart(part: string | null | undefined) {
   const normalized = (part ?? '').trim().replace(/\s+/g, '_')
@@ -28,8 +28,6 @@ function nextAvailableNumber(used: number[]) {
   while (usedSet.has(candidate)) candidate += 1
   return candidate
 }
-
-const MAX_RECURRING_OCCURRENCES = 260
 
 function addRecurrenceStep(base: Date, recurrence: string, step: number) {
   const next = new Date(base)
@@ -255,8 +253,7 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    console.error('🔥 BACKEND FULL ERROR:', error)
-    console.error('🔥 BACKEND STACK:', error?.stack)
+    console.error('Error creating appointment:', error)
 
     throw createError({
       statusCode: 500,

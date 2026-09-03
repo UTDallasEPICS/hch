@@ -25,13 +25,9 @@
   }
 
   const toast = useToast()
-  const { data: roleData } = await useFetch<{ isAdmin: boolean }>(
-    '/api/users/me/is-admin',
-    {
-      getCachedData: (key, nuxtApp) =>
-        nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
-    }
-  )
+  const { data: roleData } = await useFetch<{ isAdmin: boolean }>('/api/users/me/is-admin', {
+    getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
+  })
   const isAdminViewer = computed(() => roleData.value?.isAdmin === true)
 
   /** Bounce clinicians away from an admin-only queue – the middleware allows all staff. */
@@ -43,12 +39,7 @@
 
   const kindFilter = ref<'all' | 'PROGRESS' | 'PSYCHOTHERAPY'>('all')
 
-  const {
-    data,
-    pending,
-    error,
-    refresh,
-  } = await useFetch<PendingApproval[]>(
+  const { data, pending, error, refresh } = await useFetch<PendingApproval[]>(
     () => {
       const qs = kindFilter.value === 'all' ? '' : `?kind=${kindFilter.value}`
       return `/api/session-notes/pending-approvals${qs}`
@@ -77,16 +68,13 @@
     }
     try {
       approving.value = true
-      await $fetch(
-        `/api/clients/${row.clientUserId}/session-notes/${row.id}/approve`,
-        {
-          method: 'POST',
-          body: {
-            adminSignatureData: payload.signatureData,
-            approvalNote: payload.reasoning,
-          },
-        }
-      )
+      await $fetch(`/api/clients/${row.clientUserId}/session-notes/${row.id}/approve`, {
+        method: 'POST',
+        body: {
+          adminSignatureData: payload.signatureData,
+          approvalNote: payload.reasoning,
+        },
+      })
       toast.add({
         title: 'Note approved',
         description: 'The clinician has been notified.',
@@ -226,7 +214,9 @@
               {{ n.sessionName }} · signed by {{ n.clinicianName || 'clinician' }}
               {{ formatDateTime(n.clinicianSignedAt) }}
             </p>
-            <div class="mt-3 max-h-48 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm whitespace-pre-wrap dark:border-gray-700 dark:bg-gray-800">
+            <div
+              class="mt-3 max-h-48 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm whitespace-pre-wrap dark:border-gray-700 dark:bg-gray-800"
+            >
               {{ n.content }}
             </div>
             <details v-if="n.clinicianSignatureData" class="mt-3 text-sm">

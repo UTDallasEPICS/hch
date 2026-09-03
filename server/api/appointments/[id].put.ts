@@ -4,6 +4,7 @@ import { assertStaffCanAccessClient } from '../../utils/clinician-access'
 import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/video-conference'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import type { VideoConferenceProvider } from '../../../prisma/generated/enums'
+import { MAX_RECURRING_OCCURRENCES } from '../../utils/appointment-constants'
 
 function sanitizeNamePart(part: string | null | undefined) {
   const normalized = (part ?? '').trim().replace(/\s+/g, '_')
@@ -44,12 +45,16 @@ function addRecurrenceStep(base: Date, recurrence: string, step: number) {
   return next
 }
 
-function getOccurrencesUntilEndDate(start: Date, recurrence: string, recurrenceEndDate: string | null) {
+function getOccurrencesUntilEndDate(
+  start: Date,
+  recurrence: string,
+  recurrenceEndDate: string | null
+) {
   if (!recurrenceEndDate || recurrence === 'NONE') return null
   const endBoundary = new Date(`${recurrenceEndDate}T23:59:59.999`)
   if (Number.isNaN(endBoundary.getTime()) || endBoundary < start) return 0
   let count = 0
-  for (let i = 0; i < 260; i += 1) {
+  for (let i = 0; i < MAX_RECURRING_OCCURRENCES; i += 1) {
     const nextStart = addRecurrenceStep(start, recurrence, i)
     if (nextStart > endBoundary) break
     count += 1
@@ -105,7 +110,11 @@ export default defineEventHandler(async (event) => {
 
     const startTimeDate = new Date(`${date}T${normalizedStartTimeOfDay}`)
     const endTimeDate = new Date(`${date}T${endTime}`)
-    if (Number.isNaN(startTimeDate.getTime()) || Number.isNaN(endTimeDate.getTime()) || endTimeDate <= startTimeDate) {
+    if (
+      Number.isNaN(startTimeDate.getTime()) ||
+      Number.isNaN(endTimeDate.getTime()) ||
+      endTimeDate <= startTimeDate
+    ) {
       throw createError({
         statusCode: 400,
         statusMessage: 'Invalid time range',
@@ -289,8 +298,11 @@ export default defineEventHandler(async (event) => {
       })
       const durationMs = endTimeDate.getTime() - startTimeDate.getTime()
       const desiredOccurrences =
-        getOccurrencesUntilEndDate(startTimeDate, normalizedRecurrence, recurrenceEndDate ?? null) ??
-        seriesAppointments.length
+        getOccurrencesUntilEndDate(
+          startTimeDate,
+          normalizedRecurrence,
+          recurrenceEndDate ?? null
+        ) ?? seriesAppointments.length
       const targetCount = Math.max(desiredOccurrences, normalizedRecurrence === 'NONE' ? 1 : 0)
       const toUpdate = seriesAppointments.slice(0, targetCount)
       const toDelete = seriesAppointments.slice(targetCount)

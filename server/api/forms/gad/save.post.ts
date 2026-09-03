@@ -1,6 +1,9 @@
 import { requireUser } from '../../../utils/guard'
-import { createError, defineEventHandler, getHeaders, readBody } from 'h3'
+import { createError, defineEventHandler, readBody } from 'h3'
+import { loadClinicalFormQuestions } from '../../../utils/clinical-form-display'
 import { prisma } from '../../../utils/prisma'
+import { calculateGadScore } from '../../../utils/scoring'
+import { recordClientFormScoreSubmission } from '../../../utils/form-score-history'
 
 type GadBody = {
   g1?: number | string | null
@@ -11,6 +14,9 @@ type GadBody = {
   g6?: number | string | null
   g7?: number | string | null
   g8?: number | string | null
+  // The GAD UI submits through this handler with `isSubmit: true` (mirrors ACE),
+  // so save + submit is one atomic request instead of two.
+  isSubmit?: boolean
 }
 
 function toNullableInt(value: number | string | null | undefined) {
@@ -20,11 +26,8 @@ function toNullableInt(value: number | string | null | undefined) {
 }
 
 export default defineEventHandler(async (event) => {
-
   const user = requireUser(event)
   const userId = user.id
-
-  
 
   const body = await readBody<GadBody>(event)
 
@@ -54,54 +57,69 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const g1 = toNullableInt(body.g1)
-  const g2 = toNullableInt(body.g2)
-  const g3 = toNullableInt(body.g3)
-  const g4 = toNullableInt(body.g4)
-  const g5 = toNullableInt(body.g5)
-  const g6 = toNullableInt(body.g6)
-  const g7 = toNullableInt(body.g7)
-  const g8 = toNullableInt(body.g8)
+  const answerData = {
+    g01: toNullableInt(body.g1),
+    g02: toNullableInt(body.g2),
+    g03: toNullableInt(body.g3),
+    g04: toNullableInt(body.g4),
+    g05: toNullableInt(body.g5),
+    g06: toNullableInt(body.g6),
+    g07: toNullableInt(body.g7),
+    g08: toNullableInt(body.g8),
+  }
 
-  // calculate score
-  const total =
-    (g1 ?? 0) +
-    (g2 ?? 0) +
-    (g3 ?? 0) +
-    (g4 ?? 0) +
-    (g5 ?? 0) +
-    (g6 ?? 0) +
-    (g7 ?? 0)
+  // Single source of truth for GAD-7 scoring (#91).
+  const { score: totalScore, severity } = calculateGadScore(answerData)
 
-  let severity = 'Minimal'
+  // GAD-7 total is items g01–g07; g08 is the functional-difficulty item.
+  const allMainAnswered = [
+    answerData.g01,
+    answerData.g02,
+    answerData.g03,
+    answerData.g04,
+    answerData.g05,
+    answerData.g06,
+    answerData.g07,
+  ].every((v) => v !== null)
 
-  if (total >= 15) severity = 'Severe'
-  else if (total >= 10) severity = 'Moderate'
-  else if (total >= 5) severity = 'Mild'
+  if (body.isSubmit && !allMainAnswered) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Please complete all required questions before submitting',
+    })
+  }
+
+  const wasAlreadyComplete = form.status === 'COMPLETE'
+  const shouldComplete = Boolean(body.isSubmit) && allMainAnswered
+  const submittedAt = shouldComplete ? new Date() : form.submittedAt
 
   // save answers
   await prisma.gadQuestion.update({
     where: { id: questions.id },
-    data: {
-      g01: g1,
-      g02: g2,
-      g03: g3,
-      g04: g4,
-      g05: g5,
-      g06: g6,
-      g07: g7,
-      g08: g8,
-    },
+    data: answerData,
   })
 
-  // save score
+  // save score (and complete the form when submitting)
   await prisma.gadForm.update({
     where: { id: form.id },
     data: {
-      totalScore: total,
+      totalScore,
       severity,
+      ...(shouldComplete ? { status: 'COMPLETE', submittedAt } : {}),
     },
   })
 
-  return { saved: true }
+  if (shouldComplete && !wasAlreadyComplete) {
+    const historyQuestions = await loadClinicalFormQuestions(prisma, userId, 'gad')
+    await recordClientFormScoreSubmission(prisma, {
+      userId,
+      formKey: 'gad',
+      score: totalScore,
+      severity,
+      recordedAt: submittedAt ?? new Date(),
+      questions: historyQuestions,
+    })
+  }
+
+  return shouldComplete ? { submitted: true } : { saved: true }
 })

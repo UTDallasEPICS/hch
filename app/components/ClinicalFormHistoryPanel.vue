@@ -76,7 +76,10 @@
             </span>
           </div>
         </button>
-        <div v-if="openSubmissionId === ev.id && ev.questions?.length" class="max-h-56 space-y-2 overflow-y-auto pt-1">
+        <div
+          v-if="openSubmissionId === ev.id && ev.questions?.length"
+          class="max-h-56 space-y-2 overflow-y-auto pt-1"
+        >
           <div
             v-for="(q, i) in ev.questions"
             :key="i"

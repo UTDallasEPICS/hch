@@ -134,7 +134,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
   }
 
-  if (isAdmin(user.role ?? null, user.email)) {
+  if (isAdmin(user.role ?? null)) {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 

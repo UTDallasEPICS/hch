@@ -86,8 +86,10 @@
   async function submitForm() {
     isSubmitting.value = true
     try {
-      await $fetch('/api/forms/pcl/save', { method: 'POST', body: buildPayload() })
-      await $fetch('/api/forms/pcl/submit', { method: 'POST' })
+      await $fetch('/api/forms/pcl/save', {
+        method: 'POST',
+        body: { ...buildPayload(), isSubmit: true },
+      })
       toast.add({ title: 'PCL-5 Submitted', color: 'success' })
       await navigateTo('/taskPage')
     } catch (error: any) {

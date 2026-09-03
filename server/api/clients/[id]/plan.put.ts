@@ -1,12 +1,10 @@
 import { requireStaff } from '../../../utils/guard'
 import { assertStaffCanAccessClient } from '../../../utils/clinician-access'
-import { createError, defineEventHandler, getHeaders, getRouterParam, readBody } from 'h3'
+import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { prisma } from '../../../utils/prisma'
-import { isAdmin } from '../../../utils/is-admin'
 import { saveBase64File } from '../../../utils/file-upload'
 
 export default defineEventHandler(async (event) => {
-
   const user = requireStaff(event)
 
   const clientUserId = getRouterParam(event, 'id')
@@ -69,25 +67,30 @@ export default defineEventHandler(async (event) => {
   const content = body?.content ?? ''
   const existingPlan = client.plan
 
-  const plan = await prisma.clientPlan.upsert({
-    where: { clientId: client.id },
-    create: { clientId: client.id, content },
-    update: { content },
-  })
-
-  await prisma.changeAudit.create({
-    data: {
-      entityType: 'TREATMENT_PLAN',
-      entityId: client.id,
-      oldValue: existingPlan ? JSON.stringify({ content: existingPlan.content }) : null,
-      newValue: JSON.stringify({ content }),
-      reasoning: body.reasoning?.trim() || null,
-      documentationPath,
-      documentationName,
-      signatureData: body.signatureData,
-      signedById: user.id,
-    },
-  })
+  // Persist the plan change and its governed-change audit atomically: a failure
+  // between the two must never leave a mutation without an audit record. (#90)
+  const [plan] = await prisma.$transaction([
+    prisma.clientPlan.upsert({
+      where: { clientId: client.id },
+      create: { clientId: client.id, content },
+      update: { content },
+    }),
+    prisma.changeAudit.create({
+      data: {
+        entityType: 'TREATMENT_PLAN',
+        // Store the client's User id (matching ABSENCE audits) so one id retrieves
+        // every audit type for a client via GET /api/audits. (#90)
+        entityId: clientUserId,
+        oldValue: existingPlan ? JSON.stringify({ content: existingPlan.content }) : null,
+        newValue: JSON.stringify({ content }),
+        reasoning: body.reasoning?.trim() || null,
+        documentationPath,
+        documentationName,
+        signatureData: body.signatureData,
+        signedById: user.id,
+      },
+    }),
+  ])
 
   return plan
 })

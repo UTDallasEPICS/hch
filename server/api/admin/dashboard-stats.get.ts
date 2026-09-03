@@ -40,10 +40,9 @@ export default defineEventHandler(async (event) => {
     where: { id: session.user.id },
     select: { role: true, email: true, name: true },
   })
-  const hasAdminAccess = isAdmin(currentUser?.role ?? null, currentUser?.email ?? null)
-  const isClinicianViewer =
-    !hasAdminAccess && isClinician(currentUser?.role ?? null)
-  if (!isStaff(currentUser?.role ?? null, currentUser?.email ?? null)) {
+  const hasAdminAccess = isAdmin(currentUser?.role ?? null)
+  const isClinicianViewer = !hasAdminAccess && isClinician(currentUser?.role ?? null)
+  if (!isStaff(currentUser?.role ?? null)) {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 
@@ -97,7 +96,7 @@ export default defineEventHandler(async (event) => {
   ])
 
   const statusLabel = viewerClient
-    ? CLINICAL_STATUS_LABEL[viewerClient.status] ?? viewerClient.status
+    ? (CLINICAL_STATUS_LABEL[viewerClient.status] ?? viewerClient.status)
     : isClinicianViewer
       ? 'Clinician'
       : 'Administrator'

@@ -8,6 +8,8 @@
   import DOMPurify from 'dompurify'
   import { useWindowSize } from '@vueuse/core'
 
+  const toast = useToast()
+
   type NoteKind = 'PROGRESS' | 'PSYCHOTHERAPY'
   type NoteStatus = 'DRAFT' | 'CLINICIAN_SIGNED' | 'FULLY_APPROVED'
 
@@ -238,12 +240,10 @@
     editingNoteId.value = note.id
     isEditingPreviousPanel.value = hasPendingEdit(note.id)
 
+    // previousNotes is currently always empty (server-hardcoded []), and no
+    // /api/notes/[id]/edits endpoint exists — edit history for these rows loads
+    // elsewhere. Keep the list empty rather than calling a dead endpoint. (#94)
     selectedNoteEdits.value = []
-    try {
-      selectedNoteEdits.value = await $fetch(`/api/notes/${note.id}/edits`)
-    } catch (err) {
-      console.error('Failed to fetch edit history:', err)
-    }
 
     if (width.value < 768) {
       sidebarOpen.value = false
@@ -263,7 +263,10 @@
       return
     }
     if (sn.appointmentId && sn.appointmentId === selectedAppointmentId.value) {
-      alert('This session is already open in the current note editor.')
+      toast.add({
+        title: 'This session is already open in the current note editor.',
+        color: 'warning',
+      })
       return
     }
     selectedPreviousNote.value = null
@@ -286,7 +289,6 @@
 
   const noteContent = ref(props.currentNote.content || '')
   /** Kind for the current in-progress note; progress notes are the default. */
-  watch(noteContent, (val) => console.log('noteContent changed:', val))
   const currentNoteKind = ref<NoteKind>('PROGRESS')
   /** Filter for the sidebar Notes tab: 'all' | 'PROGRESS' | 'PSYCHOTHERAPY'. */
   const notesKindFilter = ref<'all' | NoteKind>('all')
@@ -337,7 +339,7 @@
       historyPanelRef.value?.refresh()
     } catch (err) {
       console.error('Failed to create new form version:', err)
-      alert('Could not create new submission – check console')
+      toast.add({ title: 'Could not create new submission – check console', color: 'error' })
     } finally {
       newFormSubmitting.value = false
     }
@@ -624,22 +626,25 @@
     isEditingPreviousPanel.value = false
   }
 
-  const renderer = new marked.Renderer()
   marked.use({
-    extensions: [{
-      name: 'underline',
-      level: 'inline',
-      start(src: string) { return src.indexOf('++') },
-      tokenizer(src: string) {
-        const match = src.match(/^\+\+([^+]+)\+\+/)
-        if (match) {
-          return { type: 'underline', raw: match[0], text: match[1]! }
-        }
+    extensions: [
+      {
+        name: 'underline',
+        level: 'inline',
+        start(src: string) {
+          return src.indexOf('++')
+        },
+        tokenizer(src: string) {
+          const match = src.match(/^\+\+([^+]+)\+\+/)
+          if (match) {
+            return { type: 'underline', raw: match[0], text: match[1]! }
+          }
+        },
+        renderer(token: any) {
+          return `<u>${token.text}</u>`
+        },
       },
-      renderer(token: any) {
-        return `<u>${token.text}</u>`
-      }
-    }]
+    ],
   })
 
   const renderedNoteContent = computed(() =>
@@ -687,26 +692,6 @@
       saveStatus.value = 'error'
     }
   }
-  //   if (!noteContent.value.trim() || !selectedAppointmentId.value) return
-  //   saveStatus.value = 'saving'
-  //   try {
-  //     await $fetch(`/api/clients/${props.client.id}/notes`, {
-  //       method: 'POST',
-  //       body: {
-  //         content: noteContent.value,
-  //         appointmentId: selectedAppointmentId.value,
-  //         kind: currentNoteKind.value,
-  //         action: 'save-draft',
-  //       },
-  //     })
-  //     localStorage.setItem(`note_draft_${props.client.id}`, noteContent.value)
-  //     lastSaved.value = new Date()
-  //     saveStatus.value = 'saved'
-  //   } catch (err) {
-  //     console.error('Draft save failed:', err)
-  //     saveStatus.value = 'error'
-  //   }
-  //  }
 
   function startEditPrevious() {
     const sd = selectedNoteData.value
@@ -724,7 +709,10 @@
             : null
         )
       if (!canEdit) {
-        alert('This note is locked until the session day. You can edit on or after that date.')
+        toast.add({
+          title: 'This note is locked until the session day. You can edit on or after that date.',
+          color: 'warning',
+        })
         return
       }
       editingSessionNoteId.value = sd.id
@@ -824,14 +812,9 @@
       const meta = pendingSessionMeta.value.get(sid)
       if (!draft?.trim()) return
       if (!meta?.reason.trim() || !meta?.signature.trim()) {
-        alert('Reason and signature are required.')
+        toast.add({ title: 'Reason and signature are required.', color: 'error' })
         return
       }
-
-      const sig = meta.signature
-      const patchBody = sig.startsWith('data:image/png;base64,')
-        ? { content: draft, reason: meta.reason, signatureData: sig }
-        : { content: draft, reason: meta.reason, signature: sig }
 
       isSavingPrevious.value = true
       try {
@@ -848,10 +831,29 @@
         const idx = localSessionNotes.value.findIndex((n) => n.id === sid)
         if (idx !== -1) {
           const row = localSessionNotes.value[idx]!
+          // The server reverts an edited signed/approved note to CLINICIAN_SIGNED and
+          // clears the admin counter-sign (#88). Mirror that optimistically so this
+          // clinician's own view doesn't keep showing a stale "Fully Approved" badge
+          // over content that is now pending re-approval. Gate on an actual change so a
+          // no-op re-save leaves a real approval intact, exactly like the server does.
+          const contentChanged = draft.trim() !== row.content
+          const attendanceChanged =
+            !!editingAttendanceStatus.value &&
+            editingAttendanceStatus.value !== row.attendanceStatus
+          const resetApproval =
+            (row.status === 'CLINICIAN_SIGNED' || row.status === 'FULLY_APPROVED') &&
+            (contentChanged || attendanceChanged)
           localSessionNotes.value[idx] = {
             ...row,
             content: draft,
             attendanceStatus: editingAttendanceStatus.value,
+            ...(resetApproval && {
+              status: 'CLINICIAN_SIGNED' as const,
+              clinicianSignedAt: new Date().toISOString(),
+              adminSignedAt: null,
+              adminSignedById: null,
+              adminApprovalNote: null,
+            }),
           }
         }
 
@@ -871,7 +873,7 @@
       } catch (err) {
         console.error('Save failed:', err)
         previousSaveStatus.value = 'error'
-        alert('Failed to save session note – check console')
+        toast.add({ title: 'Failed to save session note – check console', color: 'error' })
       } finally {
         isSavingPrevious.value = false
       }
@@ -885,7 +887,7 @@
 
     if (!draft?.trim()) return
     if (!meta?.reason.trim() || !meta?.signature.trim()) {
-      alert('Reason and signature are required.')
+      toast.add({ title: 'Reason and signature are required.', color: 'error' })
       return
     }
 
@@ -922,7 +924,7 @@
     } catch (err) {
       console.error('Save failed:', err)
       previousSaveStatus.value = 'error'
-      alert('Failed to save note – check console')
+      toast.add({ title: 'Failed to save note – check console', color: 'error' })
     } finally {
       isSavingPrevious.value = false
     }
@@ -954,18 +956,24 @@
   async function confirmSaveNote(signatureData: string, editReason?: string) {
     saveStatus.value = 'saving'
     if (!selectedAppointmentId.value) {
-      alert('Please select a session before saving this note.')
+      toast.add({ title: 'Please select a session before saving this note.', color: 'warning' })
       saveStatus.value = 'idle'
       return
     }
 
     if (requiresEditReasonForSignSubmit.value && !editReason?.trim()) {
-      alert('A reason is required to update an existing note for this session.')
+      toast.add({
+        title: 'A reason is required to update an existing note for this session.',
+        color: 'error',
+      })
       saveStatus.value = 'idle'
       return
     }
     if (!canMarkAttendance.value) {
-      alert('You can only mark present or absent on or after the session start time.')
+      toast.add({
+        title: 'You can only mark present or absent on or after the session start time.',
+        color: 'warning',
+      })
       saveStatus.value = 'idle'
       return
     }
@@ -1026,7 +1034,7 @@
     } catch (err) {
       console.error('Save failed:', err)
       saveStatus.value = 'error'
-      alert('Failed to save note – check console')
+      toast.add({ title: 'Failed to save note – check console', color: 'error' })
     }
 
     isEditingPreviousPanel.value = false
@@ -1074,10 +1082,13 @@
       approvingNoteId.value = null
     } catch (err) {
       console.error('Approval failed:', err)
-      alert(
-        (err as { data?: { statusMessage?: string } })?.data?.statusMessage ??
-          'Failed to approve note – check console'
-      )
+      toast.add({
+        title: 'Failed to approve note',
+        description:
+          (err as { data?: { statusMessage?: string } })?.data?.statusMessage ??
+          'Failed to approve note – check console',
+        color: 'error',
+      })
     } finally {
       approving.value = false
     }

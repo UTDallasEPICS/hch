@@ -51,7 +51,7 @@ export default defineEventHandler(async (event) => {
   }
 
   for (const u of users) {
-    if (!isClinicalClient('CLIENT', u.email)) continue
+    if (!isClinicalClient('CLIENT')) continue
     const storedStatus = (u.client?.status ?? 'INCOMPLETE') as ClientStatus
     const label = toClientStatusLabel(storedStatus)
     counts[label]++

@@ -1,6 +1,6 @@
 import { requireUser } from '../../../../utils/guard'
 import { assertStaffCanAccessClient } from '../../../../utils/clinician-access'
-import { createError, defineEventHandler, getHeaders, getRouterParam } from 'h3'
+import { createError, defineEventHandler, getRouterParam } from 'h3'
 import { prisma } from '../../../../utils/prisma'
 import { isAdmin } from '../../../../utils/is-admin'
 import { loadClinicalFormQuestions } from '../../../../utils/clinical-form-display'
@@ -73,9 +73,8 @@ export default defineEventHandler(async (event) => {
     select: { role: true, email: true },
   })
   const role = currentUser?.role ?? null
-  const email = currentUser?.email ?? user.email ?? null
   const isOwnProfile = user.id === clientUserId
-  const hasAdminAccess = isAdmin(role, email)
+  const hasAdminAccess = isAdmin(role)
   const isClinicianViewer = !hasAdminAccess && event.context.isClinician === true
   if (!isOwnProfile && !hasAdminAccess && !isClinicianViewer) {
     throw createError({ statusCode: 403, statusMessage: 'Staff only' })
@@ -116,16 +115,26 @@ export default defineEventHandler(async (event) => {
       try {
         const parsed = JSON.parse(trimmed) as unknown
         if (Array.isArray(parsed)) {
-          return parsed.map((item: unknown) => {
-            if (item && typeof item === 'object') {
-              const r = item as Record<string, unknown>
-              if (typeof r.firstName === 'string') {
-                return [r.firstName, r.middleInitial, r.lastName, r.age ? `(age ${r.age})` : '', r.relationship].filter(Boolean).join(' ')
+          return parsed
+            .map((item: unknown) => {
+              if (item && typeof item === 'object') {
+                const r = item as Record<string, unknown>
+                if (typeof r.firstName === 'string') {
+                  return [
+                    r.firstName,
+                    r.middleInitial,
+                    r.lastName,
+                    r.age ? `(age ${r.age})` : '',
+                    r.relationship,
+                  ]
+                    .filter(Boolean)
+                    .join(' ')
+                }
+                return Object.values(r).filter(Boolean).join(' ')
               }
-              return Object.values(r).filter(Boolean).join(' ')
-            }
-            return String(item)
-          }).join(', ')
+              return String(item)
+            })
+            .join(', ')
         }
         if (parsed && typeof parsed === 'object') {
           const r = parsed as Record<string, unknown>
@@ -228,7 +237,8 @@ export default defineEventHandler(async (event) => {
 
     const OPTIONS = ['Not at all', 'A little bit', 'Moderately', 'Quite a bit', 'Extremely']
 
-    if (questions.length < 20 && pclForm) {  // ← was `< 0`, which is never true
+    if (questions.length < 20 && pclForm) {
+      // ← was `< 0`, which is never true
       const PCL5_QUESTIONS = [
         'Repeated, disturbing, and unwanted memories of the stressful experience?',
         'Repeated, disturbing dreams of the stressful experience?',

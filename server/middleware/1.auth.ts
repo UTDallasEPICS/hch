@@ -23,10 +23,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
   }
 
-  const user = session.user as any
-  const userIsAdmin = isAdmin(user.role, user.email)
+  const user = session.user
+  const userIsAdmin = isAdmin(user.role)
   const userIsClinician = isClinician(user.role)
-  const userIsStaff = isStaff(user.role, user.email)
+  const userIsStaff = isStaff(user.role)
 
   event.context.user = user
   event.context.session = session.session

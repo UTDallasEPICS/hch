@@ -1,13 +1,12 @@
 import { requireUser } from '../../../utils/guard'
-import { createError, defineEventHandler, getHeaders, readBody } from 'h3'
+import { createError, defineEventHandler, readBody } from 'h3'
 import { loadClinicalFormQuestions } from '../../../utils/clinical-form-display'
 import { recordClientFormScoreSubmission } from '../../../utils/form-score-history'
 import { prisma } from '../../../utils/prisma'
 
 export default defineEventHandler(async (event) => {
-
   const user = requireUser(event)
-  
+
   const userId = user.id
 
   const body = await readBody(event)
@@ -15,8 +14,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing body' })
   }
 
-  let form = await prisma.aceForm.findUnique({
+  // userId is indexed but not unique, so use findFirst on the latest form (#91).
+  let form = await prisma.aceForm.findFirst({
     where: { userId },
+    orderBy: { id: 'desc' },
     include: { questions: true },
   })
 
@@ -25,13 +26,13 @@ export default defineEventHandler(async (event) => {
       data: {
         userId,
         status: 'IN_PROGRESS',
-        questions: { create: { userId } }
+        questions: { create: { userId } },
       },
-      include: { questions: true }
+      include: { questions: true },
     })
   } else if (!form.questions) {
     const questions = await prisma.aceQuestion.create({
-      data: { formId: form.id, userId }
+      data: { formId: form.id, userId },
     })
     form.questions = questions
   }
@@ -89,16 +90,11 @@ export default defineEventHandler(async (event) => {
       status,
       submittedAt,
       totalScore,
-      severity
-    }
+      severity,
+    },
   })
 
-  if (
-    body.isSubmit &&
-    answeredCount === 10 &&
-    !wasAlreadyComplete &&
-    status === 'COMPLETE'
-  ) {
+  if (body.isSubmit && answeredCount === 10 && !wasAlreadyComplete && status === 'COMPLETE') {
     const questions = await loadClinicalFormQuestions(prisma, userId, 'ace')
     await recordClientFormScoreSubmission(prisma, {
       userId,

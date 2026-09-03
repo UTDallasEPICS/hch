@@ -1,11 +1,10 @@
 import { requireUser } from '../../../utils/guard'
-import { createError, defineEventHandler, getHeaders, setHeader } from 'h3'
+import { createError, defineEventHandler, setHeader } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 export default defineEventHandler(async (event) => {
-
   const user = requireUser(event)
 
   const records = await prisma.$queryRawUnsafe<

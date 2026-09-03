@@ -1,113 +1,110 @@
 <script setup lang="ts">
-interface AuditRecord {
-  id: string
-  entityType: string
-  entityId: string
-  oldValue: Record<string, unknown> | null
-  newValue: Record<string, unknown> | null
-  reasoning: string | null
-  hasDocumentation: boolean
-  documentationName: string | null
-  documentationPath: string | null
-  signedAt: string
-  signedBy: { id: string; name: string; email: string }
-}
+  interface AuditRecord {
+    id: string
+    entityType: string
+    entityId: string
+    oldValue: Record<string, unknown> | null
+    newValue: Record<string, unknown> | null
+    reasoning: string | null
+    hasDocumentation: boolean
+    documentationName: string | null
+    signedAt: string
+    signedBy: { id: string; name: string; email: string }
+  }
 
-const props = defineProps<{
-  open: boolean
-  audit: AuditRecord | null
-}>()
+  const props = defineProps<{
+    open: boolean
+    audit: AuditRecord | null
+  }>()
 
-const emit = defineEmits<{
-  close: []
-}>()
+  const emit = defineEmits<{
+    close: []
+  }>()
 
-const signatureLoading = ref(false)
-const signatureData = ref<string | null>(null)
-const showDocumentViewer = ref(false)
-const documentLoading = ref(false)
-const documentError = ref<string | null>(null)
+  const signatureLoading = ref(false)
+  const signatureData = ref<string | null>(null)
+  const showDocumentViewer = ref(false)
+  const documentLoading = ref(false)
+  const documentError = ref<string | null>(null)
 
-watch(
-  () => props.open,
-  async (open) => {
-    if (open && props.audit) {
-      await loadSignature()
-    } else {
+  watch(
+    () => props.open,
+    async (open) => {
+      if (open && props.audit) {
+        await loadSignature()
+      } else {
+        signatureData.value = null
+        showDocumentViewer.value = false
+        documentError.value = null
+      }
+    }
+  )
+
+  async function loadSignature() {
+    if (!props.audit) return
+    signatureLoading.value = true
+    try {
+      const res = await $fetch<{ signatureData: string }>(`/api/audits/${props.audit.id}/signature`)
+      signatureData.value = res.signatureData
+    } catch {
       signatureData.value = null
-      showDocumentViewer.value = false
-      documentError.value = null
+    } finally {
+      signatureLoading.value = false
     }
   }
-)
 
-async function loadSignature() {
-  if (!props.audit) return
-  signatureLoading.value = true
-  try {
-    const res = await $fetch<{ signatureData: string }>(`/api/audits/${props.audit.id}/signature`)
-    signatureData.value = res.signatureData
-  } catch {
-    signatureData.value = null
-  } finally {
-    signatureLoading.value = false
+  function formatDate(iso: string): string {
+    return new Date(iso).toLocaleString()
   }
-}
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString()
-}
-
-function formatEntityType(type: string): string {
-  const map: Record<string, string> = {
-    ABSENCE: 'Absence Update',
-    TREATMENT_PLAN: 'Treatment Plan Change',
+  function formatEntityType(type: string): string {
+    const map: Record<string, string> = {
+      ABSENCE: 'Absence Update',
+      TREATMENT_PLAN: 'Treatment Plan Change',
+    }
+    return map[type] || type
   }
-  return map[type] || type
-}
 
-function getDocumentUrl(): string {
-  if (!props.audit) return ''
-  // Use direct URL if available (stored as full URL in database)
-  if (props.audit.documentationPath) {
-    return props.audit.documentationPath
+  function getDocumentUrl(): string {
+    if (!props.audit) return ''
+    // Always serve through the admin-gated API route. The raw documentationPath
+    // points at an unauthenticated on-disk location and must never be used to
+    // fetch PHI directly (see #87).
+    return `/api/audit-docs/${props.audit.id}`
   }
-  // Fallback to API endpoint
-  return `/api/audit-docs/${props.audit.id}`
-}
 
-function viewDocumentInline() {
-  documentError.value = null
-  showDocumentViewer.value = true
-}
-
-function openInNewTab() {
-  if (props.audit) {
-    const url = getDocumentUrl()
-    window.open(url, '_blank')
+  function viewDocumentInline() {
+    documentError.value = null
+    showDocumentViewer.value = true
   }
-}
 
-function downloadDocument() {
-  if (props.audit) {
-    // Use API endpoint for download (forces Content-Disposition: attachment)
-    window.open(`/api/audit-docs/${props.audit.id}/download`, '_blank')
+  function openInNewTab() {
+    if (props.audit) {
+      const url = getDocumentUrl()
+      window.open(url, '_blank')
+    }
   }
-}
 
-function onIframeError() {
-  documentError.value = 'Failed to load document. Try opening in a new tab or downloading.'
-}
+  function downloadDocument() {
+    if (props.audit) {
+      // Use API endpoint for download (forces Content-Disposition: attachment)
+      window.open(`/api/audit-docs/${props.audit.id}/download`, '_blank')
+    }
+  }
 
-function isPdf(): boolean {
-  const name = props.audit?.documentationName?.toLowerCase() || ''
-  return name.endsWith('.pdf')
-}
+  function onIframeError() {
+    documentError.value = 'Failed to load document. Try opening in a new tab or downloading.'
+  }
 
-function formatValue(val: Record<string, unknown> | null): string {
-  if (!val) return 'N/A'
-  return JSON.stringify(val, null, 2)
-}
+  function isPdf(): boolean {
+    const name = props.audit?.documentationName?.toLowerCase() || ''
+    return name.endsWith('.pdf')
+  }
+
+  function formatValue(val: Record<string, unknown> | null): string {
+    if (!val) return 'N/A'
+    return JSON.stringify(val, null, 2)
+  }
 </script>
 
 <template>
@@ -145,7 +142,7 @@ function formatValue(val: Record<string, unknown> | null): string {
           </div>
           <div>
             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Entity ID</p>
-            <p class="mt-1 text-sm text-gray-900 dark:text-white font-mono text-xs">
+            <p class="mt-1 font-mono text-sm text-xs text-gray-900 dark:text-white">
               {{ audit.entityId }}
             </p>
           </div>
@@ -156,14 +153,16 @@ function formatValue(val: Record<string, unknown> | null): string {
           <div>
             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Previous Value</p>
             <pre
-              class="mt-1 rounded-md bg-gray-100 p-2 text-xs text-gray-800 dark:bg-gray-800 dark:text-gray-200 overflow-x-auto"
-            >{{ formatValue(audit.oldValue) }}</pre>
+              class="mt-1 overflow-x-auto rounded-md bg-gray-100 p-2 text-xs text-gray-800 dark:bg-gray-800 dark:text-gray-200"
+              >{{ formatValue(audit.oldValue) }}</pre
+            >
           </div>
           <div>
             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">New Value</p>
             <pre
-              class="mt-1 rounded-md bg-gray-100 p-2 text-xs text-gray-800 dark:bg-gray-800 dark:text-gray-200 overflow-x-auto"
-            >{{ formatValue(audit.newValue) }}</pre>
+              class="mt-1 overflow-x-auto rounded-md bg-gray-100 p-2 text-xs text-gray-800 dark:bg-gray-800 dark:text-gray-200"
+              >{{ formatValue(audit.newValue) }}</pre
+            >
           </div>
         </div>
 
@@ -216,27 +215,42 @@ function formatValue(val: Record<string, unknown> | null): string {
 
           <!-- Embedded Document Viewer -->
           <div v-if="showDocumentViewer && isPdf()" class="mt-3">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Document Preview</span>
-              <UButton variant="ghost" size="xs" icon="i-heroicons-x-mark" @click="showDocumentViewer = false">
+            <div class="mb-2 flex items-center justify-between">
+              <span class="text-sm font-medium text-gray-600 dark:text-gray-400"
+                >Document Preview</span
+              >
+              <UButton
+                variant="ghost"
+                size="xs"
+                icon="i-heroicons-x-mark"
+                @click="showDocumentViewer = false"
+              >
                 Close Preview
               </UButton>
             </div>
             <div
-              class="relative rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 overflow-hidden"
-              style="height: 400px;"
+              class="relative overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
+              style="height: 400px"
             >
               <iframe
                 v-if="!documentError"
                 :src="getDocumentUrl()"
-                class="w-full h-full"
+                class="h-full w-full"
                 @error="onIframeError"
               />
-              <div v-if="documentError" class="flex flex-col items-center justify-center h-full text-center p-4">
-                <UIcon name="i-heroicons-exclamation-triangle" class="h-10 w-10 text-amber-500 mb-3" />
-                <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">{{ documentError }}</p>
+              <div
+                v-if="documentError"
+                class="flex h-full flex-col items-center justify-center p-4 text-center"
+              >
+                <UIcon
+                  name="i-heroicons-exclamation-triangle"
+                  class="mb-3 h-10 w-10 text-amber-500"
+                />
+                <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">{{ documentError }}</p>
                 <div class="flex gap-2">
-                  <UButton size="sm" variant="outline" @click="openInNewTab">Open in New Tab</UButton>
+                  <UButton size="sm" variant="outline" @click="openInNewTab"
+                    >Open in New Tab</UButton
+                  >
                   <UButton size="sm" @click="downloadDocument">Download</UButton>
                 </div>
               </div>

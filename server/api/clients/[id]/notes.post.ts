@@ -4,10 +4,7 @@ import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { formatStoredUserNameForDisplay } from '../../../utils/name'
 import { notifyAdmins } from '../../../utils/notifications'
-import type {
-  SessionNoteKind,
-  SessionNoteStatus,
-} from '../../../../prisma/generated/enums'
+import type { SessionNoteKind, SessionNoteStatus } from '../../../../prisma/generated/enums'
 
 function canEditOnOrAfterSessionDay(sessionStart: Date, now = new Date()) {
   const sessionDay = new Date(sessionStart)
@@ -81,12 +78,9 @@ export default defineEventHandler(async (event) => {
   // Action inference: explicit action wins; otherwise fall back to the legacy
   // behaviour where any saved note required a signature (=> clinician-sign).
   const action: SaveAction =
-    body?.action && VALID_ACTIONS.includes(body.action)
-      ? body.action
-      : 'clinician-sign'
+    body?.action && VALID_ACTIONS.includes(body.action) ? body.action : 'clinician-sign'
 
-  const clinicianSignature =
-    body?.clinicianSignatureData ?? body?.signatureData ?? null
+  const clinicianSignature = body?.clinicianSignatureData ?? body?.signatureData ?? null
 
   if (action === 'clinician-sign') {
     if (!clinicianSignature || typeof clinicianSignature !== 'string') {
@@ -95,8 +89,10 @@ export default defineEventHandler(async (event) => {
         statusMessage: 'Clinician signature is required to sign a note',
       })
     }
-    const isBase64Png = clinicianSignature.startsWith('data:image/png;base64,') && clinicianSignature.length >= 100
-    const isFontSignature = clinicianSignature.startsWith('{') && clinicianSignature.includes('"type":"font-signature"')
+    const isBase64Png =
+      clinicianSignature.startsWith('data:image/png;base64,') && clinicianSignature.length >= 100
+    const isFontSignature =
+      clinicianSignature.startsWith('{') && clinicianSignature.includes('"type":"font-signature"')
 
     if (!isBase64Png && !isFontSignature) {
       throw createError({ statusCode: 400, statusMessage: 'Invalid signature data format' })
@@ -132,15 +128,13 @@ export default defineEventHandler(async (event) => {
   if (!canEditOnOrAfterSessionDay(appointment.startTime)) {
     throw createError({
       statusCode: 403,
-      statusMessage:
-        'Notes can only be edited on the session day or after the session has passed.',
+      statusMessage: 'Notes can only be edited on the session day or after the session has passed.',
     })
   }
   if (hasAttendance && !canMarkAttendanceOnOrAfterSessionStart(appointment.startTime)) {
     throw createError({
       statusCode: 403,
-      statusMessage:
-        'Present/absent can only be marked on or after the session start time.',
+      statusMessage: 'Present/absent can only be marked on or after the session start time.',
     })
   }
   if (action === 'clinician-sign' && !hasAttendance) {
@@ -160,13 +154,11 @@ export default defineEventHandler(async (event) => {
   if (existingNote && existingNote.status === 'FULLY_APPROVED') {
     throw createError({
       statusCode: 409,
-      statusMessage:
-        'This note is fully approved. Use the edit flow to revise an approved note.',
+      statusMessage: 'This note is fully approved. Use the edit flow to revise an approved note.',
     })
   }
 
-  const nextStatus: SessionNoteStatus =
-    action === 'clinician-sign' ? 'CLINICIAN_SIGNED' : 'DRAFT'
+  const nextStatus: SessionNoteStatus = action === 'clinician-sign' ? 'CLINICIAN_SIGNED' : 'DRAFT'
 
   const clinicianFields =
     action === 'clinician-sign'

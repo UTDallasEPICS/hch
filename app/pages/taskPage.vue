@@ -199,33 +199,33 @@
     return labels[userStatus.value] ?? userStatus.value
   })
 
-  function getTask(key: string): any {
-    if (!profile.value?.tasks)
-      return { answered: 0, total: 0, submitted: false, score: null, severity: null }
-    return (
-      profile.value.tasks.find((t: any) => t.key === key) || {
-        answered: 0,
-        total: 0,
-        submitted: false,
-        score: null,
-        severity: null,
-      }
-    )
+  interface ClientTask {
+    key: string
+    name: string
+    to: string
+    answered: number
+    total: number
+    submitted: boolean
+    score?: number | null
+    severity?: string | null
   }
 
-  const tasksFromProfile = computed(
-    () =>
-      (profile.value?.tasks ?? []) as {
-        key: string
-        name: string
-        to: string
-        answered: number
-        total: number
-        submitted: boolean
-        score?: number | null
-        severity?: string | null
-      }[]
-  )
+  function getTask(key: string): ClientTask {
+    const fallback: ClientTask = {
+      key,
+      name: '',
+      to: '',
+      answered: 0,
+      total: 0,
+      submitted: false,
+      score: null,
+      severity: null,
+    }
+    if (!profile.value?.tasks) return fallback
+    return (profile.value.tasks as ClientTask[]).find((t) => t.key === key) ?? fallback
+  }
+
+  const tasksFromProfile = computed(() => (profile.value?.tasks ?? []) as ClientTask[])
 
   const visibleTasks = computed(() => {
     if (isPreWaitlist.value) {
@@ -457,8 +457,8 @@
   onMounted(async () => {
     try {
       await refreshProfile()
-    } catch {
-      // Error handling
+    } catch (err) {
+      console.error('Failed to refresh profile on mount:', err)
     }
   })
 </script>
@@ -608,9 +608,7 @@
               size="sm"
               icon="i-heroicons-paper-airplane"
               :disabled="sessionNotesAccess.hasPendingRequest"
-              :label="
-                sessionNotesAccess.hasPendingRequest ? 'Request pending' : 'Request records'
-              "
+              :label="sessionNotesAccess.hasPendingRequest ? 'Request pending' : 'Request records'"
               @click="sessionNotesRequestModalOpen = true"
             />
             <UButton

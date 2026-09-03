@@ -1,6 +1,7 @@
 import { requireUser } from '../../../utils/guard'
-import { createError, defineEventHandler, getHeaders, readBody } from 'h3'
+import { createError, defineEventHandler, readBody } from 'h3'
 import { prisma } from '../../../utils/prisma'
+import { calculatePhqScore } from '../../../utils/scoring'
 
 type AnswersBody = {
   q1?: number
@@ -18,7 +19,6 @@ type AnswersBody = {
 const TOTAL_QUESTIONS = 10
 
 export default defineEventHandler(async (event) => {
-
   const user = requireUser(event)
 
   const userId = user.id
@@ -64,22 +64,15 @@ export default defineEventHandler(async (event) => {
   const body = await readBody<AnswersBody>(event)
 
   const data: Record<string, number | null> = {}
-  let totalScore = 0
   for (let index = 1; index <= TOTAL_QUESTIONS; index += 1) {
-    const dbKey = `q${(index)}`
+    const dbKey = `q${index}`
     const payloadKey = `q${index}` as keyof AnswersBody
     const value = body?.[payloadKey]
-    const numVal = typeof value === 'number' ? value : null
-    data[dbKey] = numVal
-    if (index <= 9) totalScore += numVal ?? 0
+    data[dbKey] = typeof value === 'number' ? value : null
   }
 
-  let severity: string | null = null
-  if (totalScore <= 4) severity = 'Minimal or None'
-  else if (totalScore <= 9) severity = 'Mild'
-  else if (totalScore <= 14) severity = 'Moderate'
-  else if (totalScore <= 19) severity = 'Moderately Severe'
-  else severity = 'Severe'
+  // Single source of truth for PHQ-9 scoring + severity labels (#91).
+  const { score: totalScore, severity } = calculatePhqScore(data)
 
   await prisma.phqQuestion.update({
     where: { id: existingQuestions.id },
@@ -90,12 +83,12 @@ export default defineEventHandler(async (event) => {
   await prisma.phqForm.update({
     where: { id: form.id },
     data: {
-      status: 'COMPLETE',      // ← was 'IN_PROGRESS'
+      status: 'COMPLETE', // ← was 'IN_PROGRESS'
       submittedAt: new Date(), // ← was null
       totalScore,
       severity,
     },
   })
 
-  return { saved: true } 
+  return { saved: true }
 })

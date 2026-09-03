@@ -1,13 +1,7 @@
 import { requireStaff } from '../../utils/guard'
-import { createError, defineEventHandler, getHeaders, getQuery } from 'h3'
+import { defineEventHandler, getQuery } from 'h3'
 import { prisma } from '../../utils/prisma'
-import { isAdmin } from '../../utils/is-admin'
-import {
-  isAllFormsComplete,
-  areAllFormsComplete,
-  isWaitlistFormsComplete,
-  getIncompleteForms,
-} from '../../utils/client-forms'
+import { getClientFormsStatusBatch } from '../../utils/client-forms'
 import { isClinicalClient } from '../../utils/is-clinical-client'
 import {
   isClientStatusLabel,
@@ -96,42 +90,43 @@ export default defineEventHandler(async (event) => {
     orderBy: { createdAt: 'desc' },
   })
 
-  const clinicalUsers = users.filter((u) => isClinicalClient(u.role, u.email))
+  const clinicalUsers = users.filter((u) => isClinicalClient(u.role))
 
-  const clients = await Promise.all(
-    clinicalUsers.map(async (user) => {
-      const clientProfile = user.client
-      const storedStatus = (clientProfile?.status ?? 'INCOMPLETE') as ClientStatus
-      const statusLabel = toClientStatusLabel(storedStatus)
-      const therapyWeek = clientProfile?.therapyWeek ?? null
-      const missedSessions = clientProfile?.missedSessions ?? 0
-      const allFormsComplete =
-        storedStatus === 'WAITLIST'
-          ? await isWaitlistFormsComplete(prisma, user.id)
-          : await areAllFormsComplete(prisma, user.id)
-      const incompleteForms =
-        storedStatus === 'INCOMPLETE' || storedStatus === 'WAITLIST'
-          ? await getIncompleteForms(prisma, user.id, storedStatus)
-          : []
-      const latestAnswers = user.appForms[0]?.questions
-      const fallbackName = joinName(latestAnswers?.q02 ?? '', latestAnswers?.q03 ?? '')
-      const resolvedName = user.name?.trim() ? user.name : fallbackName
-      const { fname, lname } = parseName(resolvedName)
-
-      return {
-        id: user.id,
-        fname,
-        lname,
-        name: resolvedName,
-        email: user.email,
-        status: statusLabel,
-        allFormsComplete,
-        therapyWeek,
-        missedSessions,
-        incompleteForms,
-      }
-    })
+  // Compute form completion for the whole roster in one batch (one findMany per
+  // form table) instead of 6-8 queries per client. (#95)
+  const formsStatus = await getClientFormsStatusBatch(
+    prisma,
+    clinicalUsers.map((u) => ({
+      userId: u.id,
+      status: (u.client?.status ?? 'INCOMPLETE') as ClientStatus,
+    }))
   )
+
+  const clients = clinicalUsers.map((user) => {
+    const clientProfile = user.client
+    const storedStatus = (clientProfile?.status ?? 'INCOMPLETE') as ClientStatus
+    const statusLabel = toClientStatusLabel(storedStatus)
+    const therapyWeek = clientProfile?.therapyWeek ?? null
+    const missedSessions = clientProfile?.missedSessions ?? 0
+    const forms = formsStatus.get(user.id) ?? { allFormsComplete: false, incompleteForms: [] }
+    const latestAnswers = user.appForms[0]?.questions
+    const fallbackName = joinName(latestAnswers?.q02 ?? '', latestAnswers?.q03 ?? '')
+    const resolvedName = user.name?.trim() ? user.name : fallbackName
+    const { fname, lname } = parseName(resolvedName)
+
+    return {
+      id: user.id,
+      fname,
+      lname,
+      name: resolvedName,
+      email: user.email,
+      status: statusLabel,
+      allFormsComplete: forms.allFormsComplete,
+      therapyWeek,
+      missedSessions,
+      incompleteForms: forms.incompleteForms,
+    }
+  })
 
   return clients
 })

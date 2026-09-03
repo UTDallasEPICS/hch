@@ -47,10 +47,7 @@
           <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">
             Welcome, {{ displayName }} !!!
           </h1>
-          <p
-            v-if="clientDisplayName"
-            class="mt-1 text-sm text-gray-600 dark:text-gray-400"
-          >
+          <p v-if="clientDisplayName" class="mt-1 text-sm text-gray-600 dark:text-gray-400">
             {{ clientDisplayName }}
           </p>
           <UBadge class="mt-2" :color="statusBadgeColor" variant="soft" size="md">

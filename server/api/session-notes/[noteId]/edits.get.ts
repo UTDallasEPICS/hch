@@ -1,11 +1,9 @@
 import { requireStaff } from '../../../utils/guard'
 import { assertStaffCanAccessClient } from '../../../utils/clinician-access'
-import { createError, defineEventHandler, getHeaders, getRouterParam } from 'h3'
+import { createError, defineEventHandler, getRouterParam } from 'h3'
 import { prisma } from '../../../utils/prisma'
-import { isAdmin } from '../../../utils/is-admin'
 
 export default defineEventHandler(async (event) => {
-
   const user = requireStaff(event)
 
   const noteId = getRouterParam(event, 'noteId')

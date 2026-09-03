@@ -7,6 +7,7 @@ import {
   isSendableEmailFormKey,
   resolveClientFormLinkEntries,
   resetClientFormDataForEmail,
+  type SendableEmailFormKey,
 } from '../../../utils/client-forms'
 import { sendAppEmail, isEmailConfigured } from '../../../utils/mail'
 import { formatStoredUserNameInitials } from '../../../utils/name'
@@ -46,7 +47,7 @@ export default defineEventHandler(async (event) => {
     select: { id: true, role: true, email: true, name: true },
   })
 
-  if (!dbUser || !isClinicalClient(dbUser.role, dbUser.email)) {
+  if (!dbUser || !isClinicalClient(dbUser.role)) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
   }
 
@@ -54,14 +55,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Client has no email address' })
   }
 
-  const uniqueKeys = [...new Set(formKeys)]
-  for (const key of uniqueKeys) {
+  const uniqueKeys: SendableEmailFormKey[] = []
+  for (const key of [...new Set(formKeys)]) {
     if (!isSendableEmailFormKey(key)) {
       throw createError({
         statusCode: 400,
         statusMessage: `Form "${key}" cannot be sent by email (only clinical assessments: ACE, GAD-7, PHQ-9, PCL-5).`,
       })
     }
+    uniqueKeys.push(key)
   }
 
   for (const key of uniqueKeys) {
@@ -80,10 +82,7 @@ export default defineEventHandler(async (event) => {
   const greeting = initials ? `Hello ${escapeHtml(initials)},` : 'Hello,'
 
   const listItems = entries
-    .map(
-      (e) =>
-        `<li><a href="${escapeHtml(e.href)}">${escapeHtml(e.label)}</a></li>`
-    )
+    .map((e) => `<li><a href="${escapeHtml(e.href)}">${escapeHtml(e.label)}</a></li>`)
     .join('\n')
 
   const html = `

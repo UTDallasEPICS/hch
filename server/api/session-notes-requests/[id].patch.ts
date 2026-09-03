@@ -66,13 +66,17 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 409, statusMessage: 'Request is no longer pending' })
   }
 
+  // Audit trail note (#90): the decision is recorded on the SessionNotesRequest row
+  // itself (status, decidedAt, decidedByUserId, approval/rejectionReason) — its own
+  // audit-of-record, surfaced in the client-detail "Records request log"
+  // (profile.get.ts returns every request, decided included). It is deliberately not
+  // mirrored into ChangeAudit, whose required signatureData these admin decisions do
+  // not capture.
   const now = new Date()
 
   const clientInitials = formatStoredUserNameInitials(req.client.user.name)
   const greeting =
-    clientInitials.length > 0
-      ? `<p>Hello ${escapeHtml(clientInitials)},</p>`
-      : '<p>Hello,</p>'
+    clientInitials.length > 0 ? `<p>Hello ${escapeHtml(clientInitials)},</p>` : '<p>Hello,</p>'
 
   if (parsed.data.action === 'reject') {
     const reason = String(parsed.data.rejectionReason ?? '').trim()

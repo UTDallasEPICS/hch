@@ -15,10 +15,7 @@ const dateOnlySchema = z
   .trim()
   .nullish()
   .transform((v) => (v && v.length ? v : null))
-  .refine(
-    (v) => v == null || /^\d{4}-\d{2}-\d{2}$/.test(v),
-    'Dates must be in YYYY-MM-DD format'
-  )
+  .refine((v) => v == null || /^\d{4}-\d{2}-\d{2}$/.test(v), 'Dates must be in YYYY-MM-DD format')
   .transform((v) => (v ? new Date(`${v}T00:00:00.000Z`) : null))
 
 const bodySchema = z
@@ -75,11 +72,17 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const declarationTemplateId = await getLatestDeclarationTemplateId(
-    prisma,
-    body.data.requestKind
-  )
+  const declarationTemplateId = await getLatestDeclarationTemplateId(prisma, body.data.requestKind)
 
+  // Audit trail note (#90): a records request is its own audit-of-record. The row
+  // self-records the actor (clientId), the signed declaration (signatureData +
+  // declarationTemplateId), timestamps (createdAt), and — on decision — the deciding
+  // admin (decidedByUserId) and reason (approval/rejectionReason). Pending requests
+  // appear in the admin "Clients -> Records requests" queue; the full decided history
+  // surfaces in the client-detail "Records request log" (profile.get.ts returns every
+  // request, decided included). It is kept out of the ChangeAudit trail because the
+  // approve/reject actions capture no signature, which ChangeAudit requires, so a
+  // mirror could not represent those decisions faithfully.
   const created = await prisma.sessionNotesRequest.create({
     data: {
       clientId: client.id,
@@ -91,7 +94,7 @@ export default defineEventHandler(async (event) => {
     },
   })
 
-  const admins = getAdminNotificationEmails()
+  const admins = await getAdminNotificationEmails()
   const clientInitials = formatStoredUserNameInitials(client.user.name)
   const kindLabel =
     body.data.requestKind === 'FULL' ? 'full session notes' : 'a summary of session notes'

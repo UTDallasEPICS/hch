@@ -131,7 +131,7 @@
   }
 
   const docUploadRef = ref<HTMLInputElement | null>(null)
- 
+
   // Font signature
   const SIG_FONTS = [
     { label: 'Classic', value: 'Dancing Script' },
@@ -148,11 +148,17 @@
 
   onMounted(() => {
     const saved = localStorage.getItem('epics_signature')
-    if (saved) try { savedSignature.value = JSON.parse(saved) } catch {}
+    if (saved)
+      try {
+        savedSignature.value = JSON.parse(saved)
+      } catch {}
   })
 
   function updateSignatureData() {
-    if (!sigName.value.trim()) { signatureDataUrl.value = ''; return }
+    if (!sigName.value.trim()) {
+      signatureDataUrl.value = ''
+      return
+    }
     signatureDataUrl.value = JSON.stringify({
       type: 'font-signature',
       name: sigName.value.trim(),
@@ -172,11 +178,17 @@
 
   function saveDefaultSignature() {
     if (!sigName.value.trim()) return
-    const sig = { name: sigName.value.trim(), credentials: sigCredentials.value.trim(), font: sigFont.value }
+    const sig = {
+      name: sigName.value.trim(),
+      credentials: sigCredentials.value.trim(),
+      font: sigFont.value,
+    }
     savedSignature.value = sig
     localStorage.setItem('epics_signature', JSON.stringify(sig))
     justSavedSig.value = true
-    setTimeout(() => { justSavedSig.value = false }, 2000)
+    setTimeout(() => {
+      justSavedSig.value = false
+    }, 2000)
   }
 
   async function fileToBase64(file: File): Promise<string> {
@@ -321,28 +333,32 @@
           </p>
         </div>
       </template>
-    
+
       <!-- Font-based signature -->
       <div class="mb-6">
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          {{ signatureOnly ? 'Admin signature' : 'Clinician signature' }} <span class="text-red-500">*</span>
+          {{ signatureOnly ? 'Admin signature' : 'Clinician signature' }}
+          <span class="text-red-500">*</span>
         </label>
 
         <!-- Saved signature apply banner -->
         <div
           v-if="savedSignature"
-          class="mb-3 flex items-center justify-between rounded-xl border border-primary-200 bg-primary-50 px-3 py-2.5 dark:border-primary-800 dark:bg-primary-900/20"
+          class="border-primary-200 bg-primary-50 dark:border-primary-800 dark:bg-primary-900/20 mb-3 flex items-center justify-between rounded-xl border px-3 py-2.5"
         >
           <div class="min-w-0">
-            <p class="text-xs font-semibold text-primary-700 dark:text-primary-300">Saved signature</p>
-            <p class="mt-0.5 truncate text-xs text-primary-600 dark:text-primary-400">
-              {{ savedSignature.name }}<span v-if="savedSignature.credentials">, {{ savedSignature.credentials }}</span>
+            <p class="text-primary-700 dark:text-primary-300 text-xs font-semibold">
+              Saved signature
+            </p>
+            <p class="text-primary-600 dark:text-primary-400 mt-0.5 truncate text-xs">
+              {{ savedSignature.name
+              }}<span v-if="savedSignature.credentials">, {{ savedSignature.credentials }}</span>
             </p>
           </div>
           <button
             type="button"
             @click="applySignature"
-            class="ml-3 shrink-0 rounded-lg bg-primary-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-600 transition-colors"
+            class="bg-primary-500 hover:bg-primary-600 ml-3 shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-colors"
           >
             Apply
           </button>
@@ -350,7 +366,6 @@
 
         <!-- Two-column: inputs left, preview right -->
         <div class="grid grid-cols-2 gap-4">
-
           <!-- Left: inputs -->
           <div class="space-y-3">
             <!-- Name -->
@@ -362,27 +377,31 @@
                 v-model="sigName"
                 type="text"
                 placeholder="Full name"
-                class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:placeholder-gray-500"
+                class="focus:border-primary-400 focus:ring-primary-100 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:placeholder-gray-500"
               />
             </div>
 
             <!-- Credentials -->
             <div>
-              <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Credentials</label>
+              <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400"
+                >Credentials</label
+              >
               <input
                 v-model="sigCredentials"
                 type="text"
                 placeholder="e.g. LCSW, LPC"
-                class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:placeholder-gray-500"
+                class="focus:border-primary-400 focus:ring-primary-100 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:placeholder-gray-500"
               />
             </div>
 
             <!-- Font dropdown -->
             <div>
-              <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Signature font</label>
+              <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400"
+                >Signature font</label
+              >
               <select
                 v-model="sigFont"
-                class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                class="focus:border-primary-400 focus:ring-primary-100 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
               >
                 <option v-for="font in SIG_FONTS" :key="font.value" :value="font.value">
                   {{ font.label }}
@@ -395,8 +414,12 @@
               type="button"
               @click="saveDefaultSignature"
               :disabled="!sigName.trim()"
-              class="flex items-center gap-1.5 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              :class="justSavedSig ? 'text-green-600 dark:text-green-400' : 'text-primary-600 hover:text-primary-700 dark:text-primary-400'"
+              class="flex items-center gap-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+              :class="
+                justSavedSig
+                  ? 'text-green-600 dark:text-green-400'
+                  : 'text-primary-600 hover:text-primary-700 dark:text-primary-400'
+              "
             >
               {{ justSavedSig ? '✓ Saved!' : 'Save as default signature' }}
             </button>
@@ -405,11 +428,16 @@
           <!-- Right: preview -->
           <div class="flex flex-col">
             <p class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">Preview</p>
-            <div class="flex-1 rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
-              
+            <div
+              class="flex-1 rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50"
+            >
               <!-- Name in selected font -->
               <div
-                :style="{ fontFamily: `'${sigFont}', cursive`, fontSize: '28px', lineHeight: '1.3' }"
+                :style="{
+                  fontFamily: `'${sigFont}', cursive`,
+                  fontSize: '28px',
+                  lineHeight: '1.3',
+                }"
                 class="break-words text-gray-800 dark:text-gray-100"
               >
                 {{ sigName || 'Your Name' }}
@@ -424,30 +452,37 @@
                   {{ sigCredentials || ' ' }}
                 </p>
                 <p class="text-xs font-medium text-gray-600 dark:text-white">
-                  {{ new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) }}
+                  {{
+                    new Date().toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })
+                  }}
                 </p>
               </div>
             </div>
           </div>
-
         </div>
 
         <p v-if="signatureError" class="mt-2 text-sm text-red-600 dark:text-red-400">
           {{ signatureError }}
         </p>
       </div>
-      
-        <!-- Actions -->
-        <div class="flex justify-end gap-2">
-          <UButton variant="ghost" @click="emit('close')">Cancel</UButton>
-          <UButton color="primary" :loading="loading" @click="handleSubmit">
-            {{ submitLabel }}
-          </UButton>
-        </div>
+
+      <!-- Actions -->
+      <div class="flex justify-end gap-2">
+        <UButton variant="ghost" @click="emit('close')">Cancel</UButton>
+        <UButton color="primary" :loading="loading" @click="handleSubmit">
+          {{ submitLabel }}
+        </UButton>
+      </div>
     </template>
   </UModal>
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Great+Vibes&family=Pacifico&family=Pinyon+Script&family=Sacramento&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Great+Vibes&family=Pacifico&family=Pinyon+Script&family=Sacramento&display=swap');
 </style>

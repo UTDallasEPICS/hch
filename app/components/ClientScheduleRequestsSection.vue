@@ -97,7 +97,11 @@
           message: newMessage.value.trim() || undefined,
         },
       })
-      toast.add({ title: 'Request sent', description: 'Your clinician will review it.', color: 'success' })
+      toast.add({
+        title: 'Request sent',
+        description: 'Your clinician will review it.',
+        color: 'success',
+      })
       newDate.value = ''
       newStart.value = ''
       newEnd.value = ''
@@ -105,7 +109,8 @@
       await refresh()
     } catch (e: unknown) {
       const msg =
-        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ?? 'Could not submit request'
+        (e as { data?: { statusMessage?: string } })?.data?.statusMessage ??
+        'Could not submit request'
       toast.add({ title: 'Error', description: msg, color: 'error' })
     } finally {
       submitting.value = false
@@ -161,8 +166,8 @@
     <div class="mb-3">
       <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Request a session time</h2>
       <p class="mt-0.5 text-sm text-gray-600 dark:text-gray-400">
-        Propose a date and time for your next visit. Scheduling is not confirmed until your clinician
-        or admin approves it.
+        Propose a date and time for your next visit. Scheduling is not confirmed until your
+        clinician or admin approves it.
       </p>
     </div>
 
@@ -201,7 +206,12 @@
         </div>
       </div>
       <UFormField label="Note (optional)" class="mt-3">
-        <UTextarea v-model="newMessage" :rows="2" class="w-full" placeholder="Anything your care team should know" />
+        <UTextarea
+          v-model="newMessage"
+          :rows="2"
+          class="w-full"
+          placeholder="Anything your care team should know"
+        />
       </UFormField>
     </div>
 

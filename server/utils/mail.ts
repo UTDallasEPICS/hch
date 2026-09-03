@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer'
+import { prisma } from './prisma'
 
 function getTransporter() {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
@@ -14,13 +15,12 @@ function getTransporter() {
   })
 }
 
-export function getAdminNotificationEmails(): string[] {
-  const raw = process.env.INITIAL_ADMIN_EMAIL
-  if (!raw) return []
-  return raw
-    .split(',')
-    .map((e) => e.trim())
-    .filter(Boolean)
+export async function getAdminNotificationEmails(): Promise<string[]> {
+  const admins = await prisma.user.findMany({
+    where: { role: 'ADMIN' },
+    select: { email: true },
+  })
+  return admins.map((a) => a.email)
 }
 
 /** True when outbound app email (Gmail) env is set (same check as send path). */

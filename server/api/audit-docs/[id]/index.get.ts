@@ -1,11 +1,9 @@
 import { requireAdmin } from '../../../utils/guard'
-import { createError, defineEventHandler, getHeaders, getRouterParam, setHeader } from 'h3'
+import { createError, defineEventHandler, getRouterParam, setHeader } from 'h3'
 import { prisma } from '../../../utils/prisma'
-import { isAdmin } from '../../../utils/is-admin'
 import { readFile, fileExists, getMimeType } from '../../../utils/file-upload'
 
 export default defineEventHandler(async (event) => {
-
   const user = requireAdmin(event)
 
   const auditId = getRouterParam(event, 'id')

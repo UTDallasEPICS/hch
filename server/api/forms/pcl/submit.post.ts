@@ -1,11 +1,10 @@
 import { requireUser } from '../../../utils/guard'
-import { createError, defineEventHandler, getHeaders } from 'h3'
+import { createError, defineEventHandler } from 'h3'
 import { loadClinicalFormQuestions } from '../../../utils/clinical-form-display'
 import { prisma } from '../../../utils/prisma'
-import { calculatePclScore } from '../../../utils/scoring'
+import { calculatePclScore, PCL_QUESTION_KEYS } from '../../../utils/scoring'
 import { recordClientFormScoreSubmission } from '../../../utils/form-score-history'
 
-const TOTAL_QUESTIONS = 20
 const TOTAL_ITEMS = 21
 
 export default defineEventHandler(async (event) => {
@@ -46,9 +45,8 @@ export default defineEventHandler(async (event) => {
   }
 
   let answered = 0
-  for (let index = 1; index <= TOTAL_QUESTIONS; index += 1) {
-    const key = `q${String(index).padStart(2, '0')}` as keyof typeof form.questions
-    const value = form.questions[key]
+  for (const key of PCL_QUESTION_KEYS) {
+    const value = form.questions[key as keyof typeof form.questions]
 
     if (typeof value === 'number') {
       answered += 1

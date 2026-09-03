@@ -1,6 +1,6 @@
 import { requireUser } from '../../../utils/guard'
 import { prisma } from '../../../utils/prisma'
-import { isAdmin, isClinician, isGuaranteedAdminEmail, isStaff } from '../../../utils/is-admin'
+import { isAdmin, isClinician, isStaff } from '../../../utils/is-admin'
 
 export default defineEventHandler(async (event) => {
   const user = requireUser(event)
@@ -9,21 +9,12 @@ export default defineEventHandler(async (event) => {
     select: { role: true, email: true },
   })
 
-  if (dbUser?.role !== 'ADMIN' && isGuaranteedAdminEmail(dbUser?.email ?? null)) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { role: 'ADMIN' },
-    })
-    return { isAdmin: true, isClinician: false, isStaff: true, role: 'ADMIN' }
-  }
-
   const role = dbUser?.role ?? null
-  const email = dbUser?.email ?? null
 
   return {
-    isAdmin: isAdmin(role, email),
+    isAdmin: isAdmin(role),
     isClinician: isClinician(role),
-    isStaff: isStaff(role, email),
+    isStaff: isStaff(role),
     role,
   }
 })

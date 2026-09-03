@@ -13,9 +13,7 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const unreadOnly = String(query.unread ?? '') === 'true'
   const limitRaw = Number(query.limit ?? 25)
-  const limit = Number.isFinite(limitRaw)
-    ? Math.max(1, Math.min(100, Math.floor(limitRaw)))
-    : 25
+  const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(100, Math.floor(limitRaw))) : 25
 
   const [items, unreadCount] = await Promise.all([
     prisma.notification.findMany({

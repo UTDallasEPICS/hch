@@ -62,7 +62,8 @@ export default defineEventHandler(async (event) => {
   if (parsed.data.action === 'accept' && start < now) {
     throw createError({
       statusCode: 400,
-      statusMessage: 'This requested start time is already in the past. Ask the client to update the request.',
+      statusMessage:
+        'This requested start time is already in the past. Ask the client to update the request.',
     })
   }
 

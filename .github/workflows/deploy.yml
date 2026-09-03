@@ -7,7 +7,7 @@ on:
   workflow_call:
     inputs:
       environment:
-        description: "Target environment (prod or stage)"
+        description: 'Target environment (prod or stage)'
         required: true
         type: string
 

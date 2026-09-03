@@ -1,9 +1,12 @@
 import { requireAdmin } from '../../utils/guard'
-import { createError, defineEventHandler, getHeaders, getQuery } from 'h3'
+import { defineEventHandler, getQuery } from 'h3'
 import { prisma } from '../../utils/prisma'
-import { isAdmin } from '../../utils/is-admin'
 
 export default defineEventHandler(async (event) => {
+  // Access policy (#96): the ChangeAudit trail is admin-only. If the clinic decides
+  // clinicians need scoped read access to audits for their own clients, switch this to
+  // requireStaff + filter by assigned clients (assertStaffCanAccessClient / clinician
+  // scope) rather than opening the full trail. Kept requireAdmin pending that decision.
   const user = requireAdmin(event)
 
   const query = getQuery(event)
@@ -39,7 +42,9 @@ export default defineEventHandler(async (event) => {
     reasoning: audit.reasoning,
     hasDocumentation: !!audit.documentationPath,
     documentationName: audit.documentationName,
-    documentationPath: audit.documentationPath,
+    // documentationPath is intentionally NOT serialized: it is a raw on-disk
+    // path to PHI. Documents are fetched via the gated /api/audit-docs/[id]
+    // route, which resolves the path server-side from the audit id (see #87).
     signedAt: audit.signedAt.toISOString(),
     signedBy: audit.signedBy,
   }))

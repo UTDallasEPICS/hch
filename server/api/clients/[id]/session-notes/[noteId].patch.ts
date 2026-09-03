@@ -1,8 +1,9 @@
 import { requireStaff } from '../../../../utils/guard'
 import { assertStaffCanAccessClient } from '../../../../utils/clinician-access'
-import { createError, defineEventHandler, getHeaders, getRouterParam, readBody } from 'h3'
+import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { prisma } from '../../../../utils/prisma'
-import { isAdmin } from '../../../../utils/is-admin'
+import { notifyAdmins } from '../../../../utils/notifications'
+import { formatStoredUserNameForDisplay } from '../../../../utils/name'
 
 function canEditOnOrAfterSessionDay(sessionStart: Date, now = new Date()) {
   const sessionDay = new Date(sessionStart)
@@ -45,7 +46,7 @@ export default defineEventHandler(async (event) => {
   if (!sig || (!isBase64Png && !isFontSignature)) {
     throw createError({ statusCode: 400, statusMessage: 'Signature is required' })
   }
-  
+
   const signatureStored = sig
 
   const note = await prisma.sessionNote.findFirst({
@@ -56,6 +57,9 @@ export default defineEventHandler(async (event) => {
     include: {
       appointment: {
         select: { startTime: true },
+      },
+      client: {
+        select: { user: { select: { name: true } } },
       },
     },
   })
@@ -70,12 +74,25 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const [updated] = await prisma.$transaction([
+  const newContent = body.content.trim()
+  const contentChanged = newContent !== note.content
+  const willUpdateAttendance =
+    !!body.attendanceStatus && body.attendanceStatus !== note.attendanceStatus
+
+  // Editing a note that was already clinician-signed or fully approved invalidates
+  // every prior sign-off: the stored signatures no longer correspond to the current
+  // content. Re-sign as the clinician with the freshly-captured signature, clear the
+  // admin counter-sign, and send the note back through the approval queue so an admin
+  // never appears to have approved content they did not see. Mirrors notes.post.ts. (#88)
+  const wasSignedOrApproved = note.status === 'CLINICIAN_SIGNED' || note.status === 'FULLY_APPROVED'
+  const resignAndResetApproval = wasSignedOrApproved && (contentChanged || willUpdateAttendance)
+
+  const [, updated] = await prisma.$transaction([
     prisma.sessionNoteEdit.create({
       data: {
         sessionNoteId: note.id,
         originalContent: note.content,
-        editedContent: body.content.trim(),
+        editedContent: newContent,
         oldAttendanceStatus: note.attendanceStatus,
         newAttendanceStatus: body.attendanceStatus ?? note.attendanceStatus,
         reason: body.reason.trim(),
@@ -84,11 +101,32 @@ export default defineEventHandler(async (event) => {
     }),
     prisma.sessionNote.update({
       where: { id: note.id },
-      data: { content: body.content.trim(), 
+      data: {
+        content: newContent,
         ...(body.attendanceStatus && { attendanceStatus: body.attendanceStatus }),
+        ...(resignAndResetApproval && {
+          status: 'CLINICIAN_SIGNED',
+          clinicianSignedAt: new Date(),
+          clinicianSignedById: user.id,
+          clinicianSignatureData: signatureStored,
+          signatureData: signatureStored, // legacy mirror
+          adminSignedAt: null,
+          adminSignedById: null,
+          adminSignatureData: null,
+          adminApprovalNote: null,
+        }),
       },
     }),
   ])
+
+  if (resignAndResetApproval) {
+    await notifyAdmins({
+      type: 'NOTE_READY_FOR_APPROVAL',
+      title: 'Session note ready for approval',
+      message: `${formatStoredUserNameForDisplay(note.client.user?.name ?? '') || 'A client'} · ${note.sessionName} (${note.kind === 'PSYCHOTHERAPY' ? 'Psychotherapy' : 'Progress'} note) has been edited and re-signed by the clinician and is awaiting your sign-off.`,
+      sessionNoteId: note.id,
+    })
+  }
 
   return updated
 })
