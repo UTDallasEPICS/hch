@@ -5,16 +5,18 @@ import { prisma } from '../../../utils/prisma'
 import { calculatePclScore, PCL_QUESTION_KEYS } from '../../../utils/scoring'
 import { recordClientFormScoreSubmission } from '../../../utils/form-score-history'
 
+// Keys are zero-padded (q01..q20) to match both the client payload
+// (pcl.vue buildPayload) and the PclQuestion columns.
 type AnswersBody = {
-  q1?: number
-  q2?: number
-  q3?: number
-  q4?: number
-  q5?: number
-  q6?: number
-  q7?: number
-  q8?: number
-  q9?: number
+  q01?: number
+  q02?: number
+  q03?: number
+  q04?: number
+  q05?: number
+  q06?: number
+  q07?: number
+  q08?: number
+  q09?: number
   q10?: number
   q11?: number
   q12?: number
@@ -79,9 +81,8 @@ export default defineEventHandler(async (event) => {
 
   const data: Record<string, number | null> = {}
   let answeredCount = 0
-  PCL_QUESTION_KEYS.forEach((dbKey, index) => {
-    const payloadKey = `q${index + 1}` as keyof AnswersBody
-    const value = body?.[payloadKey]
+  PCL_QUESTION_KEYS.forEach((dbKey) => {
+    const value = body?.[dbKey as keyof AnswersBody]
     const numVal = typeof value === 'number' ? value : null
     data[dbKey] = numVal
     if (numVal !== null) answeredCount += 1
