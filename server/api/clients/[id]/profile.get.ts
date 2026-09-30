@@ -58,13 +58,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
   }
 
-  // Clinicians may only read profiles for clients assigned to them.
-  if (isClinicianViewer && !isOwnProfile) {
-    if (dbUser.client?.clinicianUserId !== user.id) {
-      throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
-    }
-  }
-
   if (!isClinicalClient(dbUser.role)) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
   }
