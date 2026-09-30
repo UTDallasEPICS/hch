@@ -1,8 +1,7 @@
 import { requireUser } from '../../../../utils/guard'
-import { assertStaffCanAccessClient } from '../../../../utils/clinician-access'
+import { assertCanAccessClient } from '../../../../utils/clinician-access'
 import { createError, defineEventHandler, getRouterParam } from 'h3'
 import { prisma } from '../../../../utils/prisma'
-import { isAdmin } from '../../../../utils/is-admin'
 import { loadClinicalFormQuestions } from '../../../../utils/clinical-form-display'
 
 const APP_LABELS = [
@@ -59,7 +58,7 @@ const APP_LABELS = [
 ]
 
 export default defineEventHandler(async (event) => {
-  const user = requireUser(event)
+  requireUser(event)
 
   const clientUserId = getRouterParam(event, 'id')
   const formKey = getRouterParam(event, 'formKey')
@@ -67,21 +66,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing client id or form key' })
   }
 
-  // Allow admin to view any client's form answers, or client to view their own
-  const currentUser = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { role: true, email: true },
-  })
-  const role = currentUser?.role ?? null
-  const isOwnProfile = user.id === clientUserId
-  const hasAdminAccess = isAdmin(role)
-  const isClinicianViewer = !hasAdminAccess && event.context.isClinician === true
-  if (!isOwnProfile && !hasAdminAccess && !isClinicianViewer) {
-    throw createError({ statusCode: 403, statusMessage: 'Staff only' })
-  }
-  if (isClinicianViewer && !isOwnProfile) {
-    await assertStaffCanAccessClient(event, clientUserId)
-  }
+  await assertCanAccessClient(event, clientUserId)
 
   const validKeys = ['application', 'ace', 'gad', 'phq', 'pcl']
   if (!validKeys.includes(formKey)) {
