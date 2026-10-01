@@ -1,5 +1,6 @@
 import { prisma } from './prisma'
 import type { NotificationType } from '../../prisma/generated/enums'
+import { getAssignedClinicianUserId } from './clinician-access'
 
 /**
  * Returns the user IDs of every user whose role is ADMIN, i.e. everyone who
@@ -50,4 +51,23 @@ export async function notifyUser(opts: {
       sessionNoteId: opts.sessionNoteId ?? null,
     },
   })
+}
+
+/**
+ * Who should be notified about an appointment for this client.
+ *
+ * Rule: the client, plus their assigned clinician. If the client has no
+ * assigned clinician, the client plus every admin instead. No one else.
+ *
+ * Uses the same clinician lookup as assertStaffCanAccessClient, so the people
+ * notified always match the people allowed to see this client.
+ *
+ * Pass the client's USER id (Appointment.clientId / Client.userId).
+ */
+export async function resolveAppointmentRecipients(
+  clientUserId: string
+): Promise<string[]> {
+  const clinicianId = await getAssignedClinicianUserId(clientUserId)
+  const staffIds = clinicianId ? [clinicianId] : await getAdminUserIds()
+  return [...new Set([clientUserId, ...staffIds])]
 }
