@@ -2,6 +2,23 @@ import { H3Event, createError } from 'h3'
 import { prisma } from './prisma'
 
 /**
+ * Returns the assigned clinician's user id for a client, or null if the client
+ * is unassigned or doesn't exist. Single source of truth for "who is this
+ * client's clinician", shared by access checks and notification recipients.
+ *
+ * Pass the client's USER id (Client.userId).
+ */
+export async function getAssignedClinicianUserId(
+  clientUserId: string
+): Promise<string | null> {
+  const client = await prisma.client.findUnique({
+    where: { userId: clientUserId },
+    select: { clinicianUserId: true },
+  })
+  return client?.clinicianUserId ?? null
+}
+
+/**
  * Staff-only wrapper around assertCanAccessClient.
  * Admins and assigned clinicians pass. Clients are rejected even for their own record.
  *
@@ -40,11 +57,8 @@ export async function assertCanAccessClient(
   if (event.context.isAdmin) return
 
   if (event.context.isClinician) {
-    const client = await prisma.client.findUnique({
-      where: { userId: clientUserId },
-      select: { clinicianUserId: true },
-    })
-    if (!client || client.clinicianUserId !== userId) {
+    const assignedClinicianId = await getAssignedClinicianUserId(clientUserId)
+    if (assignedClinicianId !== userId) {
       throw createError({
         statusCode: 403,
         statusMessage: 'Forbidden: client not assigned to you',
