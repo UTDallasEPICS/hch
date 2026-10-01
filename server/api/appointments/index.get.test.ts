@@ -36,7 +36,7 @@ function makeEvent(opts: { userId: string; role: 'ADMIN' | 'CLINICIAN' | 'CLIENT
     context: {
       user: { id: opts.userId, role: opts.role },
       isAdmin: opts.role === 'ADMIN',
-      Clinician: opts.role === 'CLINICIAN',
+      isClinician: opts.role === 'CLINICIAN',
       isStaff: opts.role === 'ADMIN' || opts.role === 'CLINICIAN',
     },
   } as unknown as H3Event

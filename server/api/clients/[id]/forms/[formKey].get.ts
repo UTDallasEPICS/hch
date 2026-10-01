@@ -72,7 +72,7 @@ export default defineEventHandler(async (event) => {
   // Access to the form is decided above. Whether score/severity fields are
   // included is a separate, field-level check — must hold for every scored
   // form below, not just profile GET.
-  const canSeeScores = await canViewScoresFor(ent, clientUserId)
+  const canSeeScores = await canViewScoresFor(event, clientUserId)
 
   const validKeys = ['application', 'ace', 'gad', 'phq', 'pcl']
   if (!validKeys.includes(formKey)) {
