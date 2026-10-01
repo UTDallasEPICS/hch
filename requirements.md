@@ -39,3 +39,4 @@ Track major changes, additions, or deprecations to the project scope.
 | 2026-08-23 | REQ-F/NF-\*    | Established the initial requirements register from the template baseline                                       | @TusharW4ni | —           |
 | 2026-08-23 | REQ-NF-07      | Pinned `better-auth@1.6.23` and `better-sqlite3@12.11.1` to keep the deploy build and migration Lambda working | @TusharW4ni | —           |
 | 2026-08-23 | REQ-NF-05      | Added `python3`/`make`/`g++` to the Docker builder so native modules compile                                   | @TusharW4ni | —           |
+| 2026-10-01 | REQ-F-08 | #120: added appointment notification types and `appointmentId` FK on Notification (In review) | @AnkithaThomas | — |
