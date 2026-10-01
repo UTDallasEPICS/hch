@@ -1,12 +1,12 @@
 import { requireUser } from '../../../../../utils/guard'
-import { assertStaffCanAccessClient } from '../../../../../utils/clinician-access'
+import { assertCanAccessClient } from '../../../../../utils/clinician-access'
 import { createError, defineEventHandler, getRouterParam } from 'h3'
 import { prisma } from '../../../../../utils/prisma'
-import { isAdmin } from '../../../../../utils/is-admin'
 import {
   backfillClientFormScoreHistoryIfEmpty,
   isScoreHistoryFormKey,
 } from '../../../../../utils/form-score-history'
+import { canViewScoresFor } from '../../../../../utils/client-permissions'
 
 export type FormKeyHistoryEvent = {
   id: string
@@ -17,7 +17,7 @@ export type FormKeyHistoryEvent = {
 }
 
 export default defineEventHandler(async (event) => {
-  const user = requireUser(event)
+  requireUser(event)
   const clientUserId = getRouterParam(event, 'id')
   const formKey = getRouterParam(event, 'formKey')
   if (!clientUserId || !formKey) {
@@ -31,19 +31,11 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const currentUser = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { role: true, email: true },
-  })
-  const isOwnProfile = user.id === clientUserId
-  const hasAdminAccess = isAdmin(currentUser?.role ?? null)
-  const isClinicianViewer = !hasAdminAccess && event.context.isClinician === true
-  if (!isOwnProfile && !hasAdminAccess && !isClinicianViewer) {
-    throw createError({ statusCode: 403, statusMessage: 'Staff only' })
-  }
-  if (isClinicianViewer && !isOwnProfile) {
-    await assertStaffCanAccessClient(event, clientUserId)
-  }
+  await assertCanAccessClient(event, clientUserId)
+
+  // Access to the history is decided above. Score/severity visibility is a
+  // separate, field-level check (same rule as form GET and profile GET).
+  const canSeeScores = await canViewScoresFor(event, clientUserId)
 
   const dbUser = await prisma.user.findFirst({
     where: { id: clientUserId, role: 'CLIENT' },
@@ -73,8 +65,8 @@ export default defineEventHandler(async (event) => {
     }
     return {
       id: r.id,
-      score: r.score,
-      severity: r.severity,
+      score: canSeeScores ? r.score : null,
+      severity: canSeeScores ? r.severity : null,
       recordedAt: r.recordedAt.toISOString(),
       questions,
     }

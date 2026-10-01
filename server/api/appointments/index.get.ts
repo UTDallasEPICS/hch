@@ -1,6 +1,7 @@
 import { requireUser } from '../../utils/guard'
 import { defineEventHandler, getHeaders, createError, getQuery } from 'h3'
 import { isAppointmentTableMissingError } from '../../utils/is-appointment-table-error'
+import { assertCanAccessClient } from '../../utils/clinician-access'
 import { prisma } from '../../utils/prisma'
 import type { Prisma } from '../../../prisma/generated/client'
 
@@ -70,6 +71,9 @@ export default defineEventHandler(async (event) => {
           .filter(Boolean)
       : []
   const hasClientIdFilter = clientIds.length > 0
+  for (const clientId of clientIds) {
+    await assertCanAccessClient(event, clientId)
+  }
 
   let appointments: AppointmentWithClient[] = []
 
