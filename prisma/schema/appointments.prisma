@@ -12,6 +12,17 @@ enum AppointmentScheduleRequestStatus {
   DENIED
 }
 
+enum AvailabilitySlotStatus {
+  OPEN
+  BOOKED
+  CANCELLED
+}
+
+enum AvailabilitySlotSourceType {
+  ONE_OFF
+  RECURRING
+}
+
 model Appointment {
   id          String   @id @default(cuid())
   
@@ -42,11 +53,34 @@ model Appointment {
   
   sessionNotes    SessionNote[]            @relation("AppointmentSessionNotes")
   originScheduleRequest AppointmentScheduleRequest?
+  availabilitySlot AvailabilitySlot?
 
   @@index([clientId])
   @@index([adminId])
   @@unique([clientId, sessionNumber])
   @@map("Appointment")
+}
+
+model AvailabilitySlot {
+  id              String                    @id @default(cuid())
+  clinicianUserId String
+  startTime       DateTime
+  endTime         DateTime
+  location        String
+  status          AvailabilitySlotStatus    @default(OPEN)
+  capacity        Int                       @default(1)
+  createdByUserId String
+  sourceType      AvailabilitySlotSourceType
+  appointmentId   String?                   @unique
+
+  clinician   User          @relation("ClinicianAvailabilitySlots", fields: [clinicianUserId], references: [id], onDelete: Restrict)
+  createdBy   User          @relation("AvailabilitySlotsCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([clinicianUserId])
+  @@index([startTime, endTime])
+  @@index([status])
+  @@map("availability_slot")
 }
 
 model AppointmentScheduleRequest {
