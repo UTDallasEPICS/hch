@@ -3,6 +3,7 @@ import { assertCanAccessClient } from '../../../../utils/clinician-access'
 import { createError, defineEventHandler, getRouterParam } from 'h3'
 import { prisma } from '../../../../utils/prisma'
 import { loadClinicalFormQuestions } from '../../../../utils/clinical-form-display'
+import { canViewScoresFor } from '../../../../utils/client-permissions'
 
 const APP_LABELS = [
   'Email',
@@ -67,6 +68,11 @@ export default defineEventHandler(async (event) => {
   }
 
   await assertCanAccessClient(event, clientUserId)
+
+  // Access to the form is decided above. Whether score/severity fields are
+  // included is a separate, field-level check — must hold for every scored
+  // form below, not just profile GET.
+  const canSeeScores = await canViewScoresFor(ent, clientUserId)
 
   const validKeys = ['application', 'ace', 'gad', 'phq', 'pcl']
   if (!validKeys.includes(formKey)) {
@@ -164,8 +170,8 @@ export default defineEventHandler(async (event) => {
       questions,
       submitted: aceForm?.status === 'COMPLETE',
       completedAt: aceForm?.submittedAt,
-      score: aceForm?.totalScore,
-      severity: aceForm?.severity,
+      score: canSeeScores ? aceForm?.totalScore : null,
+      severity: canSeeScores ? aceForm?.severity : null,
     }
   }
 
@@ -182,8 +188,8 @@ export default defineEventHandler(async (event) => {
       questions,
       submitted: gadForm?.status === 'COMPLETE',
       submittedAt: gadForm?.submittedAt,
-      score: gadForm?.totalScore,
-      severity: gadForm?.severity,
+      score: canSeeScores ? gadForm?.totalScore : null,
+      severity: canSeeScores ? gadForm?.severity : null,
     }
   }
 
@@ -200,8 +206,8 @@ export default defineEventHandler(async (event) => {
       questions,
       submitted: phqForm?.status === 'COMPLETE',
       submittedAt: phqForm?.submittedAt,
-      score: phqForm?.totalScore,
-      severity: phqForm?.severity,
+      score: canSeeScores ? phqForm?.totalScore : null,
+      severity: canSeeScores ? phqForm?.severity : null,
     }
   }
 
@@ -281,8 +287,8 @@ export default defineEventHandler(async (event) => {
       questions,
       submitted: pclForm?.status === 'COMPLETE',
       submittedAt: pclForm?.submittedAt,
-      score: pclForm?.status === 'COMPLETE' ? totalScore : null,
-      severity,
+      score: canSeeScores && pclForm?.status === 'COMPLETE' ? totalScore : null,
+      severity: canSeeScores ? severity : null,
     }
   }
   throw createError({ statusCode: 400, statusMessage: 'Invalid form key' })

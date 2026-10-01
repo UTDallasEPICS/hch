@@ -6,6 +6,7 @@ import {
   backfillClientFormScoreHistoryIfEmpty,
   isScoreHistoryFormKey,
 } from '../../../../../utils/form-score-history'
+import { canViewScoresFor } from '../../../../../utils/client-permissions'
 
 export type FormKeyHistoryEvent = {
   id: string
@@ -31,6 +32,10 @@ export default defineEventHandler(async (event) => {
   }
 
   await assertCanAccessClient(event, clientUserId)
+
+  // Access to the history is decided above. Score/severity visibility is a
+  // separate, field-level check (same rule as form GET and profile GET).
+  const canSeeScores = await canViewScoresFor(event, clientUserId)
 
   const dbUser = await prisma.user.findFirst({
     where: { id: clientUserId, role: 'CLIENT' },
@@ -60,8 +65,8 @@ export default defineEventHandler(async (event) => {
     }
     return {
       id: r.id,
-      score: r.score,
-      severity: r.severity,
+      score: canSeeScores ? r.score : null,
+      severity: canSeeScores ? r.severity : null,
       recordedAt: r.recordedAt.toISOString(),
       questions,
     }
