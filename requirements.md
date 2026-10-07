@@ -32,5 +32,6 @@ Track major changes, additions, or deprecations to the project scope.
 | Date       | Requirement ID | Change Description                                                                                             | Author      | Approved By |
 | ---------- | -------------- | -------------------------------------------------------------------------------------------------------------- | ----------- | ----------- |
 | 2026-10-01 | REQ-F-01       | In progress. Shared access check so an admin can open any client, a clinician only assigned clients, and a client only their own record. Form scores stay hidden when that permission is off. Tests cover a wrong clinician, a wrong client, and access after unassignment (#128–#131). | Lokesh, Poojasri | —           |
+| 2026-10-07 | REQ-F-01       | In progress. Dated inventory of the PHI routes. Routes that take a client id use the shared access check. Routes left off it do not take another client's id (#132). | Lokesh | —           |
 | 2026-10-01 | REQ-F-08       | In progress. Notifications when an appointment is booked, rescheduled, or cancelled, sent to the client and the assigned clinician (#122). | Afreen, Ankitha | —           |
 | 2026-10-01 | REQ-F-09       | In progress. Availability slot table for a clinician's open times: start, end, location, and status (#133).   | Sanjit, Prakhar | —           |
