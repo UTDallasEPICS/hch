@@ -41,6 +41,7 @@ export async function notifyUser(opts: {
   title: string
   message: string
   sessionNoteId?: string | null
+  appointmentId?: string | null
 }): Promise<void> {
   await prisma.notification.create({
     data: {
@@ -49,6 +50,7 @@ export async function notifyUser(opts: {
       title: opts.title,
       message: opts.message,
       sessionNoteId: opts.sessionNoteId ?? null,
+      appointmentId: opts.appointmentId ?? null,
     },
   })
 }
