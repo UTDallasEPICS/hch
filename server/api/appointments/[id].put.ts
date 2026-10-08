@@ -5,6 +5,7 @@ import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/vide
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import type { VideoConferenceProvider } from '../../../prisma/generated/enums'
 import { MAX_RECURRING_OCCURRENCES } from '../../utils/appointment-constants'
+import { emailUsers, notifyUser, resolveAppointmentRecipients } from '../../utils/notifications'
 
 function sanitizeNamePart(part: string | null | undefined) {
   const normalized = (part ?? '').trim().replace(/\s+/g, '_')
@@ -79,7 +80,6 @@ export default defineEventHandler(async (event) => {
       type,
       startTime,
       startTimeOfDay,
-      seriesId,
       description,
       date,
       endTime,
@@ -127,6 +127,7 @@ export default defineEventHandler(async (event) => {
         id: true,
         clientId: true,
         adminId: true,
+        seriesId: true,
         status: true,
         title: true,
         sessionName: true,
@@ -146,6 +147,10 @@ export default defineEventHandler(async (event) => {
     }
 
     await assertStaffCanAccessClient(event, existing.clientId)
+
+    // Scope series edits to the series of the appointment we just authorized.
+    // Never trust a seriesId from the body: it could belong to another client.
+    const seriesId = existing.seriesId
 
     const parsedProvider =
       videoProvider !== undefined
@@ -371,7 +376,45 @@ export default defineEventHandler(async (event) => {
         }
       }
     }
+    // Notify only if the time actually changed (not description/video edits)
+    try {
+      const timeChanged =
+        existing.startTime.getTime() !== startTimeDate.getTime() ||
+        existing.endTime.getTime() !== endTimeDate.getTime()
 
+      if (timeChanged) {
+        const fmt = (d: Date) =>
+          d.toLocaleString('en-US', {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+            timeZone: 'America/Chicago',
+          })
+        const isSeriesEdit = Boolean(seriesId) && (type === 'ALL' || type === 'FUTURE')
+
+        const title = isSeriesEdit ? 'Recurring sessions rescheduled' : 'Session rescheduled'
+        const message = isSeriesEdit
+          ? `Recurring sessions moved. The session you edited is now ${fmt(startTimeDate)} (was ${fmt(existing.startTime)}).`
+          : `Session moved from ${fmt(existing.startTime)} to ${fmt(startTimeDate)}.`
+
+        const recipients = await resolveAppointmentRecipients(existing.clientId)
+        for (const userId of recipients) {
+          await notifyUser({
+            userId,
+            type: 'APPOINTMENT_RESCHEDULED',
+            title,
+            message,
+            appointmentId: id,
+          })
+        }
+        await emailUsers(recipients, {
+          subject: title,
+          intro: message,
+          closing: 'Sign in to the portal and open Calendar for details.',
+        })
+      }
+    } catch (err) {
+      console.error('[appointments] reschedule notification failed', err)
+    }
     return { success: true }
   } catch (error: unknown) {
     const err = error as { code?: string; statusCode?: number }
