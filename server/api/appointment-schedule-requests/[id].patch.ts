@@ -6,6 +6,7 @@ import { prisma } from '../../utils/prisma'
 import { sendAppEmail } from '../../utils/mail'
 import { formatStoredUserNameInitials } from '../../utils/name'
 import { createStaffAppointment } from '../../utils/create-staff-appointment'
+import { notifyUser, resolveAppointmentRecipients } from '../../utils/notifications'
 
 const bodySchema = z
   .object({
@@ -125,6 +126,26 @@ export default defineEventHandler(async (event) => {
 
     return appt
   })
+  // Notify client + assigned clinician (or admins if unassigned)
+  try {
+    const recipients = await resolveAppointmentRecipients(req.clientId)
+    const when = start.toLocaleString('en-US', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: 'America/Chicago',
+    })
+    for (const userId of recipients) {
+      await notifyUser({
+        userId,
+        type: 'APPOINTMENT_BOOKED',
+        title: 'Session booked',
+        message: `Session booked for ${when}.`,
+        appointmentId: appointment.id,
+      })
+    }
+  } catch (err) {
+    console.error('[schedule-requests] booking notification failed', err)
+  }
 
   await sendAppEmail({
     to: req.client.email,
