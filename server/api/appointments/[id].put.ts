@@ -193,6 +193,7 @@ export default defineEventHandler(async (event) => {
           ...updateDataBase,
           startTime: startTimeDate,
           endTime: endTimeDate,
+          ...(existing.startTime.getTime() !== startTimeDate.getTime() && { remindedAt: null }),
           ...(normalizedRecurrence === 'NONE' && {
             seriesId: null,
           }),
@@ -227,6 +228,7 @@ export default defineEventHandler(async (event) => {
               ...updateDataBase,
               startTime: nextStart,
               endTime: new Date(nextStart.getTime() + durationMs),
+              ...(appointment.startTime.getTime() !== nextStart.getTime() && { remindedAt: null }),
               ...(normalizedRecurrence === 'NONE' && { seriesId: null }),
             },
           })
@@ -294,7 +296,7 @@ export default defineEventHandler(async (event) => {
           },
         },
         orderBy: { startTime: 'asc' },
-        select: { id: true },
+        select: { id: true, startTime: true },
       })
       const durationMs = endTimeDate.getTime() - startTimeDate.getTime()
       const desiredOccurrences =
@@ -315,6 +317,7 @@ export default defineEventHandler(async (event) => {
               ...updateDataBase,
               startTime: nextStart,
               endTime: new Date(nextStart.getTime() + durationMs),
+              ...(appointment.startTime.getTime() !== nextStart.getTime() && { remindedAt: null }),
               ...(normalizedRecurrence === 'NONE' && { seriesId: null }),
             },
           })
