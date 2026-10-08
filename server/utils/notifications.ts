@@ -1,6 +1,7 @@
 import { prisma } from './prisma'
 import type { NotificationType } from '../../prisma/generated/enums'
 import { getAssignedClinicianUserId } from './clinician-access'
+import { sendNotificationEmail, type EmailContent } from './email-template'
 
 /**
  * Returns the user IDs of every user whose role is ADMIN, i.e. everyone who
@@ -66,10 +67,26 @@ export async function notifyUser(opts: {
  *
  * Pass the client's USER id (Appointment.clientId / Client.userId).
  */
-export async function resolveAppointmentRecipients(
-  clientUserId: string
-): Promise<string[]> {
+export async function resolveAppointmentRecipients(clientUserId: string): Promise<string[]> {
   const clinicianId = await getAssignedClinicianUserId(clientUserId)
   const staffIds = clinicianId ? [clinicianId] : await getAdminUserIds()
   return [...new Set([clientUserId, ...staffIds])]
+}
+
+/**
+ * Email each user individually (never one shared "To:" line, so recipients
+ * don't see each other's addresses).
+ */
+export async function emailUsers(
+  userIds: string[],
+  email: { subject: string } & EmailContent
+): Promise<void> {
+  if (!userIds.length) return
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { email: true },
+  })
+  for (const u of users) {
+    await sendNotificationEmail({ to: u.email, ...email })
+  }
 }

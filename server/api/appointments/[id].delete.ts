@@ -2,7 +2,7 @@ import { requireStaff } from '../../utils/guard'
 import { assertStaffCanAccessClient } from '../../utils/clinician-access'
 import { prisma } from '../../utils/prisma'
 import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
-import { notifyUser, resolveAppointmentRecipients } from '../../utils/notifications'
+import { emailUsers, notifyUser, resolveAppointmentRecipients } from '../../utils/notifications'
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
@@ -93,7 +93,11 @@ export default defineEventHandler(async (event) => {
           message,
         })
       }
-      // TODO(#124): send email
+      await emailUsers(recipients, {
+        subject: title,
+        intro: message,
+        closing: 'Sign in to the portal and open Calendar for details.',
+      })
     }
   } catch (err) {
     console.error('[appointments] cancel notification failed', err)
