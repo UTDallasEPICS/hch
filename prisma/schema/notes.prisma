@@ -89,9 +89,14 @@ enum NotificationType {
   NOTE_READY_FOR_APPROVAL
   NOTE_FULLY_APPROVED
   NOTE_EDITED_AFTER_APPROVAL
+  APPOINTMENT_BOOKED
+  APPOINTMENT_RESCHEDULED
+  APPOINTMENT_CANCELLED
+  APPOINTMENT_REMINDER
 }
 
-/// In-app notifications (e.g. admins are notified whenever a clinician signs a note).
+/// In-app notifications (e.g. admins are notified whenever a clinician signs a note,
+/// or a client and their clinician are notified about an appointment).
 model Notification {
   id            String           @id @default(cuid())
   userId        String
@@ -101,11 +106,16 @@ model Notification {
   message       String
   sessionNoteId String?
   sessionNote   SessionNote?     @relation(fields: [sessionNoteId], references: [id], onDelete: Cascade)
+  /// SetNull, not Cascade: appointments are hard-deleted on cancel, and the
+  /// APPOINTMENT_CANCELLED notification must survive that delete.
+  appointmentId String?
+  appointment   Appointment?     @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
   readAt        DateTime?
   createdAt     DateTime         @default(now())
 
   @@index([userId, readAt])
   @@index([userId, createdAt])
+  @@index([appointmentId])
   @@map("notification")
 }
 
