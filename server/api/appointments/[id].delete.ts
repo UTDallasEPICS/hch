@@ -2,6 +2,7 @@ import { requireStaff } from '../../utils/guard'
 import { assertStaffCanAccessClient } from '../../utils/clinician-access'
 import { prisma } from '../../utils/prisma'
 import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
+import { notifyUser, resolveAppointmentRecipients } from '../../utils/notifications'
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
@@ -22,6 +23,7 @@ export default defineEventHandler(async (event) => {
     select: {
       clientId: true,
       seriesId: true,
+      startTime: true,
     },
   })
 
@@ -34,25 +36,29 @@ export default defineEventHandler(async (event) => {
 
   await assertStaffCanAccessClient(event, existing.clientId)
 
+  let deletedCount = 0
+
   // ONE event only
   if (type === 'ONE' || !seriesId) {
     await prisma.appointment.delete({
       where: { id },
     })
+    deletedCount = 1
   }
 
   // entire series
   else if (type === 'ALL') {
-    await prisma.appointment.deleteMany({
+    const result = await prisma.appointment.deleteMany({
       where: {
         seriesId,
       },
     })
+    deletedCount = result.count
   }
 
   // this and future
   else if (type === 'FUTURE') {
-    await prisma.appointment.deleteMany({
+    const result = await prisma.appointment.deleteMany({
       where: {
         seriesId,
         startTime: {
@@ -60,6 +66,37 @@ export default defineEventHandler(async (event) => {
         },
       },
     })
+    deletedCount = result.count
+  }
+
+  // Notify after the delete succeeds. No appointmentId: the row no longer exists.
+  try {
+    if (deletedCount > 0) {
+      const when = existing.startTime.toLocaleString('en-US', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        timeZone: 'America/Chicago',
+      })
+      const isSeries = deletedCount > 1
+
+      const title = isSeries ? 'Recurring sessions cancelled' : 'Session cancelled'
+      const message = isSeries
+        ? `${deletedCount} sessions in a recurring series were cancelled.`
+        : `The session on ${when} was cancelled.`
+
+      const recipients = await resolveAppointmentRecipients(existing.clientId)
+      for (const userId of recipients) {
+        await notifyUser({
+          userId,
+          type: 'APPOINTMENT_CANCELLED',
+          title,
+          message,
+        })
+      }
+      // TODO(#124): send email
+    }
+  } catch (err) {
+    console.error('[appointments] cancel notification failed', err)
   }
 
   return { success: true }
