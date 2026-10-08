@@ -6,7 +6,7 @@ import { emailUsers, notifyUser, resolveAppointmentRecipients } from '../../util
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
-  const { type, startTime, seriesId } = await readBody(event)
+  const { type, startTime } = await readBody(event)
 
   if (!id) {
     throw createError({
@@ -35,6 +35,10 @@ export default defineEventHandler(async (event) => {
   }
 
   await assertStaffCanAccessClient(event, existing.clientId)
+
+  // Scope series deletes to the series of the appointment we just authorized.
+  // Never trust a seriesId from the body: it could belong to another client.
+  const seriesId = existing.seriesId
 
   let deletedCount = 0
 

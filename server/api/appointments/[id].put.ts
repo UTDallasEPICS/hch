@@ -80,7 +80,6 @@ export default defineEventHandler(async (event) => {
       type,
       startTime,
       startTimeOfDay,
-      seriesId,
       description,
       date,
       endTime,
@@ -128,6 +127,7 @@ export default defineEventHandler(async (event) => {
         id: true,
         clientId: true,
         adminId: true,
+        seriesId: true,
         status: true,
         title: true,
         sessionName: true,
@@ -147,6 +147,10 @@ export default defineEventHandler(async (event) => {
     }
 
     await assertStaffCanAccessClient(event, existing.clientId)
+
+    // Scope series edits to the series of the appointment we just authorized.
+    // Never trust a seriesId from the body: it could belong to another client.
+    const seriesId = existing.seriesId
 
     const parsedProvider =
       videoProvider !== undefined
