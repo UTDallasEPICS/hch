@@ -12,6 +12,8 @@ type AvailabilityGenerationOptions = {
   clinicianUserId: string
   createdByUserId: string
   location: string
+  videoUrl?: string | null
+  notes?: string | null
   slotDurationMinutes: number
   bookingHorizonDays: number
   now?: Date
@@ -38,6 +40,8 @@ type SlotData = {
   startTime: Date
   endTime: Date
   location: string
+  videoUrl: string | null
+  notes: string | null
   createdByUserId: string
   sourceType: 'ONE_OFF' | 'RECURRING'
 }
@@ -184,6 +188,8 @@ function makeSlotData(
     startTime,
     endTime,
     location: input.location,
+    videoUrl: input.videoUrl?.trim() || null,
+    notes: input.notes?.trim() || null,
     createdByUserId: input.createdByUserId,
     sourceType: input.sourceType,
   }
@@ -291,12 +297,12 @@ function overlaps(startA: Date, endA: Date, startB: Date, endB: Date) {
   return startA < endB && endA > startB
 }
 
-export async function generateAvailabilitySlots(
+export async function getAvailableAvailabilitySlotCandidates(
   db: AvailabilitySlotDb,
   input: AvailabilityGenerationInput
 ) {
   const candidates = buildAvailabilitySlotCandidates(input)
-  if (candidates.length === 0) return { createdCount: 0 }
+  if (candidates.length === 0) return []
 
   const earliestStart = candidates.reduce(
     (earliest, slot) => (slot.startTime < earliest ? slot.startTime : earliest),
@@ -315,12 +321,14 @@ export async function generateAvailabilitySlots(
           { adminId: input.clinicianUserId },
           { client: { client: { clinicianUserId: input.clinicianUserId } } },
         ],
+        NOT: [{ status: { in: ['CANCELLED', 'CANCELED'] } }],
       },
       select: { startTime: true, endTime: true },
     }),
     db.availabilitySlot.findMany({
       where: {
         clinicianUserId: input.clinicianUserId,
+        status: { in: ['OPEN', 'BOOKED'] },
         startTime: { lt: latestEnd },
         endTime: { gt: earliestStart },
       },
@@ -338,6 +346,14 @@ export async function generateAvailabilitySlots(
       )
   )
 
+  return availableSlots
+}
+
+export async function generateAvailabilitySlots(
+  db: AvailabilitySlotDb,
+  input: AvailabilityGenerationInput
+) {
+  const availableSlots = await getAvailableAvailabilitySlotCandidates(db, input)
   if (availableSlots.length === 0) return { createdCount: 0 }
 
   const result = await db.availabilitySlot.createMany({ data: availableSlots })
