@@ -72,3 +72,20 @@ model AppointmentScheduleRequest {
   @@index([status])
   @@map("appointment_schedule_request")
 }
+
+
+model AvailabilitySlot {
+  id              String   @id @default(cuid())
+  clinicianUserId String
+  startTime       DateTime
+  endTime         DateTime
+  status          String   @default("OPEN")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  clinician User @relation("ClinicianAvailability", fields: [clinicianUserId], references: [id], onDelete: Cascade)
+
+  @@index([clinicianUserId])
+  @@index([status])
+  @@map("availability_slot")
+}

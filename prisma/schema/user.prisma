@@ -30,22 +30,23 @@ model User {
   PclQuestions PclQuestion[]
 
   // Relations to other entities
-  client                                Client?
-  assignedClients                       Client[]                               @relation("ClinicianClients")
-  changeAudits                          ChangeAudit[]
-  sessionNotesRequestsDecided           SessionNotesRequest[]
-  appointmentsAsClient                  Appointment[]                          @relation("ClientAppointments")
-  appointmentsAsAdmin                   Appointment[]                          @relation("AdminAppointments")
-  clientScheduleRequests                AppointmentScheduleRequest[]           @relation("ClientScheduleRequests")
-  staffScheduleRequestDecisions         AppointmentScheduleRequest[]           @relation("StaffScheduleRequestDecisions")
-  physicianStatementForm                PhysicianStatementForm?
+  client                        Client?
+  assignedClients               Client[]                     @relation("ClinicianClients")
+  changeAudits                  ChangeAudit[]
+  sessionNotesRequestsDecided   SessionNotesRequest[]
+  appointmentsAsClient          Appointment[]                @relation("ClientAppointments")
+  appointmentsAsAdmin           Appointment[]                @relation("AdminAppointments")
+  clientScheduleRequests        AppointmentScheduleRequest[] @relation("ClientScheduleRequests")
+  staffScheduleRequestDecisions AppointmentScheduleRequest[] @relation("StaffScheduleRequestDecisions")
+  physicianStatementForm        PhysicianStatementForm?
   releaseOfInformationAuthorizationForm ReleaseOfInformationAuthorizationForm?
-  clientFormScoreHistory              ClientFormScoreHistory[]
+  clientFormScoreHistory        ClientFormScoreHistory[]
 
   // Multi-tier session-note approval
-  clinicianSignedNotes SessionNote[] @relation("ClinicianSignedNotes")
-  adminSignedNotes     SessionNote[] @relation("AdminSignedNotes")
-  notifications        Notification[] @relation("UserNotifications")
+  clinicianSignedNotes SessionNote[]        @relation("ClinicianSignedNotes")
+  adminSignedNotes     SessionNote[]        @relation("AdminSignedNotes")
+  notifications        Notification[]       @relation("UserNotifications")
+  availabilitySlots    AvailabilitySlot[]   @relation("ClinicianAvailability")
 
   @@unique([email])
   @@map("user")
@@ -68,11 +69,11 @@ model Session {
 }
 
 model Account {
-  id                    String    @id
+  id                    String   @id
   accountId             String
   providerId            String
   userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
   refreshToken          String?
   idToken               String?
@@ -80,8 +81,8 @@ model Account {
   refreshTokenExpiresAt DateTime?
   scope                 String?
   password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   @@index([userId])
   @@map("account")
