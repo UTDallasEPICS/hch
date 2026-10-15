@@ -36,3 +36,4 @@ Track major changes, additions, or deprecations to the project scope.
 | 2026-10-01 | REQ-F-09       | In progress. Availability slot table for a clinician's open times: start, end, location, and status (#133).   | Sanjit, Prakhar | —           |
 | 2026-10-08 | REQ-F-08 | #124: shared email template helper for appointment notifications (In progress) | Ankitha, Afreen | — |
 | 2026-10-01 | REQ-F-08 | #120: appointment notification types and `appointmentId` FK on Notification (In review) | Ankitha, Afreen | — |
+| 2026-10-15 | REQ-F-08 | #125: notification bell shows appointment notification types (In review) | Ankitha, Afreen | — |

@@ -37,6 +37,7 @@ export default defineEventHandler(async (event) => {
       title: n.title,
       message: n.message,
       sessionNoteId: n.sessionNoteId,
+      appointmentId: n.appointmentId,
       readAt: n.readAt?.toISOString() ?? null,
       createdAt: n.createdAt.toISOString(),
     })),
