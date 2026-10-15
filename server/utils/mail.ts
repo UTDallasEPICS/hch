@@ -42,3 +42,54 @@ export async function sendAppEmail(opts: {
     html: opts.html,
   })
 }
+
+export async function sendAppointmentConfirmationEmail(opts: {
+  to: string
+  startTime: Date
+  endTime: Date
+  location?: string | null
+  clientName?: string | null
+}): Promise<void> {
+  const clientName = opts.clientName?.trim()
+  const greeting = clientName ? `<p>Hello ${escapeHtml(clientName)},</p>` : ''
+  const location = opts.location?.trim()
+  const locationHtml = location ? `<p><strong>Location:</strong> ${escapeHtml(location)}</p>` : ''
+
+  await sendAppEmail({
+    to: opts.to,
+    subject: '[HCH] Appointment confirmed',
+    html: `
+      ${greeting}
+      <p>Your appointment has been confirmed.</p>
+      <p><strong>Time:</strong> ${escapeHtml(formatAppointmentTimeRange(opts.startTime, opts.endTime))}</p>
+      ${locationHtml}
+      <p>Sign in to the client portal and open <strong>Calendar</strong> to see your confirmed appointment.</p>
+    `,
+  })
+}
+
+export function formatAppointmentTimeRange(start: Date, end: Date): string {
+  const date = new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(start)
+  const startTime = new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(start)
+  const endTime = new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(end)
+  return `${date} · ${startTime} – ${endTime}`
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
