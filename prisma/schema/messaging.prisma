@@ -1,0 +1,46 @@
+/// One conversation per client with the shared admin inbox.
+model Conversation {
+  id           String   @id @default(cuid())
+  clientUserId String   @unique
+  /// Null until the first message is sent. Inbox lists sort by this.
+  lastMessageAt DateTime?
+
+  client   User               @relation("ClientConversation", fields: [clientUserId], references: [id], onDelete: Cascade)
+  messages Message[]
+  accessLogs MessageAccessLog[]
+
+  @@map("conversation")
+}
+
+model Message {
+  id             String    @id @default(cuid())
+  conversationId String
+  senderId       String
+  /// AES-256-GCM payload. Never plaintext.
+  ciphertext     String
+  readAt         DateTime?
+  sentAt         DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Restrict)
+
+  @@index([conversationId, sentAt])
+  @@index([senderId])
+  @@map("message")
+}
+
+/// Append-only record of an admin opening a conversation. Message text is never stored here.
+/// Restrict on the admin so deleting that user cannot erase the trail.
+model MessageAccessLog {
+  id             String   @id @default(cuid())
+  adminUserId    String
+  conversationId String
+  accessedAt     DateTime @default(now())
+
+  admin        User         @relation("MessageAccessLogs", fields: [adminUserId], references: [id], onDelete: Restrict)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, accessedAt])
+  @@index([adminUserId])
+  @@map("message_access_log")
+}
