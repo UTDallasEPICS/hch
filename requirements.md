@@ -1,23 +1,23 @@
 # Requirements
 
-These are the Hope Cope Heal requirements for this project. Only REQ-F-01, REQ-F-08,
-and REQ-F-09 are in progress. Everything else has not been started. Encrypted files
-remain a later part of REQ-F-01.
+These are the Hope Cope Heal requirements for this project. REQ-F-08 and REQ-F-09
+are in progress. REQ-F-01 is paused. REQ-F-04 is under review. Everything else has
+not been started. Encrypted files remain a later part of REQ-F-01.
 
 ## 1. Requirement Matrix
 
 Use the matrix below to track requirements throughout the project lifecycle.
 
 - **Category:** Functional (REQ-F), Non-Functional (REQ-NF)
-- **Status:** Not started yet, In-progress, Verified, Deferred, Deprecated
+- **Status:** Not started yet, In-progress, Under review, Paused, Verified, Deferred, Deprecated
 - **Mapping:** GitHub issue, plus the source that implements what exists today
 
 | ID       | Description                                                                                                                                                                                                                          | Status          | Target Semester | Mapping (source / issue)                                                                                                                                                                      |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| REQ-F-01 | Role-based access so PHI is only visible at the right authorization level. The RBAC slice (#128–#132) is done. Encrypted files, with a password only the doctor knows, are not started yet.                                 | In-progress     | 2026W           | #116 (open), then #128–#132. `server/middleware/1.auth.ts`, `server/utils/is-admin.ts`, `server/utils/clinician-access.ts`                                                                   |
+| REQ-F-01 | Role-based access so PHI is only visible at the right authorization level. The RBAC slice (#128–#132) is done. Encrypted files, with a password only the doctor knows, are not started yet.                                 | Paused          | 2026W           | #116 (open), then #128–#132. `server/middleware/1.auth.ts`, `server/utils/is-admin.ts`, `server/utils/clinician-access.ts`                                                                   |
 | REQ-F-02 | Patient-facing add, edit, and delete for medication and trauma histories, with optional secure file uploads for medication proof, gated by RBAC.                                                                                    | Not started yet | 2026W           | —                                                                                                                                                                                             |
 | REQ-F-03 | ICD-10 code library with a paginated, searchable dropdown. How many codes the client needs is still open.                                                                                                                           | Not started yet | 2026W           | —                                                                                                                                                                                             |
-| REQ-F-04 | Secure internal messaging in the admin dashboard for encrypted, direct client-to-admin communication.                                                                                                                                | Not started yet | 2026W           | —                                                                                                                                                                                             |
+| REQ-F-04 | Secure internal messaging in the admin dashboard for encrypted, direct client-to-admin communication.                                                                                                                                | Under review    | 2026W           | —                                                                                                                                                                                             |
 | REQ-F-05 | When a clinician leaves, recommend another clinician from tags (personality, expertise). Fail-safe is admin manual reassignment, including when the client asks for a new therapist. Revoke the previous clinician's access.       | Not started yet | 2026W           | #117 (open). `prisma/schema/client.prisma` (`clinicianUserId`), `server/api/clients/[id]/clinician.patch.ts`                                                                                  |
 | REQ-F-07 | OAuth calendar sync (Google/Apple) to automate appointment reminders and schedule blocks.                                                                                                                                           | Not started yet | 2026W           | —                                                                                                                                                                                             |
 | REQ-F-08 | Alerts for appointment and session changes go only to the assigned clinician and client. External referral requests go to an admin queue before anyone else is notified. Clinician and client alerts are still to do.             | In-progress     | 2026W           | #118 (open), broken down in #120–#127. `prisma/schema/notes.prisma` (`Notification`), `server/utils/notifications.ts`, `server/api/notifications/*`                                          |
@@ -31,6 +31,8 @@ Track major changes, additions, or deprecations to the project scope.
 
 | Date       | Requirement ID | Change Description                                                                                             | Author      | Approved By |
 | ---------- | -------------- | -------------------------------------------------------------------------------------------------------------- | ----------- | ----------- |
+| 2026-10-17 | REQ-F-01       | Status set to paused. The RBAC slice is done. Encrypted doctor-password files are not started. | Lokesh | — |
+| 2026-10-17 | REQ-F-04       | Status set to under review. Client-to-admin messaging is in pull requests #173–#178 and #184–#185. | Lokesh | — |
 | 2026-10-01 to 2026-10-07 | REQ-F-01       | RBAC slice done. Shared access check so an admin can open any client, a clinician only assigned clients, and a client only their own record. Form scores stay hidden when that permission is off. Tests cover a wrong clinician, a wrong client, and access after unassignment. Dated inventory of the PHI routes (#128–#132). Encrypted doctor-password files are not started yet. | Lokesh, Poojasri | —           |
 | 2026-10-01 | REQ-F-08       | In progress. Notifications when an appointment is booked, rescheduled, or cancelled, sent to the client and the assigned clinician (#122). | Afreen, Ankitha | —           |
 | 2026-10-01 | REQ-F-09       | In progress. Availability slot table for a clinician's open times: start, end, location, and status (#133).   | Sanjit, Prakhar | —           |
