@@ -65,6 +65,13 @@
       </div>
       <div class="flex shrink-0 items-center gap-2">
         <UButton
+          color="primary"
+          variant="soft"
+          icon="i-heroicons-chat-bubble-left-right"
+          label="Messages"
+          to="/my-messages"
+        />
+        <UButton
           color="error"
           variant="soft"
           icon="i-heroicons-arrow-right-on-rectangle-20-solid"
