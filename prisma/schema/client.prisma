@@ -20,6 +20,7 @@ model Client {
   sessionNotes         SessionNote[]
   plan                 ClientPlan?
   sessionNotesRequests SessionNotesRequest[]
+  tags                 ClientTag[] // REQ-F-05 weighted tags for matching
 
   @@index([status])
   @@index([clinicianUserId])

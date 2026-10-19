@@ -5,6 +5,7 @@ import {
   ensureDefaultDeclarationTemplates,
   backfillSessionNotesRequestTemplates,
 } from '../server/utils/declaration-templates'
+import { ensureDefaultTags } from '../server/utils/tag-taxonomy'
 
 const connectionString = process.env.DATABASE_URL ?? 'file:./dev.db'
 const adapter = new PrismaBetterSqlite3({ url: connectionString })
@@ -20,6 +21,7 @@ async function main() {
   // ADMIN (see server/utils/auth.ts databaseHooks.user.create.before).
   await ensureDefaultDeclarationTemplates(prisma)
   await backfillSessionNotesRequestTemplates(prisma)
+  await ensureDefaultTags(prisma)
 
   console.log('Seeding finished.')
 }
