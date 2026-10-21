@@ -54,6 +54,7 @@ model Appointment {
   sessionNotes    SessionNote[]            @relation("AppointmentSessionNotes")
   originScheduleRequest AppointmentScheduleRequest?
   availabilitySlot AvailabilitySlot?
+  notifications   Notification[]
 
   @@index([clientId])
   @@index([adminId])

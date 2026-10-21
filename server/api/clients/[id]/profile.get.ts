@@ -1,6 +1,7 @@
 import { requireUser } from '../../../utils/guard'
 import { createError, defineEventHandler, getRouterParam } from 'h3'
 import { prisma } from '../../../utils/prisma'
+import { assertCanAccessClient } from '../../../utils/clinician-access'
 import { isAdmin, isClinician } from '../../../utils/is-admin'
 import { isClinicalClient } from '../../../utils/is-clinical-client'
 import { getIncompleteForms, FORM_LABELS } from '../../../utils/client-forms'
@@ -25,8 +26,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing client id' })
   }
 
-  // Allow admin to view any client, clinician to view their assigned clients,
-  // or a client to view their own (limited).
+  await assertCanAccessClient(event, clientUserId)
+
+  // These flags only choose which profile fields to return. Access itself is
+  // decided above.
   const currentUser = await prisma.user.findUnique({
     where: { id: user.id },
     select: { role: true, email: true },
@@ -34,9 +37,6 @@ export default defineEventHandler(async (event) => {
   const isOwnProfile = user.id === clientUserId
   const hasAdminAccess = isAdmin(currentUser?.role ?? null)
   const isClinicianViewer = isClinician(currentUser?.role ?? null) && !hasAdminAccess
-  if (!isOwnProfile && !hasAdminAccess && !isClinicianViewer) {
-    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
-  }
 
   const dbUser = await prisma.user.findFirst({
     where: { id: clientUserId, role: 'CLIENT' },
@@ -56,13 +56,6 @@ export default defineEventHandler(async (event) => {
 
   if (!dbUser) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
-  }
-
-  // Clinicians may only read profiles for clients assigned to them.
-  if (isClinicianViewer && !isOwnProfile) {
-    if (dbUser.client?.clinicianUserId !== user.id) {
-      throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
-    }
   }
 
   if (!isClinicalClient(dbUser.role)) {

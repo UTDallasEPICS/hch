@@ -1,4 +1,5 @@
 import { requireAdmin } from '../../../utils/guard'
+import { assertCanAccessClient } from '../../../utils/clinician-access'
 import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { prisma } from '../../../utils/prisma'
 
@@ -9,6 +10,8 @@ export default defineEventHandler(async (event) => {
   if (!clientUserId) {
     throw createError({ statusCode: 400, statusMessage: 'Missing client id' })
   }
+
+  await assertCanAccessClient(event, clientUserId)
 
   const body = await readBody<{
     canViewScores?: boolean

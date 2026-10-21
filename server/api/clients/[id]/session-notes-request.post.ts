@@ -1,4 +1,5 @@
 import { requireUser } from '../../../utils/guard'
+import { assertCanAccessClient } from '../../../utils/clinician-access'
 import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
@@ -39,7 +40,13 @@ export default defineEventHandler(async (event) => {
   const user = requireUser(event)
 
   const clientUserId = getRouterParam(event, 'id')
-  if (!clientUserId || clientUserId !== user.id) {
+  if (!clientUserId) {
+    throw createError({ statusCode: 400, statusMessage: 'Missing client id' })
+  }
+
+  await assertCanAccessClient(event, clientUserId)
+  // Filing a records request is the client's action, even if staff could open the chart.
+  if (user.id !== clientUserId) {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 

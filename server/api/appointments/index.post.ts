@@ -6,6 +6,7 @@ import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/vide
 import type { VideoConferenceProvider } from '../../../prisma/generated/enums'
 import { randomUUID } from 'node:crypto'
 import { MAX_RECURRING_OCCURRENCES } from '../../utils/appointment-constants'
+import { emailUsers, notifyUser, resolveAppointmentRecipients } from '../../utils/notifications'
 
 function sanitizeNamePart(part: string | null | undefined) {
   const normalized = (part ?? '').trim().replace(/\s+/g, '_')
@@ -235,6 +236,40 @@ export default defineEventHandler(async (event) => {
 
       return created
     })
+
+    // Notify client + assigned clinician (or admins if unassigned)
+    try {
+      const first = createdAppointments[0]
+      if (first) {
+        const recipients = await resolveAppointmentRecipients(clientId)
+        const when = start.toLocaleString('en-US', {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+          timeZone: 'America/Chicago',
+        })
+
+        const count = createdAppointments.length
+        const title = count > 1 ? 'Recurring sessions booked' : 'Session booked'
+        const message =
+          count > 1 ? `${count} sessions booked, starting ${when}.` : `Session booked for ${when}.`
+        for (const userId of recipients) {
+          await notifyUser({
+            userId,
+            type: 'APPOINTMENT_BOOKED',
+            title,
+            message,
+            appointmentId: first.id,
+          })
+        }
+        await emailUsers(recipients, {
+          subject: title,
+          intro: message,
+          closing: 'Sign in to the portal and open Calendar for details.',
+        })
+      }
+    } catch (err) {
+      console.error('[appointments] booking notification failed', err)
+    }
 
     return {
       success: true,
