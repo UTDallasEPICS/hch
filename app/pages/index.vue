@@ -289,6 +289,7 @@
       :pending="pending"
       :appointments="clientStats?.upcomingAppointments ?? []"
     />
+    <ClientSlotList v-if="!error" class="mt-6" />
     <ClientScheduleRequestsSection v-if="!error && clientStats?.clinicalStatus != null" />
     <ClientSessionNotesSection />
   </main>
