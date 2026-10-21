@@ -38,3 +38,4 @@ Track major changes, additions, or deprecations to the project scope.
 | 2026-10-01 | REQ-F-09       | In progress. Availability slot table for a clinician's open times: start, end, location, and status (#133).   | Sanjit, Prakhar | —           |
 | 2026-10-08 | REQ-F-08 | #124: shared email template helper for appointment notifications (In progress) | Ankitha, Afreen | — |
 | 2026-10-01 | REQ-F-08 | #120: appointment notification types and `appointmentId` FK on Notification (In review) | Ankitha, Afreen | — |
+| 2026-10-21 | REQ-F-08 | #191: branded, role-specific appointment emails with HCH logo header (In progress) | Ankitha, Afreen | — |
