@@ -1,5 +1,6 @@
 import { prisma } from './prisma'
 import { formatStoredUserNameForDisplay, formatStoredUserNameInitials } from './name'
+import { getAssignedClinicianUserId } from './clinician-access'
 import { emailUsers, type EmailMessage, type EmailRecipient } from './notifications'
 
 export type AppointmentEmailKind = 'BOOKED' | 'RESCHEDULED' | 'CANCELLED' | 'REMINDER'
@@ -7,7 +8,8 @@ export type AppointmentEmailKind = 'BOOKED' | 'RESCHEDULED' | 'CANCELLED' | 'REM
 export type AppointmentEmailInfo = {
   kind: AppointmentEmailKind
   clientUserId: string // the client's USER id
-  clientInitials: string // e.g. "S.R."; staff emails never show the full name
+  clientInitials: string // e.g. "S.R."; staff emails never show the client's full name
+  clinicianName: string // assigned clinician's name, or '' if none assigned
   when: string // session time, already formatted in clinic time
   previousWhen?: string // RESCHEDULED only: the old time
   count?: number // how many sessions (for "4 sessions booked")
@@ -21,73 +23,69 @@ function firstName(stored: string): string {
   return formatStoredUserNameForDisplay(stored).split(' ')[0] ?? ''
 }
 
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+/** What each kind of change is called, for one session vs. a whole series. */
+const WORDS: Record<AppointmentEmailKind, { one: string; many: string; verb: string }> = {
+  BOOKED: { one: 'Session booked', many: 'Recurring sessions booked', verb: 'booked' },
+  RESCHEDULED: { one: 'Session rescheduled', many: 'Recurring sessions rescheduled', verb: 'rescheduled' },
+  CANCELLED: { one: 'Session cancelled', many: 'Recurring sessions cancelled', verb: 'cancelled' },
+  REMINDER: { one: 'Session reminder', many: 'Session reminder', verb: 'coming up' },
+}
+
 /**
- * Build one person's appointment email.
- * The client reads "Your session..."; their clinician (or admins) read
- * "A session with S.R...." (initials only, for privacy).
+ * Build one person's appointment email. Three audiences:
+ * - the client:      "You have a session booked with Dana Lee."
+ * - their clinician: "You have a session booked with S.R."  (initials only, for privacy)
+ * - admins (only when no clinician is assigned):
+ *                    "A session with S.R. has been booked. No clinician is assigned to this client yet."
  */
 export function buildAppointmentEmail(
   recipient: EmailRecipient,
   info: AppointmentEmailInfo
 ): EmailMessage {
   const isClient = recipient.id === info.clientUserId
+  const hasClinician = Boolean(info.clinicianName)
   const count = info.count ?? 1
   const series = info.series ?? count > 1
   const client = info.clientInitials || 'a client'
+  const w = WORDS[info.kind]
 
-  let subject: string
+  // Who the session is with, from this reader's point of view
+  const withWhom = isClient ? (hasClinician ? ` with ${info.clinicianName}` : '') : ` with ${client}`
+  // Admins aren't in the session, so they read "A session", everyone else "Your session"
+  const yourOrA = isClient || hasClinician ? 'Your' : 'A'
+
   let intro: string
-  let details: { label: string; value: string }[]
+  if (info.kind === 'REMINDER') {
+    intro = `Reminder: ${yourOrA.toLowerCase()} session${withWhom} is coming up.`
+  } else if (series) {
+    const n = info.kind === 'RESCHEDULED' ? '' : `${count} `
+    const start = yourOrA === 'Your' ? `Your ${n}` : n
+    intro = capitalize(`${start}recurring sessions${withWhom} have been ${w.verb}.`)
+  } else if (info.kind === 'BOOKED' && yourOrA === 'Your') {
+    // Initials already end in "." so don't add a second one ("with P.S." not "with P.S..")
+    intro = `You have a session booked${withWhom}`
+    if (!intro.endsWith('.')) intro += '.'
+  } else {
+    intro = `${yourOrA} session${withWhom} has been ${w.verb}.`
+  }
+  if (!isClient && !hasClinician) intro += ' No clinician is assigned to this client yet.'
 
-  switch (info.kind) {
-    case 'BOOKED':
-      subject = series ? 'Recurring sessions booked' : 'Session booked'
-      intro = isClient
-        ? series
-          ? `Your ${count} recurring sessions are booked.`
-          : 'Your session is booked.'
-        : series
-          ? `${count} recurring sessions with ${client} are booked.`
-          : `A session with ${client} is booked.`
-      details = [{ label: series ? 'First session' : 'When', value: info.when }]
-      break
-
-    case 'RESCHEDULED':
-      subject = series ? 'Recurring sessions rescheduled' : 'Session rescheduled'
-      intro = isClient
-        ? series
-          ? 'Your recurring sessions have been moved.'
-          : 'Your session has been moved.'
-        : series
-          ? `Recurring sessions with ${client} have been moved.`
-          : `A session with ${client} has been moved.`
-      details = [{ label: 'New time', value: info.when }]
-      if (info.previousWhen) details.push({ label: 'Previous time', value: info.previousWhen })
-      break
-
-    case 'CANCELLED':
-      subject = series ? 'Recurring sessions cancelled' : 'Session cancelled'
-      intro = isClient
-        ? series
-          ? `${count} of your recurring sessions have been cancelled.`
-          : 'Your session has been cancelled.'
-        : series
-          ? `${count} recurring sessions with ${client} have been cancelled.`
-          : `A session with ${client} has been cancelled.`
-      details = [{ label: series ? 'Starting from' : 'Was scheduled for', value: info.when }]
-      break
-
-    case 'REMINDER':
-      subject = 'Session reminder'
-      intro = isClient
-        ? 'This is a reminder about your upcoming session.'
-        : `Reminder: your session with ${client} is coming up.`
-      details = [{ label: 'When', value: info.when }]
-      break
+  const details: { label: string; value: string }[] = []
+  if (info.kind === 'RESCHEDULED') {
+    details.push({ label: 'New time', value: info.when })
+    if (info.previousWhen) details.push({ label: 'Previous time', value: info.previousWhen })
+  } else if (info.kind === 'CANCELLED') {
+    details.push({ label: series ? 'Starting from' : 'Was scheduled for', value: info.when })
+  } else {
+    details.push({ label: series ? 'First session' : 'When', value: info.when })
   }
 
   return {
-    subject,
+    subject: series ? w.many : w.one,
     greetingName: firstName(recipient.name),
     intro,
     details,
@@ -98,16 +96,22 @@ export function buildAppointmentEmail(
 
 /**
  * Email everyone about an appointment, each with their own version.
- * Looks up the client's initials so callers don't have to.
+ * Looks up the client's initials and their clinician's name so callers don't have to.
  */
 export async function sendAppointmentEmails(
   recipientIds: string[],
-  info: Omit<AppointmentEmailInfo, 'clientInitials'>
+  info: Omit<AppointmentEmailInfo, 'clientInitials' | 'clinicianName'>
 ): Promise<void> {
-  const clientUser = await prisma.user.findUnique({
-    where: { id: info.clientUserId },
-    select: { name: true },
-  })
+  const clinicianId = await getAssignedClinicianUserId(info.clientUserId)
+  const [clientUser, clinician] = await Promise.all([
+    prisma.user.findUnique({ where: { id: info.clientUserId }, select: { name: true } }),
+    clinicianId
+      ? prisma.user.findUnique({ where: { id: clinicianId }, select: { name: true } })
+      : null,
+  ])
   const clientInitials = formatStoredUserNameInitials(clientUser?.name ?? '')
-  await emailUsers(recipientIds, (r) => buildAppointmentEmail(r, { ...info, clientInitials }))
+  const clinicianName = clinician ? formatStoredUserNameForDisplay(clinician.name) : ''
+  await emailUsers(recipientIds, (r) =>
+    buildAppointmentEmail(r, { ...info, clientInitials, clinicianName })
+  )
 }
