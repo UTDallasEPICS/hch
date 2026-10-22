@@ -28,10 +28,17 @@ export function isEmailConfigured(): boolean {
   return Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS)
 }
 
+export type EmailAttachment = {
+  filename: string
+  content: Buffer
+  cid?: string // set this to show the image inside the email via <img src="cid:...">
+}
+
 export async function sendAppEmail(opts: {
   to: string | string[]
   subject: string
   html: string
+  attachments?: EmailAttachment[]
 }): Promise<void> {
   const transporter = getTransporter()
   if (!transporter || !process.env.EMAIL_USER) return
@@ -40,5 +47,6 @@ export async function sendAppEmail(opts: {
     to: opts.to,
     subject: opts.subject,
     html: opts.html,
+    attachments: opts.attachments,
   })
 }
