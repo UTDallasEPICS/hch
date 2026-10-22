@@ -6,7 +6,8 @@ import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/vide
 import type { VideoConferenceProvider } from '../../../prisma/generated/enums'
 import { randomUUID } from 'node:crypto'
 import { MAX_RECURRING_OCCURRENCES } from '../../utils/appointment-constants'
-import { emailUsers, notifyUser, resolveAppointmentRecipients } from '../../utils/notifications'
+import { notifyUser, resolveAppointmentRecipients } from '../../utils/notifications'
+import { sendAppointmentEmails } from '../../utils/appointment-emails'
 
 function sanitizeNamePart(part: string | null | undefined) {
   const normalized = (part ?? '').trim().replace(/\s+/g, '_')
@@ -261,10 +262,11 @@ export default defineEventHandler(async (event) => {
             appointmentId: first.id,
           })
         }
-        await emailUsers(recipients, {
-          subject: title,
-          intro: message,
-          closing: 'Sign in to the portal and open Calendar for details.',
+        await sendAppointmentEmails(recipients, {
+          kind: 'BOOKED',
+          clientUserId: clientId,
+          when,
+          count,
         })
       }
     } catch (err) {

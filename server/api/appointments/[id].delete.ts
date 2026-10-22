@@ -2,7 +2,8 @@ import { requireStaff } from '../../utils/guard'
 import { assertStaffCanAccessClient } from '../../utils/clinician-access'
 import { prisma } from '../../utils/prisma'
 import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
-import { emailUsers, notifyUser, resolveAppointmentRecipients } from '../../utils/notifications'
+import { notifyUser, resolveAppointmentRecipients } from '../../utils/notifications'
+import { sendAppointmentEmails } from '~~/server/utils/appointment-emails'
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
@@ -97,10 +98,11 @@ export default defineEventHandler(async (event) => {
           message,
         })
       }
-      await emailUsers(recipients, {
-        subject: title,
-        intro: message,
-        closing: 'Sign in to the portal and open Calendar for details.',
+      await sendAppointmentEmails(recipients, {
+        kind: 'CANCELLED',
+        clientUserId: existing.clientId,
+        when,
+        count: deletedCount,
       })
     }
   } catch (err) {

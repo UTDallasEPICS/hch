@@ -10,7 +10,8 @@ export type AppointmentEmailInfo = {
   clientInitials: string // e.g. "S.R."; staff emails never show the full name
   when: string // session time, already formatted in clinic time
   previousWhen?: string // RESCHEDULED only: the old time
-  count?: number // more than 1 = a whole recurring series
+  count?: number // how many sessions (for "4 sessions booked")
+  series?: boolean // true = about a whole recurring series (defaults to count > 1)
 }
 
 const CALENDAR_BUTTON = { label: 'Open Calendar', path: '/calendar' }
@@ -31,7 +32,7 @@ export function buildAppointmentEmail(
 ): EmailMessage {
   const isClient = recipient.id === info.clientUserId
   const count = info.count ?? 1
-  const series = count > 1
+  const series = info.series ?? count > 1
   const client = info.clientInitials || 'a client'
 
   let subject: string
