@@ -3,6 +3,10 @@
     | 'NOTE_READY_FOR_APPROVAL'
     | 'NOTE_FULLY_APPROVED'
     | 'NOTE_EDITED_AFTER_APPROVAL'
+    | 'APPOINTMENT_BOOKED'
+    | 'APPOINTMENT_RESCHEDULED'
+    | 'APPOINTMENT_CANCELLED'
+    | 'APPOINTMENT_REMINDER'
 
   type NotificationItem = {
     id: string
@@ -10,6 +14,7 @@
     title: string
     message: string
     sessionNoteId: string | null
+    appointmentId: string | null
     readAt: string | null
     createdAt: string
   }
@@ -41,9 +46,26 @@
         return 'i-heroicons-check-badge-20-solid'
       case 'NOTE_EDITED_AFTER_APPROVAL':
         return 'i-heroicons-pencil-square-20-solid'
+      case 'APPOINTMENT_BOOKED':
+        return 'i-heroicons-calendar-days-20-solid'
+      case 'APPOINTMENT_RESCHEDULED':
+        return 'i-heroicons-arrow-path-20-solid'
+      case 'APPOINTMENT_CANCELLED':
+        return 'i-heroicons-x-circle-20-solid'
+      case 'APPOINTMENT_REMINDER':
+        return 'i-heroicons-clock-20-solid'
       default:
         return 'i-heroicons-bell-20-solid'
     }
+  }
+
+  // Cancelled appointments are deleted, so there's nothing to open for those.
+  function linksToCalendar(type: NotificationType): boolean {
+    return (
+      type === 'APPOINTMENT_BOOKED' ||
+      type === 'APPOINTMENT_RESCHEDULED' ||
+      type === 'APPOINTMENT_REMINDER'
+    )
   }
 
   function timeAgo(iso: string): string {
@@ -181,6 +203,13 @@
             class="text-primary-600 hover:text-primary-700 dark:text-primary-400 text-xs font-medium"
           >
             Review
+          </NuxtLink>
+          <NuxtLink
+            v-else-if="linksToCalendar(n.type)"
+            to="/calendar"
+            class="text-primary-600 hover:text-primary-700 dark:text-primary-400 text-xs font-medium"
+          >
+            View
           </NuxtLink>
           <UButton
             v-if="!n.readAt"
