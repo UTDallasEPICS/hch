@@ -73,20 +73,34 @@ export async function resolveAppointmentRecipients(clientUserId: string): Promis
   return [...new Set([clientUserId, ...staffIds])]
 }
 
+export type EmailRecipient = { id: string; email: string; name: string; role: string }
+export type EmailMessage = { subject: string } & EmailContent
+
 /**
  * Email each user individually (never one shared "To:" line, so recipients
  * don't see each other's addresses).
+ *
+ * Pass one message for everyone, or a function that builds each person's
+ * own version (e.g. different wording for the client vs. their clinician).
+ *
+ * If one address fails, it's logged and skipped so everyone else still gets theirs.
  */
 export async function emailUsers(
   userIds: string[],
-  email: { subject: string } & EmailContent
+  email: EmailMessage | ((recipient: EmailRecipient) => EmailMessage)
 ): Promise<void> {
   if (!userIds.length) return
   const users = await prisma.user.findMany({
     where: { id: { in: userIds } },
-    select: { email: true },
+    select: { id: true, email: true, name: true, role: true },
   })
   for (const u of users) {
-    await sendNotificationEmail({ to: u.email, ...email })
+    const message = typeof email === 'function' ? email(u) : email
+    try {
+      await sendNotificationEmail({ to: u.email, ...message })
+    } catch (err) {
+      // Log the user id only, never the email address
+      console.error(`[email] failed for user ${u.id}`, err)
+    }
   }
 }
