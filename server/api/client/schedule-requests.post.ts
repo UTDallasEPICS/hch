@@ -1,6 +1,7 @@
 import { createError, defineEventHandler, readBody } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { requireClientUser } from '../../utils/guard'
+import { clinicDateTime } from '../../utils/clinic-time'
 
 function validateSlot(start: Date, end: Date) {
   const now = new Date()
@@ -42,8 +43,8 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const start = new Date(`${date}T${startTime}`)
-  const end = new Date(`${date}T${endTime}`)
+  const start = clinicDateTime(date, startTime)
+  const end = clinicDateTime(date, endTime)
   const slotErr = validateSlot(start, end)
   if (slotErr) {
     throw createError({ statusCode: 400, statusMessage: slotErr })

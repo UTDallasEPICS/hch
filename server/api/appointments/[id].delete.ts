@@ -3,6 +3,7 @@ import { assertStaffCanAccessClient } from '../../utils/clinician-access'
 import { prisma } from '../../utils/prisma'
 import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { emailUsers, notifyUser, resolveAppointmentRecipients } from '../../utils/notifications'
+import { formatClinicTime } from '../../utils/clinic-time'
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
@@ -76,11 +77,7 @@ export default defineEventHandler(async (event) => {
   // Notify after the delete succeeds. No appointmentId: the row no longer exists.
   try {
     if (deletedCount > 0) {
-      const when = existing.startTime.toLocaleString('en-US', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-        timeZone: 'America/Chicago',
-      })
+      const when = formatClinicTime(existing.startTime)
       const isSeries = deletedCount > 1
 
       const title = isSeries ? 'Recurring sessions cancelled' : 'Session cancelled'
