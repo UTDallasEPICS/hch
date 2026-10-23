@@ -1,4 +1,4 @@
-import prisma from '~~/server/utils/prisma'
+import { prisma } from '~~/server/utils/prisma'
 import { auth } from '~~/server/utils/auth'
 
 export default defineEventHandler(async (event) => {
@@ -18,8 +18,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // 4. Fetch only upcoming open slots for that clinician
-  const slots = await prisma.availability_slot.findMany({
-    where: {
+const slots = await prisma.availabilitySlot.findMany({    where: {
       clinicianUserId: client.clinicianUserId,
       status: 'OPEN',
       startTime: { gt: new Date() }
