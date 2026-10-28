@@ -24,6 +24,24 @@ test('one-off blocks generate fixed-duration future slots within the horizon', (
   assert.equal(slots.at(-1)?.endTime.toISOString(), '2026-01-06T15:00:00.000Z')
 })
 
+test('one-off blocks reject an end time that is not after the start time', () => {
+  assert.throws(
+    () =>
+      buildAvailabilitySlotCandidates({
+        sourceType: 'ONE_OFF',
+        clinicianUserId: 'clinician-1',
+        createdByUserId: 'staff-1',
+        location: 'Clinic',
+        slotDurationMinutes: 60,
+        bookingHorizonDays: 1,
+        now: new Date('2026-01-05T08:00:00.000Z'),
+        startTime: new Date('2026-01-05T10:00:00.000Z'),
+        endTime: new Date('2026-01-05T10:00:00.000Z'),
+      }),
+    /endTime must be after startTime/
+  )
+})
+
 test('weekly rules preserve clinician-local time across daylight-saving changes', () => {
   const slots = buildAvailabilitySlotCandidates({
     sourceType: 'RECURRING',

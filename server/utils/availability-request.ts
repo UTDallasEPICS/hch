@@ -6,13 +6,6 @@ import type { AvailabilityGenerationInput } from './availability-slots'
 const commonFields = {
   clinicianUserId: z.string().min(1),
   location: z.string().trim().min(1).max(200),
-  videoUrl: z
-    .union([z.string().trim().url(), z.literal('')])
-    .optional()
-    .refine(
-      (value) => !value || ['http:', 'https:'].includes(new URL(value).protocol),
-      'Video URL must use http or https'
-    ),
   notes: z.string().trim().max(2000).optional(),
   slotDurationMinutes: z.number().int().min(15).max(240),
   bookingHorizonDays: z.number().int().min(1).max(180),
@@ -25,12 +18,22 @@ const weeklyRuleSchema = z.object({
 })
 
 const generationRequestSchema = z.discriminatedUnion('sourceType', [
-  z.object({
-    ...commonFields,
-    sourceType: z.literal('ONE_OFF'),
-    startTime: z.string().datetime({ offset: true }),
-    endTime: z.string().datetime({ offset: true }),
-  }),
+  z
+    .object({
+      ...commonFields,
+      sourceType: z.literal('ONE_OFF'),
+      startTime: z.string().datetime({ offset: true }),
+      endTime: z.string().datetime({ offset: true }),
+    })
+    .superRefine((value, context) => {
+      if (new Date(value.endTime) <= new Date(value.startTime)) {
+        context.addIssue({
+          code: 'custom',
+          message: 'Block end must be after block start',
+          path: ['endTime'],
+        })
+      }
+    }),
   z
     .object({
       ...commonFields,
@@ -76,7 +79,6 @@ export function parseAvailabilityGenerationRequest(
   const common = {
     ...value,
     createdByUserId,
-    videoUrl: value.videoUrl?.trim() || null,
     notes: value.notes?.trim() || null,
     now: new Date(),
   }

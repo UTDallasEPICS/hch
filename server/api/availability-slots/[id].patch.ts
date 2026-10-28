@@ -8,13 +8,6 @@ const updateSchema = z.object({
   startTime: z.string().datetime({ offset: true }),
   endTime: z.string().datetime({ offset: true }),
   location: z.string().trim().min(1).max(200),
-  videoUrl: z
-    .union([z.string().trim().url(), z.literal('')])
-    .nullable()
-    .refine(
-      (value) => !value || ['http:', 'https:'].includes(new URL(value).protocol),
-      'Video URL must use http or https'
-    ),
   notes: z.string().trim().max(2000).nullable(),
 })
 
@@ -92,7 +85,6 @@ export default defineEventHandler(async (event) => {
       startTime,
       endTime,
       location: parsed.data.location,
-      videoUrl: parsed.data.videoUrl?.trim() || null,
       notes: parsed.data.notes?.trim() || null,
     },
   })
