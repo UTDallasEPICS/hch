@@ -40,3 +40,4 @@ Track major changes, additions, or deprecations to the project scope.
 | 2026-10-01 | REQ-F-08 | #120: appointment notification types and `appointmentId` FK on Notification (In review) | Ankitha, Afreen | — |
 | 2026-10-15 | REQ-F-08 | #125: notification bell shows appointment notification types (In review) | Ankitha, Afreen | — |
 | 2026-10-21 | REQ-F-08 | #127: notification policy doc (unassigned rule, series behavior, quiet hours 11pm–6am, 24h reminder, channels) (In review) | Ankitha, Afreen | — |
+| 2026-10-21 | REQ-F-08 | #189: show notification panel on the client dashboard (In review) | Ankitha, Afreen | — |

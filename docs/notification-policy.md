@@ -96,9 +96,8 @@ Every appointment notification is sent on **both** channels:
 
 ## 6. Known limitations
 
-- **Clients have no notification bell.** Their in-app notifications are saved,
-  but only staff can see the bell (on the staff dashboard). Clients currently
-  rely on email.
+- **"View" opens the calendar, not the specific appointment.** The calendar has
+  no way to jump to a single appointment yet.
 - **One failed email can stop the rest.** Emails are sent one at a time, so if one
   recipient's address is rejected, recipients after it don't get the email
   for that notification (in-app notifications are unaffected).
