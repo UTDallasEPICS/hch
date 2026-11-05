@@ -1,4 +1,4 @@
-import { createError, defineEventHandler, getRouterParam } from 'h3'
+import { createError, defineEventHandler, getQuery, getRouterParam } from 'h3'
 import { requireAdmin } from '../../../utils/guard'
 import { decryptMessage } from '../../../utils/message-encryption'
 import { formatStoredUserNameForDisplay } from '../../../utils/name'
@@ -20,6 +20,9 @@ export default defineEventHandler(async (event) => {
   }
 
   const openedAt = new Date()
+  // Polling passes recordAccess=0 so a refresh does not add another access-log row.
+  // The first open still records who looked at the conversation.
+  const recordAccess = getQuery(event).recordAccess !== '0'
   await prisma.$transaction([
     prisma.message.updateMany({
       where: {
@@ -29,13 +32,17 @@ export default defineEventHandler(async (event) => {
       },
       data: { readAt: openedAt },
     }),
-    prisma.messageAccessLog.create({
-      data: {
-        adminUserId: admin.id,
-        conversationId: conversation.id,
-        accessedAt: openedAt,
-      },
-    }),
+    ...(recordAccess
+      ? [
+          prisma.messageAccessLog.create({
+            data: {
+              adminUserId: admin.id,
+              conversationId: conversation.id,
+              accessedAt: openedAt,
+            },
+          }),
+        ]
+      : []),
   ])
 
   const rows = await prisma.message.findMany({
