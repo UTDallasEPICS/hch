@@ -73,6 +73,8 @@ model AvailabilitySlot {
   startTime       DateTime
   endTime         DateTime
   location        String
+  videoUrl        String?
+  notes           String?
   status          AvailabilitySlotStatus    @default(OPEN)
   capacity        Int                       @default(1)
   createdByUserId String
