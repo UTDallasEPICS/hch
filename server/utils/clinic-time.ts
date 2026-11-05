@@ -72,24 +72,56 @@ function instantOfWallTime(w: WallTime, timeZone: string): Date {
 /**
  * Turn a date ("2026-10-20") and time ("14:00" or "14:00:00.000") from a form
  * into the real instant, read in the clinic timezone.
- * Returns an Invalid Date if the input can't be parsed, same as `new Date()`.
+ *
+ * Returns an Invalid Date when the input can't be parsed or is out of range,
+ * the same way `new Date("2026-10-20T14:00")` did. It also rejects a wall time
+ * that does not exist on that day (the spring-forward DST gap), instead of
+ * silently moving it an hour later.
  */
 export function clinicDateTime(date: string, time: string, timeZone = CLINIC_TIME_ZONE): Date {
   const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date)
   const t = /^(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?$/.exec(time)
   if (!d || !t) return new Date(NaN)
-  return instantOfWallTime(
-    {
-      year: Number(d[1]),
-      month: Number(d[2]),
-      day: Number(d[3]),
-      hour: Number(t[1]),
-      minute: Number(t[2]),
-      second: Number(t[3] ?? 0),
-      ms: Number((t[4] ?? '0').padEnd(3, '0')),
-    },
-    timeZone
-  )
+
+  const wall: WallTime = {
+    year: Number(d[1]),
+    month: Number(d[2]),
+    day: Number(d[3]),
+    hour: Number(t[1]),
+    minute: Number(t[2]),
+    second: Number(t[3] ?? 0),
+    ms: Number((t[4] ?? '0').padEnd(3, '0')),
+  }
+
+  // Reject values that Date.UTC would otherwise normalize into a different day
+  // or time (e.g. "25:00", "2026-02-30").
+  if (
+    wall.month < 1 ||
+    wall.month > 12 ||
+    wall.day < 1 ||
+    wall.day > new Date(Date.UTC(wall.year, wall.month, 0)).getUTCDate() ||
+    wall.hour > 23 ||
+    wall.minute > 59 ||
+    wall.second > 59
+  ) {
+    return new Date(NaN)
+  }
+
+  const instant = instantOfWallTime(wall, timeZone)
+  const seen = wallTimeOf(instant, timeZone)
+  // The wall clock never shows a time inside the spring-forward gap.
+  if (
+    seen.year !== wall.year ||
+    seen.month !== wall.month ||
+    seen.day !== wall.day ||
+    seen.hour !== wall.hour ||
+    seen.minute !== wall.minute ||
+    seen.second !== wall.second ||
+    seen.ms !== wall.ms
+  ) {
+    return new Date(NaN)
+  }
+  return instant
 }
 
 /**

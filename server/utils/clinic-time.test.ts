@@ -32,6 +32,30 @@ describe('clinicDateTime', () => {
     expect(Number.isNaN(clinicDateTime('nope', '14:00', TZ).getTime())).toBe(true)
     expect(Number.isNaN(clinicDateTime('2026-10-20', '2pm', TZ).getTime())).toBe(true)
   })
+
+  it('rejects out-of-range date and time parts instead of normalizing them', () => {
+    const invalid = [
+      ['2026-10-20', '25:00'],
+      ['2026-10-20', '14:99'],
+      ['2026-10-20', '24:00'],
+      ['2026-10-20', '23:60'],
+      ['2026-13-40', '14:00'],
+      ['2026-02-30', '14:00'],
+    ]
+    for (const [date, time] of invalid) {
+      expect(Number.isNaN(clinicDateTime(date, time, TZ).getTime())).toBe(true)
+    }
+  })
+
+  it('rejects a wall time inside the spring-forward DST gap', () => {
+    // 2:30 AM does not exist in Chicago on 2026-03-08.
+    expect(Number.isNaN(clinicDateTime('2026-03-08', '02:30', TZ).getTime())).toBe(true)
+  })
+
+  it('accepts an ambiguous fall-back wall time', () => {
+    // 1:30 AM happens twice in Chicago on 2026-11-01.
+    expect(Number.isNaN(clinicDateTime('2026-11-01', '01:30', TZ).getTime())).toBe(false)
+  })
 })
 
 describe('addClinicTime', () => {
