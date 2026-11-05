@@ -10,6 +10,8 @@ import {
 } from '../../utils/mail'
 import { formatStoredUserNameInitials } from '../../utils/name'
 import { createStaffAppointment } from '../../utils/create-staff-appointment'
+import { notifyUser, resolveAppointmentRecipients, emailUsers } from '../../utils/notifications'
+import { formatClinicTime } from '../../utils/clinic-time'
 
 const bodySchema = z
   .object({
@@ -129,13 +131,41 @@ export default defineEventHandler(async (event) => {
 
     return appt
   })
+  // Notify client + assigned clinician (or admins if unassigned)
+  try {
+    const recipients = await resolveAppointmentRecipients(req.clientId)
+    const when = formatClinicTime(start)
+    for (const userId of recipients) {
+      await notifyUser({
+        userId,
+        type: 'APPOINTMENT_BOOKED',
+        title: 'Session booked',
+        message: `Session booked for ${when}.`,
+        appointmentId: appointment.id,
+      })
+    }
+    await emailUsers(
+      recipients.filter((userId) => userId !== req.clientId),
+      {
+        subject: 'Session booked',
+        intro: `Session booked for ${when}.`,
+        closing: 'Sign in to the portal and open Calendar for details.',
+      }
+    )
+  } catch (err) {
+    console.error('[schedule-requests] booking notification failed', err)
+  }
 
-  await sendAppointmentConfirmationEmail({
-    to: req.client.email,
-    startTime: start,
-    endTime: end,
-    clientName: clientInitials,
-  })
+  try {
+    await sendAppointmentConfirmationEmail({
+      to: req.client.email,
+      startTime: start,
+      endTime: end,
+      clientName: clientInitials,
+    })
+  } catch (err) {
+    console.error('[schedule-requests] confirmation email failed', err)
+  }
 
   return {
     id,
@@ -151,3 +181,4 @@ function escapeHtml(s: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
 }
+

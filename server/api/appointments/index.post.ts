@@ -6,6 +6,8 @@ import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/vide
 import type { VideoConferenceProvider } from '../../../prisma/generated/enums'
 import { randomUUID } from 'node:crypto'
 import { MAX_RECURRING_OCCURRENCES } from '../../utils/appointment-constants'
+import { emailUsers, notifyUser, resolveAppointmentRecipients } from '../../utils/notifications'
+import { addClinicTime, clinicDateTime, formatClinicTime } from '../../utils/clinic-time'
 
 function sanitizeNamePart(part: string | null | undefined) {
   const normalized = (part ?? '').trim().replace(/\s+/g, '_')
@@ -30,20 +32,11 @@ function nextAvailableNumber(used: number[]) {
 }
 
 function addRecurrenceStep(base: Date, recurrence: string, step: number) {
-  const next = new Date(base)
-  if (recurrence === 'DAILY') {
-    next.setDate(next.getDate() + step)
-    return next
-  }
-  if (recurrence === 'WEEKLY') {
-    next.setDate(next.getDate() + step * 7)
-    return next
-  }
-  if (recurrence === 'MONTHLY') {
-    next.setMonth(next.getMonth() + step)
-    return next
-  }
-  return next
+  // Step in clinic time so a weekly 2pm session stays at 2pm across DST (#126)
+  if (recurrence === 'DAILY') return addClinicTime(base, { days: step })
+  if (recurrence === 'WEEKLY') return addClinicTime(base, { days: step * 7 })
+  if (recurrence === 'MONTHLY') return addClinicTime(base, { months: step })
+  return new Date(base)
 }
 
 export default defineEventHandler(async (event) => {
@@ -72,8 +65,8 @@ export default defineEventHandler(async (event) => {
 
     await assertStaffCanAccessClient(event, clientId)
 
-    const start = new Date(`${date}T${startTime}`)
-    const end = new Date(`${date}T${endTime}`)
+    const start = clinicDateTime(date, startTime)
+    const end = clinicDateTime(date, endTime)
     const now = new Date()
 
     if (end <= start) {
@@ -98,7 +91,7 @@ export default defineEventHandler(async (event) => {
           statusMessage: 'Recurrence end date is required for recurring sessions',
         })
       }
-      const recurrenceEnd = new Date(`${recurrenceEndDateInput}T23:59:59.999`)
+      const recurrenceEnd = clinicDateTime(recurrenceEndDateInput, '23:59:59.999')
       if (Number.isNaN(recurrenceEnd.getTime())) {
         throw createError({
           statusCode: 400,
@@ -235,6 +228,36 @@ export default defineEventHandler(async (event) => {
 
       return created
     })
+
+    // Notify client + assigned clinician (or admins if unassigned)
+    try {
+      const first = createdAppointments[0]
+      if (first) {
+        const recipients = await resolveAppointmentRecipients(clientId)
+        const when = formatClinicTime(start)
+
+        const count = createdAppointments.length
+        const title = count > 1 ? 'Recurring sessions booked' : 'Session booked'
+        const message =
+          count > 1 ? `${count} sessions booked, starting ${when}.` : `Session booked for ${when}.`
+        for (const userId of recipients) {
+          await notifyUser({
+            userId,
+            type: 'APPOINTMENT_BOOKED',
+            title,
+            message,
+            appointmentId: first.id,
+          })
+        }
+        await emailUsers(recipients, {
+          subject: title,
+          intro: message,
+          closing: 'Sign in to the portal and open Calendar for details.',
+        })
+      }
+    } catch (err) {
+      console.error('[appointments] booking notification failed', err)
+    }
 
     return {
       success: true,

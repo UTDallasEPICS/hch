@@ -1,14 +1,12 @@
+import { requireClientUser } from '../../utils/guard'
 import { prisma } from '../../utils/prisma'
-import { auth } from '~~/server/utils/auth'
 
 export default defineEventHandler(async (event) => {
-  // 1. Get logged-in user
-  const session = await auth.api.getSession({ headers: event.headers })
-  if (!session?.user) throw createError({ statusCode: 401, message: 'Unauthorized' })
+  const user = requireClientUser(event)
 
-  // 2. Find client and their assigned clinician ID
+  // Find the client row and their assigned clinician.
   const client = await prisma.client.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: user.id },
     select: { clinicianUserId: true },
   })
 
@@ -23,6 +21,13 @@ export default defineEventHandler(async (event) => {
       clinicianUserId: client.clinicianUserId,
       status: 'OPEN',
       startTime: { gt: new Date() },
+    },
+    select: {
+      id: true,
+      startTime: true,
+      endTime: true,
+      location: true,
+      notes: true,
     },
     orderBy: { startTime: 'asc' },
   })
