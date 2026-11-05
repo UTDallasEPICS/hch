@@ -1,6 +1,7 @@
 import { createError, defineEventHandler, readBody } from 'h3'
 import { requireAdmin } from '../../../utils/guard'
 import { encryptMessage } from '../../../utils/message-encryption'
+import { notifyClientOfAdminMessage } from '../../../utils/message-notifications'
 import { parseMessageText } from '../../../utils/message-text'
 import { prisma } from '../../../utils/prisma'
 
@@ -38,6 +39,8 @@ export default defineEventHandler(async (event) => {
       },
     })
   })
+
+  await notifyClientOfAdminMessage(clientUserId)
 
   return {
     id: message.id,

@@ -1,6 +1,7 @@
 import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { requireAdmin } from '../../../utils/guard'
 import { encryptMessage } from '../../../utils/message-encryption'
+import { notifyClientOfAdminMessage } from '../../../utils/message-notifications'
 import { parseMessageText } from '../../../utils/message-text'
 import { prisma } from '../../../utils/prisma'
 
@@ -13,7 +14,7 @@ export default defineEventHandler(async (event) => {
 
   const conversation = await prisma.conversation.findUnique({
     where: { id },
-    select: { id: true },
+    select: { id: true, clientUserId: true },
   })
   if (!conversation) {
     throw createError({ statusCode: 404, statusMessage: 'Conversation not found' })
@@ -39,6 +40,8 @@ export default defineEventHandler(async (event) => {
     })
     return created
   })
+
+  await notifyClientOfAdminMessage(conversation.clientUserId)
 
   return {
     id: message.id,
