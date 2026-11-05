@@ -1,9 +1,9 @@
 import { requireUser } from '../../../../utils/guard'
-import { assertStaffCanAccessClient } from '../../../../utils/clinician-access'
+import { assertCanAccessClient } from '../../../../utils/clinician-access'
 import { createError, defineEventHandler, getRouterParam } from 'h3'
 import { prisma } from '../../../../utils/prisma'
-import { isAdmin } from '../../../../utils/is-admin'
 import { loadClinicalFormQuestions } from '../../../../utils/clinical-form-display'
+import { canViewScoresFor } from '../../../../utils/client-permissions'
 
 const APP_LABELS = [
   'Email',
@@ -59,7 +59,7 @@ const APP_LABELS = [
 ]
 
 export default defineEventHandler(async (event) => {
-  const user = requireUser(event)
+  requireUser(event)
 
   const clientUserId = getRouterParam(event, 'id')
   const formKey = getRouterParam(event, 'formKey')
@@ -67,21 +67,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing client id or form key' })
   }
 
-  // Allow admin to view any client's form answers, or client to view their own
-  const currentUser = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { role: true, email: true },
-  })
-  const role = currentUser?.role ?? null
-  const isOwnProfile = user.id === clientUserId
-  const hasAdminAccess = isAdmin(role)
-  const isClinicianViewer = !hasAdminAccess && event.context.isClinician === true
-  if (!isOwnProfile && !hasAdminAccess && !isClinicianViewer) {
-    throw createError({ statusCode: 403, statusMessage: 'Staff only' })
-  }
-  if (isClinicianViewer && !isOwnProfile) {
-    await assertStaffCanAccessClient(event, clientUserId)
-  }
+  await assertCanAccessClient(event, clientUserId)
+
+  // Access to the form is decided above. Whether score/severity fields are
+  // included is a separate, field-level check — must hold for every scored
+  // form below, not just profile GET.
+  const canSeeScores = await canViewScoresFor(event, clientUserId)
 
   const validKeys = ['application', 'ace', 'gad', 'phq', 'pcl']
   if (!validKeys.includes(formKey)) {
@@ -179,8 +170,8 @@ export default defineEventHandler(async (event) => {
       questions,
       submitted: aceForm?.status === 'COMPLETE',
       completedAt: aceForm?.submittedAt,
-      score: aceForm?.totalScore,
-      severity: aceForm?.severity,
+      score: canSeeScores ? aceForm?.totalScore : null,
+      severity: canSeeScores ? aceForm?.severity : null,
     }
   }
 
@@ -197,8 +188,8 @@ export default defineEventHandler(async (event) => {
       questions,
       submitted: gadForm?.status === 'COMPLETE',
       submittedAt: gadForm?.submittedAt,
-      score: gadForm?.totalScore,
-      severity: gadForm?.severity,
+      score: canSeeScores ? gadForm?.totalScore : null,
+      severity: canSeeScores ? gadForm?.severity : null,
     }
   }
 
@@ -215,8 +206,8 @@ export default defineEventHandler(async (event) => {
       questions,
       submitted: phqForm?.status === 'COMPLETE',
       submittedAt: phqForm?.submittedAt,
-      score: phqForm?.totalScore,
-      severity: phqForm?.severity,
+      score: canSeeScores ? phqForm?.totalScore : null,
+      severity: canSeeScores ? phqForm?.severity : null,
     }
   }
 
@@ -296,8 +287,8 @@ export default defineEventHandler(async (event) => {
       questions,
       submitted: pclForm?.status === 'COMPLETE',
       submittedAt: pclForm?.submittedAt,
-      score: pclForm?.status === 'COMPLETE' ? totalScore : null,
-      severity,
+      score: canSeeScores && pclForm?.status === 'COMPLETE' ? totalScore : null,
+      severity: canSeeScores ? severity : null,
     }
   }
   throw createError({ statusCode: 400, statusMessage: 'Invalid form key' })

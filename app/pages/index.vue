@@ -290,6 +290,7 @@
       :appointments="clientStats?.upcomingAppointments ?? []"
     />
     <ClientSlotList v-if="!error" class="mt-6" />
+    <NotificationsPanel class="mt-8" />
     <ClientScheduleRequestsSection v-if="!error && clientStats?.clinicalStatus != null" />
     <ClientSessionNotesSection />
   </main>
