@@ -1,4 +1,5 @@
 import { requireAdmin } from '../../../../../utils/guard'
+import { assertCanAccessClient } from '../../../../../utils/clinician-access'
 import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { prisma } from '../../../../../utils/prisma'
 import { notifyUser } from '../../../../../utils/notifications'
@@ -17,6 +18,8 @@ export default defineEventHandler(async (event) => {
   if (!clientUserId || !noteId) {
     throw createError({ statusCode: 400, statusMessage: 'Missing client or note id' })
   }
+
+  await assertCanAccessClient(event, clientUserId)
 
   const body = await readBody<{
     adminSignatureData?: string

@@ -5,6 +5,8 @@ import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/vide
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import type { VideoConferenceProvider } from '../../../prisma/generated/enums'
 import { MAX_RECURRING_OCCURRENCES } from '../../utils/appointment-constants'
+import { emailUsers, notifyUser, resolveAppointmentRecipients } from '../../utils/notifications'
+import { addClinicTime, clinicDateTime, formatClinicTime } from '../../utils/clinic-time'
 
 function sanitizeNamePart(part: string | null | undefined) {
   const normalized = (part ?? '').trim().replace(/\s+/g, '_')
@@ -29,20 +31,11 @@ function nextAvailableNumber(used: number[]) {
 }
 
 function addRecurrenceStep(base: Date, recurrence: string, step: number) {
-  const next = new Date(base)
-  if (recurrence === 'DAILY') {
-    next.setDate(next.getDate() + step)
-    return next
-  }
-  if (recurrence === 'WEEKLY') {
-    next.setDate(next.getDate() + step * 7)
-    return next
-  }
-  if (recurrence === 'MONTHLY') {
-    next.setMonth(next.getMonth() + step)
-    return next
-  }
-  return next
+  // Step in clinic time so a weekly 2pm session stays at 2pm across DST (#126)
+  if (recurrence === 'DAILY') return addClinicTime(base, { days: step })
+  if (recurrence === 'WEEKLY') return addClinicTime(base, { days: step * 7 })
+  if (recurrence === 'MONTHLY') return addClinicTime(base, { months: step })
+  return new Date(base)
 }
 
 function getOccurrencesUntilEndDate(
@@ -51,7 +44,7 @@ function getOccurrencesUntilEndDate(
   recurrenceEndDate: string | null
 ) {
   if (!recurrenceEndDate || recurrence === 'NONE') return null
-  const endBoundary = new Date(`${recurrenceEndDate}T23:59:59.999`)
+  const endBoundary = clinicDateTime(recurrenceEndDate, '23:59:59.999')
   if (Number.isNaN(endBoundary.getTime()) || endBoundary < start) return 0
   let count = 0
   for (let i = 0; i < MAX_RECURRING_OCCURRENCES; i += 1) {
@@ -79,7 +72,6 @@ export default defineEventHandler(async (event) => {
       type,
       startTime,
       startTimeOfDay,
-      seriesId,
       description,
       date,
       endTime,
@@ -108,8 +100,8 @@ export default defineEventHandler(async (event) => {
       ? recurrenceInput
       : 'NONE'
 
-    const startTimeDate = new Date(`${date}T${normalizedStartTimeOfDay}`)
-    const endTimeDate = new Date(`${date}T${endTime}`)
+    const startTimeDate = clinicDateTime(date, normalizedStartTimeOfDay)
+    const endTimeDate = clinicDateTime(date, endTime)
     if (
       Number.isNaN(startTimeDate.getTime()) ||
       Number.isNaN(endTimeDate.getTime()) ||
@@ -127,6 +119,7 @@ export default defineEventHandler(async (event) => {
         id: true,
         clientId: true,
         adminId: true,
+        seriesId: true,
         status: true,
         title: true,
         sessionName: true,
@@ -146,6 +139,10 @@ export default defineEventHandler(async (event) => {
     }
 
     await assertStaffCanAccessClient(event, existing.clientId)
+
+    // Scope series edits to the series of the appointment we just authorized.
+    // Never trust a seriesId from the body: it could belong to another client.
+    const seriesId = existing.seriesId
 
     const parsedProvider =
       videoProvider !== undefined
@@ -193,6 +190,7 @@ export default defineEventHandler(async (event) => {
           ...updateDataBase,
           startTime: startTimeDate,
           endTime: endTimeDate,
+          ...(existing.startTime.getTime() !== startTimeDate.getTime() && { remindedAt: null }),
           ...(normalizedRecurrence === 'NONE' && {
             seriesId: null,
           }),
@@ -227,6 +225,7 @@ export default defineEventHandler(async (event) => {
               ...updateDataBase,
               startTime: nextStart,
               endTime: new Date(nextStart.getTime() + durationMs),
+              ...(appointment.startTime.getTime() !== nextStart.getTime() && { remindedAt: null }),
               ...(normalizedRecurrence === 'NONE' && { seriesId: null }),
             },
           })
@@ -294,7 +293,7 @@ export default defineEventHandler(async (event) => {
           },
         },
         orderBy: { startTime: 'asc' },
-        select: { id: true },
+        select: { id: true, startTime: true },
       })
       const durationMs = endTimeDate.getTime() - startTimeDate.getTime()
       const desiredOccurrences =
@@ -315,6 +314,7 @@ export default defineEventHandler(async (event) => {
               ...updateDataBase,
               startTime: nextStart,
               endTime: new Date(nextStart.getTime() + durationMs),
+              ...(appointment.startTime.getTime() !== nextStart.getTime() && { remindedAt: null }),
               ...(normalizedRecurrence === 'NONE' && { seriesId: null }),
             },
           })
@@ -371,7 +371,40 @@ export default defineEventHandler(async (event) => {
         }
       }
     }
+    // Notify only if the time actually changed (not description/video edits)
+    try {
+      const timeChanged =
+        existing.startTime.getTime() !== startTimeDate.getTime() ||
+        existing.endTime.getTime() !== endTimeDate.getTime()
 
+      if (timeChanged) {
+        const fmt = formatClinicTime
+        const isSeriesEdit = Boolean(seriesId) && (type === 'ALL' || type === 'FUTURE')
+
+        const title = isSeriesEdit ? 'Recurring sessions rescheduled' : 'Session rescheduled'
+        const message = isSeriesEdit
+          ? `Recurring sessions moved. The session you edited is now ${fmt(startTimeDate)} (was ${fmt(existing.startTime)}).`
+          : `Session moved from ${fmt(existing.startTime)} to ${fmt(startTimeDate)}.`
+
+        const recipients = await resolveAppointmentRecipients(existing.clientId)
+        for (const userId of recipients) {
+          await notifyUser({
+            userId,
+            type: 'APPOINTMENT_RESCHEDULED',
+            title,
+            message,
+            appointmentId: id,
+          })
+        }
+        await emailUsers(recipients, {
+          subject: title,
+          intro: message,
+          closing: 'Sign in to the portal and open Calendar for details.',
+        })
+      }
+    } catch (err) {
+      console.error('[appointments] reschedule notification failed', err)
+    }
     return { success: true }
   } catch (error: unknown) {
     const err = error as { code?: string; statusCode?: number }
