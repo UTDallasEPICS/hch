@@ -10,7 +10,6 @@
     startTime: string
     endTime: string
     location: string
-    videoUrl: string | null
     notes: string | null
     status: 'OPEN' | 'BOOKED' | 'CANCELLED'
     sourceType: 'ONE_OFF' | 'RECURRING'
@@ -28,7 +27,6 @@
     slotDurationMinutes: number
     bookingHorizonDays: number
     location: string
-    videoUrl: string
     notes: string
   }
 
@@ -56,7 +54,6 @@
     slotDurationMinutes: 60,
     bookingHorizonDays: 60,
     location: '',
-    videoUrl: '',
     notes: '',
   })
 
@@ -101,7 +98,6 @@
     startDateTime: '',
     endDateTime: '',
     location: '',
-    videoUrl: '',
     notes: '',
   })
 
@@ -110,7 +106,11 @@
   })
 
   function errorMessage(error: unknown, fallback: string) {
-    return (error as { data?: { statusMessage?: string } })?.data?.statusMessage ?? fallback
+    return (
+      (error as { data?: { statusMessage?: string } })?.data?.statusMessage ??
+      (error instanceof Error ? error.message : null) ??
+      fallback
+    )
   }
 
   function toLocalDateTime(value: string) {
@@ -132,7 +132,6 @@
     const common = {
       clinicianUserId: form.clinicianUserId,
       location: form.location.trim(),
-      videoUrl: form.videoUrl.trim(),
       notes: form.notes.trim(),
       slotDurationMinutes: Number(form.slotDurationMinutes),
       bookingHorizonDays: Number(form.bookingHorizonDays),
@@ -141,6 +140,9 @@
     if (form.sourceType === 'ONE_OFF') {
       if (!form.startDateTime || !form.endDateTime) {
         throw new Error('Enter the start and end date and time')
+      }
+      if (new Date(form.endDateTime) <= new Date(form.startDateTime)) {
+        throw new Error('Block end must be after block start')
       }
       return {
         ...common,
@@ -234,7 +236,6 @@
     editForm.startDateTime = toLocalDateTime(slot.startTime)
     editForm.endDateTime = toLocalDateTime(slot.endTime)
     editForm.location = slot.location
-    editForm.videoUrl = slot.videoUrl ?? ''
     editForm.notes = slot.notes ?? ''
   }
 
@@ -247,7 +248,6 @@
           startTime: toIsoDate(editForm.startDateTime),
           endTime: toIsoDate(editForm.endDateTime),
           location: editForm.location,
-          videoUrl: editForm.videoUrl,
           notes: editForm.notes,
         },
       })
@@ -356,10 +356,6 @@
           Location
           <input v-model="form.location" required maxlength="200" class="rounded border border-gray-300 bg-transparent p-2 dark:border-gray-700" placeholder="Clinic or remote" />
         </label>
-        <label class="grid gap-1 text-sm font-medium">
-          Video URL (optional)
-          <input v-model="form.videoUrl" type="url" class="rounded border border-gray-300 bg-transparent p-2 dark:border-gray-700" placeholder="https://" />
-        </label>
         <label class="grid gap-1 text-sm font-medium sm:col-span-2">
           Notes (optional)
           <textarea v-model="form.notes" rows="2" maxlength="2000" class="rounded border border-gray-300 bg-transparent p-2 dark:border-gray-700" />
@@ -394,7 +390,6 @@
               <label class="grid gap-1 text-sm">Starts<input v-model="editForm.startDateTime" type="datetime-local" class="rounded border border-gray-300 bg-transparent p-2 dark:border-gray-700" /></label>
               <label class="grid gap-1 text-sm">Ends<input v-model="editForm.endDateTime" type="datetime-local" class="rounded border border-gray-300 bg-transparent p-2 dark:border-gray-700" /></label>
               <label class="grid gap-1 text-sm">Location<input v-model="editForm.location" class="rounded border border-gray-300 bg-transparent p-2 dark:border-gray-700" /></label>
-              <label class="grid gap-1 text-sm">Video URL<input v-model="editForm.videoUrl" type="url" class="rounded border border-gray-300 bg-transparent p-2 dark:border-gray-700" /></label>
               <label class="grid gap-1 text-sm sm:col-span-2">Notes<textarea v-model="editForm.notes" rows="2" class="rounded border border-gray-300 bg-transparent p-2 dark:border-gray-700" /></label>
             </div>
             <div class="mt-3 flex gap-2">
@@ -411,7 +406,6 @@
                 <p class="text-sm text-gray-500">
                   {{ slot.location }} · {{ slot.sourceType === 'ONE_OFF' ? 'One-off' : 'Recurring' }} · {{ slot.status }}
                 </p>
-                <p v-if="slot.videoUrl" class="text-sm"><a :href="slot.videoUrl" target="_blank" rel="noopener noreferrer" class="underline">Video link</a></p>
                 <p v-if="slot.notes" class="text-sm">{{ slot.notes }}</p>
               </div>
               <div class="flex gap-2">

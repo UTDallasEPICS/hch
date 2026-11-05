@@ -12,7 +12,6 @@ type AvailabilityGenerationOptions = {
   clinicianUserId: string
   createdByUserId: string
   location: string
-  videoUrl?: string | null
   notes?: string | null
   slotDurationMinutes: number
   bookingHorizonDays: number
@@ -40,7 +39,6 @@ type SlotData = {
   startTime: Date
   endTime: Date
   location: string
-  videoUrl: string | null
   notes: string | null
   createdByUserId: string
   sourceType: 'ONE_OFF' | 'RECURRING'
@@ -188,7 +186,6 @@ function makeSlotData(
     startTime,
     endTime,
     location: input.location,
-    videoUrl: input.videoUrl?.trim() || null,
     notes: input.notes?.trim() || null,
     createdByUserId: input.createdByUserId,
     sourceType: input.sourceType,
