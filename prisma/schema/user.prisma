@@ -50,6 +50,10 @@ model User {
   // Weighted tags for clinician-client matching (REQ-F-05)
   clinicianTags ClinicianTag[]
 
+  clientConversation Conversation?      @relation("ClientConversation")
+  sentMessages       Message[]          @relation("SentMessages")
+  messageAccessLogs  MessageAccessLog[] @relation("MessageAccessLogs")
+
   @@unique([email])
   @@map("user")
 }
