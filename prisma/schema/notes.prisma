@@ -93,6 +93,8 @@ enum NotificationType {
   APPOINTMENT_RESCHEDULED
   APPOINTMENT_CANCELLED
   APPOINTMENT_REMINDER
+  /// Added with the messaging tables so the notifications team does not need its own migration.
+  MESSAGE_RECEIVED
 }
 
 /// In-app notifications (e.g. admins are notified whenever a clinician signs a note,
