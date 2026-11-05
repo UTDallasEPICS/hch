@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer'
+import { CLINIC_TIME_ZONE } from './clinic-time'
 import { prisma } from './prisma'
 
 function getTransporter() {
@@ -74,14 +75,17 @@ export function formatAppointmentTimeRange(start: Date, end: Date): string {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
+    timeZone: CLINIC_TIME_ZONE,
   }).format(start)
   const startTime = new Intl.DateTimeFormat('en-US', {
     hour: 'numeric',
     minute: '2-digit',
+    timeZone: CLINIC_TIME_ZONE,
   }).format(start)
   const endTime = new Intl.DateTimeFormat('en-US', {
     hour: 'numeric',
     minute: '2-digit',
+    timeZone: CLINIC_TIME_ZONE,
   }).format(end)
   return `${date} · ${startTime} – ${endTime}`
 }
