@@ -44,6 +44,10 @@ model Appointment {
 
   videoProvider   VideoConferenceProvider?
   videoJoinUrl    String?
+
+  // Set when the 24h reminder is sent (#123). Null = not reminded yet.
+  // Cleared when the start time changes so the new time gets a reminder.
+  remindedAt  DateTime?
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -54,10 +58,12 @@ model Appointment {
   sessionNotes    SessionNote[]            @relation("AppointmentSessionNotes")
   originScheduleRequest AppointmentScheduleRequest?
   availabilitySlot AvailabilitySlot?
+  notifications   Notification[]
 
   @@index([clientId])
   @@index([adminId])
   @@unique([clientId, sessionNumber])
+  @@index([startTime])
   @@map("Appointment")
 }
 

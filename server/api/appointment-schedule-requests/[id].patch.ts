@@ -6,6 +6,8 @@ import { prisma } from '../../utils/prisma'
 import { sendAppEmail } from '../../utils/mail'
 import { formatStoredUserNameInitials } from '../../utils/name'
 import { createStaffAppointment } from '../../utils/create-staff-appointment'
+import { notifyUser, resolveAppointmentRecipients, emailUsers } from '../../utils/notifications'
+import { CLINIC_TIME_ZONE, formatClinicTime } from '../../utils/clinic-time'
 
 const bodySchema = z
   .object({
@@ -125,6 +127,30 @@ export default defineEventHandler(async (event) => {
 
     return appt
   })
+  // Notify client + assigned clinician (or admins if unassigned)
+  try {
+    const recipients = await resolveAppointmentRecipients(req.clientId)
+    const when = formatClinicTime(start)
+    for (const userId of recipients) {
+      await notifyUser({
+        userId,
+        type: 'APPOINTMENT_BOOKED',
+        title: 'Session booked',
+        message: `Session booked for ${when}.`,
+        appointmentId: appointment.id,
+      })
+    }
+    await emailUsers(
+      recipients.filter((userId) => userId !== req.clientId),
+      {
+        subject: 'Session booked',
+        intro: `Session booked for ${when}.`,
+        closing: 'Sign in to the portal and open Calendar for details.',
+      }
+    )
+  } catch (err) {
+    console.error('[schedule-requests] booking notification failed', err)
+  }
 
   await sendAppEmail({
     to: req.client.email,
@@ -158,8 +184,17 @@ function formatRange(start: Date, end: Date): string {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
+    timeZone: CLINIC_TIME_ZONE,
   }).format(start)
-  const t0 = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(start)
-  const t1 = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(end)
+  const t0 = new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: CLINIC_TIME_ZONE,
+  }).format(start)
+  const t1 = new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: CLINIC_TIME_ZONE,
+  }).format(end)
   return `${d} · ${t0} – ${t1}`
 }
