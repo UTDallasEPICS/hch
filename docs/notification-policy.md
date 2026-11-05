@@ -22,12 +22,12 @@ Emails are sent **one per person**, so recipients never see each other's address
 
 Each session in a series is its own appointment, so the rules differ by type:
 
-| Action | What gets sent |
-|---|---|
-| **Booking a series** | **One** notice per person: "4 sessions booked, starting ..." |
-| **Rescheduling** "all" or "this and future" | **One** notice per person: "Recurring sessions moved ..." |
-| **Cancelling** "all" or "this and future" | **One** notice per person: "4 sessions in a recurring series were cancelled." |
-| **Reminders** | **One per session**, 24h before each one |
+| Action                                      | What gets sent                                                                |
+| ------------------------------------------- | ----------------------------------------------------------------------------- |
+| **Booking a series**                        | **One** notice per person: "4 sessions booked, starting ..."                  |
+| **Rescheduling** "all" or "this and future" | **One** notice per person: "Recurring sessions moved ..."                     |
+| **Cancelling** "all" or "this and future"   | **One** notice per person: "4 sessions in a recurring series were cancelled." |
+| **Reminders**                               | **One per session**, 24h before each one                                      |
 
 **Why combine the first three?** A weekly series can have many sessions.
 Sending one email per session would flood the client's inbox with the same news.
@@ -82,12 +82,12 @@ got the "Session booked" notice when it was booked.
 
 Every appointment notification is sent on **both** channels:
 
-| Type | Email | In-app (bell) |
-|---|---|---|
-| Booked | ✅ | ✅ |
-| Rescheduled | ✅ | ✅ |
-| Cancelled | ✅ | ✅ |
-| Reminder | ✅ | ✅ |
+| Type        | Email | In-app (bell) |
+| ----------- | ----- | ------------- |
+| Booked      | ✅    | ✅            |
+| Rescheduled | ✅    | ✅            |
+| Cancelled   | ✅    | ✅            |
+| Reminder    | ✅    | ✅            |
 
 - Emails use the shared template (#124): subject starts with `[HCH]`, and all text is escaped.
 - If email isn't set up (e.g. local dev with no `EMAIL_USER`/`EMAIL_PASS`),
