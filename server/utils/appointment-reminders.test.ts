@@ -65,6 +65,10 @@ describe('sendDueReminders', () => {
       type: 'APPOINTMENT_REMINDER',
       appointmentId: 'a1',
     })
+    // 2026-10-16T08:00Z is 3:00 AM in clinic time (CDT), not the server's zone.
+    expect(notify.mock.calls[0][0].message).toBe(
+      'Reminder: you have a session on Oct 16, 2026, 3:00 AM.'
+    )
     expect(email).toHaveBeenCalledWith(['client-1', 'clinician-1'], expect.any(Object))
   })
 

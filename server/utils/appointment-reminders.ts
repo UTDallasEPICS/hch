@@ -1,17 +1,9 @@
 import { prisma } from './prisma'
+import { formatClinicTime } from './clinic-time'
 import { emailUsers, notifyUser, resolveAppointmentRecipients } from './notifications'
 
 /** How long before the session the reminder goes out (#118 suggests 24h). */
 export const REMINDER_LEAD_MS = 24 * 60 * 60 * 1000
-
-/** Same display format as the #122 booking/reschedule messages. */
-function formatWhen(d: Date): string {
-  return d.toLocaleString('en-US', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'America/Chicago',
-  })
-}
 
 /**
  * Send reminders for appointments starting in the next 24h that haven't
@@ -43,7 +35,7 @@ export async function sendDueReminders(now: Date = new Date()): Promise<number> 
     try {
       const recipients = await resolveAppointmentRecipients(appt.clientId)
       const title = 'Session reminder'
-      const message = `Reminder: you have a session on ${formatWhen(appt.startTime)}.`
+      const message = `Reminder: you have a session on ${formatClinicTime(appt.startTime)}.`
 
       for (const userId of recipients) {
         await notifyUser({

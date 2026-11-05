@@ -26,7 +26,7 @@ export default defineNitroPlugin((nitroApp) => {
     running = true
     try {
       const sent = await sendDueReminders()
-      if (sent > 0) console.log(`[reminders] sent ${sent} reminder(s)`)
+      if (sent > 0) console.warn(`[reminders] sent ${sent} reminder(s)`)
     } catch (err) {
       console.error('[reminders] check failed', err)
     } finally {
