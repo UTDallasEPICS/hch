@@ -33,8 +33,9 @@ describe('ensureDefaultTags', () => {
     const prisma = makePrismaMock(new Set())
     await ensureDefaultTags(prisma)
 
-    expect(prisma.tag.create).toHaveBeenCalled()
-    const createdNames = prisma.tag.create.mock.calls.map(
+    const create = vi.mocked(prisma.tag.create)
+    expect(create).toHaveBeenCalled()
+    const createdNames = create.mock.calls.map(
       (call: [{ data: { name: string } }]) => call[0].data.name
     )
     expect(createdNames).toContain('Trauma-informed care')
@@ -45,7 +46,8 @@ describe('ensureDefaultTags', () => {
     const prisma = makePrismaMock(new Set(['Trauma-informed care']))
     await ensureDefaultTags(prisma)
 
-    const createdNames = prisma.tag.create.mock.calls.map(
+    const create = vi.mocked(prisma.tag.create)
+    const createdNames = create.mock.calls.map(
       (call: [{ data: { name: string } }]) => call[0].data.name
     )
     expect(createdNames).not.toContain('Trauma-informed care')

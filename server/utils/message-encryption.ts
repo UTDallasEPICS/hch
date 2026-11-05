@@ -29,12 +29,19 @@ export function encryptMessage(plaintext: string): string {
 /** Decrypts a value produced by encryptMessage. Rejects anything that was changed after encryption. */
 export function decryptMessage(payload: string): string {
   const parts = payload.split(':')
-  if (parts.length !== 4 || parts[0] !== 'v1') {
+  const [version, ivPart, tagPart, dataPart] = parts
+  if (
+    parts.length !== 4 ||
+    version !== 'v1' ||
+    ivPart === undefined ||
+    tagPart === undefined ||
+    dataPart === undefined
+  ) {
     throw new Error('Message ciphertext is not a valid payload')
   }
-  const iv = Buffer.from(parts[1], 'base64')
-  const tag = Buffer.from(parts[2], 'base64')
-  const data = Buffer.from(parts[3], 'base64')
+  const iv = Buffer.from(ivPart, 'base64')
+  const tag = Buffer.from(tagPart, 'base64')
+  const data = Buffer.from(dataPart, 'base64')
   if (iv.length !== IV_LENGTH || tag.length !== TAG_LENGTH) {
     throw new Error('Message ciphertext is not a valid payload')
   }

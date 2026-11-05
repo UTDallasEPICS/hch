@@ -117,8 +117,11 @@ function dateKey(parts: Pick<DateParts, 'year' | 'month' | 'day'>) {
   return `${String(parts.year).padStart(4, '0')}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`
 }
 
-function parseDateKey(value: string) {
+function parseDateKey(value: string): { year: number; month: number; day: number } {
   const [year, month, day] = value.split('-').map(Number)
+  if (year === undefined || month === undefined || day === undefined) {
+    throw new Error(`Invalid date key: ${value}`)
+  }
   return { year, month, day }
 }
 
@@ -299,15 +302,16 @@ export async function getAvailableAvailabilitySlotCandidates(
   input: AvailabilityGenerationInput
 ) {
   const candidates = buildAvailabilitySlotCandidates(input)
-  if (candidates.length === 0) return []
+  const first = candidates[0]
+  if (!first) return []
 
   const earliestStart = candidates.reduce(
     (earliest, slot) => (slot.startTime < earliest ? slot.startTime : earliest),
-    candidates[0].startTime
+    first.startTime
   )
   const latestEnd = candidates.reduce(
     (latest, slot) => (slot.endTime > latest ? slot.endTime : latest),
-    candidates[0].endTime
+    first.endTime
   )
   const [appointments, existingSlots] = await Promise.all([
     db.appointment.findMany({

@@ -16,7 +16,7 @@ describe('availability slot generation', () => {
     })
 
     expect(slots.length).toBe(23)
-    expect(slots[0].startTime.toISOString()).toBe('2026-01-05T16:00:00.000Z')
+    expect(slots[0]?.startTime.toISOString()).toBe('2026-01-05T16:00:00.000Z')
     expect(slots.at(-1)?.startTime.toISOString()).toBe('2026-01-06T14:00:00.000Z')
     expect(slots.at(-1)?.endTime.toISOString()).toBe('2026-01-06T15:00:00.000Z')
   })

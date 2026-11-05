@@ -24,9 +24,9 @@ describe('message encryption', () => {
 
   it('rejects ciphertext that was tampered with', () => {
     const stored = encryptMessage('hello')
-    const [version, iv, tag, data] = stored.split(':')
+    const [version, iv, tag, data] = stored.split(':') as [string, string, string, string]
     const flipped = Buffer.from(data, 'base64')
-    flipped[0] = flipped[0] ^ 0xff
+    flipped[0] = (flipped[0] ?? 0) ^ 0xff
 
     expect(() => decryptMessage(`${version}:${iv}:${tag}:${flipped.toString('base64')}`)).toThrow(
       /failed authentication/,

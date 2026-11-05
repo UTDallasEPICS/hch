@@ -66,6 +66,7 @@ const messageCreate = prisma.message.create as unknown as ReturnType<typeof vi.f
 const messageUpdateMany = prisma.message.updateMany as unknown as ReturnType<typeof vi.fn>
 const accessLogCreate = prisma.messageAccessLog.create as unknown as ReturnType<typeof vi.fn>
 const userFindUnique = prisma.user.findUnique as unknown as ReturnType<typeof vi.fn>
+const transaction = vi.mocked(prisma.$transaction)
 
 const PLAINTEXT = 'Please call me about tomorrow.'
 
@@ -90,7 +91,7 @@ beforeEach(() => {
   state.body = {}
   state.query = {}
   vi.clearAllMocks()
-  prisma.$transaction.mockImplementation(async (arg: unknown) => {
+  transaction.mockImplementation(async (arg: unknown) => {
     if (typeof arg === 'function') return arg(prisma)
     return Promise.all(arg as Promise<unknown>[])
   })
@@ -241,7 +242,7 @@ describe('opening a conversation writes an access log', () => {
     await adminOpen(makeEvent({ userId: 'admin-1', role: 'ADMIN' }))
 
     expect(accessLogCreate).toHaveBeenCalledTimes(1)
-    const saved = accessLogCreate.mock.calls[0][0].data
+    const saved = accessLogCreate.mock.calls[0]?.[0].data
     expect(saved).toEqual(
       expect.objectContaining({
         adminUserId: 'admin-1',

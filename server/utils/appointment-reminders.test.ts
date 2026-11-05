@@ -46,7 +46,7 @@ describe('sendDueReminders', () => {
     findMany.mockResolvedValue([])
     await sendDueReminders(NOW)
 
-    const where = findMany.mock.calls[0][0].where
+    const where = findMany.mock.calls[0]?.[0].where
     expect(where.remindedAt).toBeNull()
     expect(where.startTime.gt).toEqual(NOW)
     expect(where.startTime.lte).toEqual(new Date(NOW.getTime() + REMINDER_LEAD_MS))
@@ -60,13 +60,13 @@ describe('sendDueReminders', () => {
     expect(sent).toBe(1)
     expect(recipients).toHaveBeenCalledWith('client-1')
     expect(notify).toHaveBeenCalledTimes(2)
-    expect(notify.mock.calls.map((c) => c[0].userId)).toEqual(['client-1', 'clinician-1'])
-    expect(notify.mock.calls[0][0]).toMatchObject({
+    expect(notify.mock.calls.map((c) => c[0]?.userId)).toEqual(['client-1', 'clinician-1'])
+    expect(notify.mock.calls[0]?.[0]).toMatchObject({
       type: 'APPOINTMENT_REMINDER',
       appointmentId: 'a1',
     })
     // 2026-10-16T08:00Z is 3:00 AM in clinic time (CDT), not the server's zone.
-    expect(notify.mock.calls[0][0].message).toBe(
+    expect(notify.mock.calls[0]?.[0].message).toBe(
       'Reminder: you have a session on Oct 16, 2026, 3:00 AM.'
     )
     expect(email).toHaveBeenCalledWith(['client-1', 'clinician-1'], expect.any(Object))
@@ -81,7 +81,9 @@ describe('sendDueReminders', () => {
       data: { remindedAt: NOW },
     })
     const claimOrder = updateMany.mock.invocationCallOrder[0]
-    expect(claimOrder).toBeLessThan(notify.mock.invocationCallOrder[0])
+    const firstNotifyOrder = notify.mock.invocationCallOrder[0]
+    expect(firstNotifyOrder).toBeDefined()
+    expect(claimOrder).toBeLessThan(firstNotifyOrder as number)
   })
 
   it('skips an appointment another check already claimed (no duplicates)', async () => {
@@ -112,7 +114,7 @@ describe('sendDueReminders', () => {
 
     expect(sent).toBe(1)
     expect(notify.mock.calls.every((c) => c[0].appointmentId === 'good')).toBe(true)
-    const logged = (console.error as unknown as Mock).mock.calls[0][0] as string
+    const logged = (console.error as unknown as Mock).mock.calls[0]?.[0] as string
     expect(logged).toContain('bad')
     expect(logged).not.toContain('client-1')
   })

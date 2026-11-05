@@ -77,16 +77,19 @@ export function parseAvailabilityGenerationRequest(
 
   const value = parsed.data
   const common = {
-    ...value,
-    createdByUserId,
+    clinicianUserId: value.clinicianUserId,
+    location: value.location,
     notes: value.notes?.trim() || null,
+    slotDurationMinutes: value.slotDurationMinutes,
+    bookingHorizonDays: value.bookingHorizonDays,
+    createdByUserId,
     now: new Date(),
   }
 
   if (value.sourceType === 'ONE_OFF') {
     return {
       ...common,
-      sourceType: value.sourceType,
+      sourceType: 'ONE_OFF',
       startTime: new Date(value.startTime),
       endTime: new Date(value.endTime),
     }
@@ -94,7 +97,9 @@ export function parseAvailabilityGenerationRequest(
 
   return {
     ...common,
-    sourceType: value.sourceType,
+    sourceType: 'RECURRING',
+    timeZone: value.timeZone,
+    weeklyAvailability: value.weeklyAvailability,
   }
 }
 

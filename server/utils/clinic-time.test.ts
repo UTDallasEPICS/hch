@@ -34,7 +34,7 @@ describe('clinicDateTime', () => {
   })
 
   it('rejects out-of-range date and time parts instead of normalizing them', () => {
-    const invalid = [
+    const invalid: Array<[string, string]> = [
       ['2026-10-20', '25:00'],
       ['2026-10-20', '14:99'],
       ['2026-10-20', '24:00'],
