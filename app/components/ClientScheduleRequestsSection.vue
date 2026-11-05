@@ -164,10 +164,9 @@
 <template>
   <section class="mt-8">
     <div class="mb-3">
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Request a session time</h2>
+      <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Need a different time?</h2>
       <p class="mt-0.5 text-sm text-gray-600 dark:text-gray-400">
-        Propose a date and time for your next visit. Scheduling is not confirmed until your
-        clinician or admin approves it.
+        Can't find an open slot that works? Submit an off-hours or custom request for staff review and approval.
       </p>
     </div>
 
