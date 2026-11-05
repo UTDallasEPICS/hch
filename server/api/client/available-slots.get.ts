@@ -1,15 +1,13 @@
-import prisma from '~~/server/utils/prisma'
-import { auth } from '~~/server/utils/auth'
+import { requireClientUser } from '../../utils/guard'
+import { prisma } from '../../utils/prisma'
 
 export default defineEventHandler(async (event) => {
-  // 1. Get logged-in user
-  const session = await auth.api.getSession({ headers: event.headers })
-  if (!session?.user) throw createError({ statusCode: 401, message: 'Unauthorized' })
+  const user = requireClientUser(event)
 
-  // 2. Find client and their assigned clinician ID
+  // Find the client row and their assigned clinician.
   const client = await prisma.client.findUnique({
-    where: { userId: session.user.id },
-    select: { clinicianUserId: true }
+    where: { userId: user.id },
+    select: { clinicianUserId: true },
   })
 
   // 3. If no clinician is assigned, send back false
@@ -18,13 +16,20 @@ export default defineEventHandler(async (event) => {
   }
 
   // 4. Fetch only upcoming open slots for that clinician
-  const slots = await prisma.availability_slot.findMany({
+  const slots = await prisma.availabilitySlot.findMany({
     where: {
       clinicianUserId: client.clinicianUserId,
       status: 'OPEN',
-      startTime: { gt: new Date() }
+      startTime: { gt: new Date() },
     },
-    orderBy: { startTime: 'asc' }
+    select: {
+      id: true,
+      startTime: true,
+      endTime: true,
+      location: true,
+      notes: true,
+    },
+    orderBy: { startTime: 'asc' },
   })
 
   return { hasClinician: true, slots }
