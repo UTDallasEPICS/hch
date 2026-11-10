@@ -3,6 +3,7 @@
     | 'NOTE_READY_FOR_APPROVAL'
     | 'NOTE_FULLY_APPROVED'
     | 'NOTE_EDITED_AFTER_APPROVAL'
+    | 'REASSIGNMENT_REQUESTED'
 
   type NotificationItem = {
     id: string
@@ -41,6 +42,8 @@
         return 'i-heroicons-check-badge-20-solid'
       case 'NOTE_EDITED_AFTER_APPROVAL':
         return 'i-heroicons-pencil-square-20-solid'
+      case 'REASSIGNMENT_REQUESTED':
+        return 'i-heroicons-arrows-right-left-20-solid'
       default:
         return 'i-heroicons-bell-20-solid'
     }
@@ -181,6 +184,13 @@
             class="text-primary-600 hover:text-primary-700 dark:text-primary-400 text-xs font-medium"
           >
             Review
+          </NuxtLink>
+          <NuxtLink
+            v-else-if="n.type === 'REASSIGNMENT_REQUESTED'"
+            to="/clients/clinician-reassignment"
+            class="text-primary-600 hover:text-primary-700 dark:text-primary-400 text-xs font-medium"
+          >
+            Reassign
           </NuxtLink>
           <UButton
             v-if="!n.readAt"

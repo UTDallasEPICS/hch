@@ -14,6 +14,10 @@ model Client {
   therapyWeek          Int? // 0-26, max weeks of therapy
   missedSessions       Int                   @default(0) // count of missed therapy sessions
   clinicianUserId      String? // assigned clinician (optional)
+  // #182: client asked for a new therapist. They keep their current clinician
+  // (and that clinician keeps access) until an admin reassigns, which clears these.
+  reassignmentRequestedAt   DateTime?
+  reassignmentRequestReason String?
   user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   clinician            User?                 @relation("ClinicianClients", fields: [clinicianUserId], references: [id], onDelete: SetNull)
   permissions          ClientPermission?

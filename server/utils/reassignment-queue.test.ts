@@ -34,7 +34,11 @@ describe('listClientsNeedingReassignment', () => {
       expect.objectContaining({
         where: {
           status: { not: 'ARCHIVED' },
-          OR: [{ clinicianUserId: null }, { clinician: { role: { not: 'CLINICIAN' } } }],
+          OR: [
+            { clinicianUserId: null },
+            { clinician: { role: { not: 'CLINICIAN' } } },
+            { reassignmentRequestedAt: { not: null } },
+          ],
         },
       })
     )
@@ -48,7 +52,9 @@ describe('listClientsNeedingReassignment', () => {
         status: 'ACTIVE',
         clinicianUserId: 'former-clinician',
         user: { name: 'Alex', email: 'alex@x.test' },
-        clinician: { name: 'Dr. Gone' },
+        reassignmentRequestedAt: null,
+        reassignmentRequestReason: null,
+        clinician: { name: 'Dr. Gone', role: 'CLIENT' },
       },
       {
         id: 'c2',
@@ -92,5 +98,30 @@ describe('listClientsNeedingReassignment', () => {
 
     const result = await listClientsNeedingReassignment()
     expect(result.map((r) => r.clientUserId)).toEqual(['a', 'w', 'i'])
+  })
+
+  it('labels a client-requested change and carries the request details', async () => {
+    const requestedAt = new Date('2026-11-01T00:00:00Z')
+    findMany.mockResolvedValue([
+      {
+        id: 'c1',
+        userId: 'u1',
+        status: 'ACTIVE',
+        clinicianUserId: 'doc',
+        reassignmentRequestedAt: requestedAt,
+        reassignmentRequestReason: 'Looking for someone with grief experience',
+        user: { name: 'Alex', email: 'alex@x.test' },
+        clinician: { name: 'Dr. Current', role: 'CLINICIAN' },
+      },
+    ])
+    rank.mockResolvedValue([])
+
+    const [item] = await listClientsNeedingReassignment()
+    expect(item).toMatchObject({
+      reason: 'CLIENT_REQUESTED',
+      previousClinicianName: 'Dr. Current',
+      requestedAt,
+      requestReason: 'Looking for someone with grief experience',
+    })
   })
 })

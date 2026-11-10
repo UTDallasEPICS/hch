@@ -6,6 +6,9 @@ import { prisma } from '../../../utils/prisma'
 /**
  * Admin-only: assign (or unassign) a clinician to a given client.
  * Body: { clinicianUserId: string | null }
+ *
+ * Also the reassignment action for the #181 queue: the previous clinician
+ * loses access immediately because access checks read clinicianUserId.
  */
 export default defineEventHandler(async (event) => {
   requireAdmin(event)
@@ -46,7 +49,14 @@ export default defineEventHandler(async (event) => {
   } else {
     client = await prisma.client.update({
       where: { id: client.id },
-      data: { clinicianUserId },
+      data: {
+        clinicianUserId,
+        // #182: assigning a clinician resolves any pending "new therapist"
+        // request. Unassigning leaves it, since the client still needs one.
+        ...(clinicianUserId !== null
+          ? { reassignmentRequestedAt: null, reassignmentRequestReason: null }
+          : {}),
+      },
     })
   }
 

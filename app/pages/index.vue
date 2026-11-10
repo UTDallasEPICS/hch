@@ -290,6 +290,7 @@
       :appointments="clientStats?.upcomingAppointments ?? []"
     />
     <ClientScheduleRequestsSection v-if="!error && clientStats?.clinicalStatus != null" />
+    <ClientTherapistChangeSection v-if="!error && clientStats?.clinicalStatus != null" />
     <ClientSessionNotesSection />
   </main>
 </template>

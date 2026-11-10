@@ -93,6 +93,7 @@ enum NotificationType {
   APPOINTMENT_RESCHEDULED
   APPOINTMENT_CANCELLED
   APPOINTMENT_REMINDER
+  REASSIGNMENT_REQUESTED
 }
 
 /// In-app notifications (e.g. admins are notified whenever a clinician signs a note,

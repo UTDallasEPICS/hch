@@ -18,8 +18,10 @@
     clientName: string
     clientEmail: string
     status: 'INCOMPLETE' | 'WAITLIST' | 'ACTIVE' | 'ARCHIVED'
-    reason: 'UNASSIGNED' | 'CLINICIAN_LEFT'
+    reason: 'UNASSIGNED' | 'CLINICIAN_LEFT' | 'CLIENT_REQUESTED'
     previousClinicianName: string | null
+    requestedAt: string | null
+    requestReason: string | null
     recommendations: Match[]
   }
 
@@ -84,9 +86,21 @@
   }
 
   function reasonLabel(item: QueueItem) {
-    return item.reason === 'CLINICIAN_LEFT'
-      ? `Clinician left${item.previousClinicianName ? ` (${item.previousClinicianName})` : ''}`
-      : 'No clinician assigned'
+    const who = item.previousClinicianName ? ` (${item.previousClinicianName})` : ''
+    switch (item.reason) {
+      case 'CLINICIAN_LEFT':
+        return `Clinician left${who}`
+      case 'CLIENT_REQUESTED':
+        return `Client asked for a new therapist${who}`
+      default:
+        return 'No clinician assigned'
+    }
+  }
+
+  function reasonColor(item: QueueItem) {
+    if (item.reason === 'CLINICIAN_LEFT') return 'warning' as const
+    if (item.reason === 'CLIENT_REQUESTED') return 'info' as const
+    return 'neutral' as const
   }
 </script>
 
@@ -104,9 +118,9 @@
         Clinician reassignment
       </h1>
       <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-        Clients whose clinician left or who have no clinician (active clients first). Suggestions
-        are ranked by how well each clinician's tags match the client's. Assigning a new clinician
-        removes the previous clinician's access.
+        Clients whose clinician left, who have no clinician, or who asked for a new therapist
+        (active clients first). Suggestions are ranked by how well each clinician's tags match the
+        client's. Assigning a new clinician removes the previous clinician's access.
       </p>
     </div>
 
@@ -139,13 +153,23 @@
             <div class="min-w-0">
               <p class="font-semibold text-gray-900 dark:text-white">{{ displayName(item) }}</p>
               <p class="text-sm text-gray-500 dark:text-gray-400">{{ item.clientEmail }}</p>
+              <p
+                v-if="item.reason === 'CLIENT_REQUESTED' && item.requestedAt"
+                class="mt-1 text-xs text-gray-500 dark:text-gray-400"
+              >
+                Requested {{ new Date(item.requestedAt).toLocaleDateString() }}. They keep their
+                current clinician until you reassign.
+              </p>
+              <p
+                v-if="item.requestReason"
+                class="mt-1 text-sm whitespace-pre-line text-gray-700 italic dark:text-gray-300"
+              >
+                “{{ item.requestReason }}”
+              </p>
             </div>
             <div class="flex flex-wrap gap-2">
               <UBadge color="neutral" variant="outline">{{ statusLabel(item.status) }}</UBadge>
-              <UBadge
-                :color="item.reason === 'CLINICIAN_LEFT' ? 'warning' : 'neutral'"
-                variant="subtle"
-              >
+              <UBadge :color="reasonColor(item)" variant="subtle">
                 {{ reasonLabel(item) }}
               </UBadge>
             </div>
