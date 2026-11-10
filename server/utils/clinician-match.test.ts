@@ -210,6 +210,6 @@ describe('rankCliniciansForClient', () => {
     ])
 
     const result = await rankCliniciansForClient('client-1')
-    expect(result[0].score).toBe(1)
+    expect(result[0]?.score).toBe(1)
   })
 })

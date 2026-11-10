@@ -134,6 +134,15 @@
     () => scheduleRequestQueue.value?.pending?.length ?? 0
   )
 
+  // REQ-F-05c: admin-only queue of active clients needing a (new) clinician.
+  const { data: reassignmentQueue } = await useFetch<unknown[]>('/api/admin/reassignment-queue', {
+    getCachedData: () => undefined,
+    immediate: isAdminViewer.value,
+  })
+  const reassignmentCount = computed(() =>
+    isAdminViewer.value ? (reassignmentQueue.value?.length ?? 0) : 0
+  )
+
   /** Per-client most-urgent pending records request (earliest expiry wins). */
   const pendingByClient = computed(() => {
     const map = new Map<string, PendingNoteRequest>()
@@ -416,6 +425,16 @@
           Session time requests
           <UBadge v-if="pendingScheduleRequestCount > 0" color="warning" variant="subtle" size="sm">
             {{ pendingScheduleRequestCount }} pending
+          </UBadge>
+        </NuxtLink>
+        <NuxtLink
+          v-if="isAdminViewer"
+          to="/clients/clinician-reassignment"
+          class="text-primary-600 hover:text-primary-700 dark:text-primary-400 inline-flex items-center gap-2 text-sm font-medium"
+        >
+          Clinician reassignment
+          <UBadge v-if="reassignmentCount > 0" color="warning" variant="subtle" size="sm">
+            {{ reassignmentCount }} waiting
           </UBadge>
         </NuxtLink>
       </div>
