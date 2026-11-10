@@ -103,6 +103,39 @@
     return (profile.value?.clinicianUserId ?? null) !== (selectedClinicianId.value ?? null)
   })
 
+  // REQ-F-05c: tag-based suggestions for (re)assignment, e.g. when the client
+  // asks for a new therapist. Excludes the current clinician server-side.
+  type ClinicianMatch = {
+    clinicianUserId: string
+    clinicianName: string | null
+    score: number
+    matchedTagCount: number
+    currentCaseload: number
+  }
+  const clinicianSuggestions = ref<ClinicianMatch[]>([])
+  async function loadClinicianSuggestions() {
+    const id = props.clientId
+    if (!id || !isAdminViewer.value) {
+      clinicianSuggestions.value = []
+      return
+    }
+    try {
+      const ranked = await $fetch<ClinicianMatch[]>(`/api/clients/${id}/clinician-recommendations`)
+      if (props.clientId === id) clinicianSuggestions.value = ranked.slice(0, 3)
+    } catch {
+      // No client record yet (404) or no tags -- suggestions are optional.
+      if (props.clientId === id) clinicianSuggestions.value = []
+    }
+  }
+  watch(
+    () => [props.open, props.clientId, isAdminViewer.value] as const,
+    ([open, id]) => {
+      if (open && id) loadClinicianSuggestions()
+      else clinicianSuggestions.value = []
+    },
+    { immediate: true }
+  )
+
   async function loadProfile() {
     if (!props.clientId) return
     const seq = ++profileLoadSeq
@@ -317,6 +350,7 @@
       )
       if (profile.value) profile.value.clinicianUserId = res.clinicianUserId
       toast.add({ title: 'Clinician updated', color: 'success' })
+      loadClinicianSuggestions()
       emit('refreshed')
     } catch (e: unknown) {
       const msg =
@@ -534,6 +568,23 @@
             >
               Save Clinician
             </UButton>
+          </div>
+          <div v-if="clinicianSuggestions.length" class="mt-3">
+            <p class="mb-1.5 text-xs text-gray-500 dark:text-gray-400">
+              Suggested by tag match — click to select, then save:
+            </p>
+            <div class="flex flex-wrap gap-2">
+              <UButton
+                v-for="m in clinicianSuggestions"
+                :key="m.clinicianUserId"
+                size="xs"
+                :color="selectedClinicianId === m.clinicianUserId ? 'primary' : 'neutral'"
+                variant="soft"
+                @click="selectedClinicianId = m.clinicianUserId"
+              >
+                {{ m.clinicianName || 'Unnamed clinician' }} · {{ Math.round(m.score * 100) }}%
+              </UButton>
+            </div>
           </div>
         </section>
 
