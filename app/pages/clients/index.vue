@@ -134,7 +134,7 @@
     () => scheduleRequestQueue.value?.pending?.length ?? 0
   )
 
-  // REQ-F-05c: admin-only queue of active clients needing a (new) clinician.
+  // REQ-F-05c: admin-only queue (#181) of clients needing a (new) clinician.
   const { data: reassignmentQueue } = await useFetch<unknown[]>('/api/admin/reassignment-queue', {
     getCachedData: () => undefined,
     immediate: isAdminViewer.value,

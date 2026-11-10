@@ -17,6 +17,7 @@
     clientUserId: string
     clientName: string
     clientEmail: string
+    status: 'INCOMPLETE' | 'WAITLIST' | 'ACTIVE' | 'ARCHIVED'
     reason: 'UNASSIGNED' | 'CLINICIAN_LEFT'
     previousClinicianName: string | null
     recommendations: Match[]
@@ -78,6 +79,10 @@
     return formatPersonDisplayName(item.clientName || '') || item.clientEmail
   }
 
+  function statusLabel(status: QueueItem['status']) {
+    return status.charAt(0) + status.slice(1).toLowerCase()
+  }
+
   function reasonLabel(item: QueueItem) {
     return item.reason === 'CLINICIAN_LEFT'
       ? `Clinician left${item.previousClinicianName ? ` (${item.previousClinicianName})` : ''}`
@@ -99,9 +104,9 @@
         Clinician reassignment
       </h1>
       <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-        Active clients whose clinician left or who have no clinician. Suggestions are ranked by how
-        well each clinician's tags match the client's. Assigning a new clinician removes the
-        previous clinician's access.
+        Clients whose clinician left or who have no clinician (active clients first). Suggestions
+        are ranked by how well each clinician's tags match the client's. Assigning a new clinician
+        removes the previous clinician's access.
       </p>
     </div>
 
@@ -122,7 +127,7 @@
         v-else-if="!queue?.length"
         class="rounded-xl border border-gray-200 bg-white p-6 text-center dark:border-gray-800 dark:bg-gray-900"
       >
-        <p class="text-gray-600 dark:text-gray-400">Every active client has a clinician.</p>
+        <p class="text-gray-600 dark:text-gray-400">Every client has a clinician.</p>
       </div>
       <ul v-else class="space-y-4">
         <li
@@ -135,12 +140,15 @@
               <p class="font-semibold text-gray-900 dark:text-white">{{ displayName(item) }}</p>
               <p class="text-sm text-gray-500 dark:text-gray-400">{{ item.clientEmail }}</p>
             </div>
-            <UBadge
-              :color="item.reason === 'CLINICIAN_LEFT' ? 'warning' : 'neutral'"
-              variant="subtle"
-            >
-              {{ reasonLabel(item) }}
-            </UBadge>
+            <div class="flex flex-wrap gap-2">
+              <UBadge color="neutral" variant="outline">{{ statusLabel(item.status) }}</UBadge>
+              <UBadge
+                :color="item.reason === 'CLINICIAN_LEFT' ? 'warning' : 'neutral'"
+                variant="subtle"
+              >
+                {{ reasonLabel(item) }}
+              </UBadge>
+            </div>
           </div>
 
           <h3

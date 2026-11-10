@@ -27,13 +27,13 @@ beforeEach(() => {
 })
 
 describe('listClientsNeedingReassignment', () => {
-  it('only queries ACTIVE clients with no clinician or a non-clinician', async () => {
+  it('queries non-archived clients with no clinician or a non-clinician', async () => {
     findMany.mockResolvedValue([])
     await listClientsNeedingReassignment()
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
-          status: 'ACTIVE',
+          status: { not: 'ARCHIVED' },
           OR: [{ clinicianUserId: null }, { clinician: { role: { not: 'CLINICIAN' } } }],
         },
       })
@@ -45,6 +45,7 @@ describe('listClientsNeedingReassignment', () => {
       {
         id: 'c1',
         userId: 'u1',
+        status: 'ACTIVE',
         clinicianUserId: 'former-clinician',
         user: { name: 'Alex', email: 'alex@x.test' },
         clinician: { name: 'Dr. Gone' },
@@ -52,6 +53,7 @@ describe('listClientsNeedingReassignment', () => {
       {
         id: 'c2',
         userId: 'u2',
+        status: 'ACTIVE',
         clinicianUserId: null,
         user: { name: 'Blair', email: 'blair@x.test' },
         clinician: null,
@@ -74,5 +76,21 @@ describe('listClientsNeedingReassignment', () => {
       previousClinicianName: null,
     })
     expect(result[0]?.recommendations.map((r) => r.clinicianUserId)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('lists ACTIVE clients before waitlisted/incomplete ones', async () => {
+    const row = (id: string, status: string) => ({
+      id,
+      userId: id,
+      status,
+      clinicianUserId: null,
+      user: { name: id, email: `${id}@x.test` },
+      clinician: null,
+    })
+    findMany.mockResolvedValue([row('w', 'WAITLIST'), row('a', 'ACTIVE'), row('i', 'INCOMPLETE')])
+    rank.mockResolvedValue([])
+
+    const result = await listClientsNeedingReassignment()
+    expect(result.map((r) => r.clientUserId)).toEqual(['a', 'w', 'i'])
   })
 })
