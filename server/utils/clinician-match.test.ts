@@ -164,4 +164,52 @@ describe('rankCliniciansForClient', () => {
     expect(result[0].score).toBe(0)
     expect(Number.isFinite(result[0].score)).toBe(true)
   })
+
+  it("excludes the client's current clinician from recommendations", async () => {
+    clientFindUnique.mockResolvedValue({
+      id: 'client-1',
+      clinicianUserId: 'clinician-current',
+      tags: [{ tagId: 'trauma', weight: 5 }],
+    })
+    userFindMany.mockResolvedValue([])
+
+    await rankCliniciansForClient('client-1')
+    expect(userFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { role: 'CLINICIAN', id: { not: 'clinician-current' } },
+      })
+    )
+  })
+
+  it('does not filter by id when the client has no current clinician', async () => {
+    clientFindUnique.mockResolvedValue({
+      id: 'client-1',
+      clinicianUserId: null,
+      tags: [{ tagId: 'trauma', weight: 5 }],
+    })
+    userFindMany.mockResolvedValue([])
+
+    await rankCliniciansForClient('client-1')
+    expect(userFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { role: 'CLINICIAN' } })
+    )
+  })
+
+  it('clamps out-of-range weights so scores stay within 0-1', async () => {
+    clientFindUnique.mockResolvedValue({
+      id: 'client-1',
+      tags: [{ tagId: 'trauma', weight: 5 }],
+    })
+    userFindMany.mockResolvedValue([
+      {
+        id: 'clinician-bad-data',
+        name: 'Dr. Bad Data',
+        clinicianTags: [{ tagId: 'trauma', weight: 99 }],
+        _count: { assignedClients: 0 },
+      },
+    ])
+
+    const result = await rankCliniciansForClient('client-1')
+    expect(result[0].score).toBe(1)
+  })
 })

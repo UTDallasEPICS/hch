@@ -13,7 +13,14 @@ export type ClinicianMatch = {
   currentCaseload: number
 }
 
+const MIN_WEIGHT = 1
 const MAX_WEIGHT = 5
+
+/** Weights are 1-5 by convention but not enforced by the DB; clamp so a bad
+ * row can't push a score above 1 or below 0. */
+function clampWeight(weight: number): number {
+  return Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, weight))
+}
 
 /**
  * Ranks every clinician against a client's weighted tags (personality +
@@ -26,6 +33,9 @@ const MAX_WEIGHT = 5
  * clinician cover what this client needs" score. A clinician's tags that the
  * client doesn't have contribute nothing -- this intentionally does not
  * penalize a clinician for having a broad skill set unrelated to this client.
+ *
+ * The client's current clinician is excluded: this is a *re*assignment
+ * recommendation, so the person being replaced should never be suggested.
  *
  * Clinicians with zero matching tags are still included, at score 0, so the
  * admin queue can show a complete list rather than an empty one when no
@@ -40,12 +50,20 @@ export async function rankCliniciansForClient(clientId: string): Promise<Clinici
     throw new Error(`Client not found: ${clientId}`)
   }
 
-  const clientWeightByTagId = new Map<string, number>(client.tags.map((t) => [t.tagId, t.weight]))
+  const clientWeightByTagId = new Map<string, number>(
+    client.tags.map((t) => [t.tagId, clampWeight(t.weight)])
+  )
 
-  const totalPossibleWeight = client.tags.reduce((sum, t) => sum + t.weight * MAX_WEIGHT, 0)
+  const totalPossibleWeight = [...clientWeightByTagId.values()].reduce(
+    (sum, w) => sum + w * MAX_WEIGHT,
+    0
+  )
 
   const clinicians = await prisma.user.findMany({
-    where: { role: 'CLINICIAN' },
+    where: {
+      role: 'CLINICIAN',
+      ...(client.clinicianUserId ? { id: { not: client.clinicianUserId } } : {}),
+    },
     select: {
       id: true,
       name: true,
@@ -60,7 +78,7 @@ export async function rankCliniciansForClient(clientId: string): Promise<Clinici
     for (const ct of clinician.clinicianTags) {
       const clientWeight = clientWeightByTagId.get(ct.tagId)
       if (clientWeight !== undefined) {
-        rawScore += clientWeight * ct.weight
+        rawScore += clientWeight * clampWeight(ct.weight)
         matchedTagCount += 1
       }
     }
