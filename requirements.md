@@ -1,7 +1,7 @@
 # Requirements
 
-These are the Hope Cope Heal requirements for this project. REQ-F-08 and REQ-F-09
-are in progress. REQ-F-01 is paused. REQ-F-04 is under review. Everything else has
+These are the Hope Cope Heal requirements for this project. REQ-F-08, REQ-F-09, and
+REQ-F-11 are in progress. REQ-F-01 is paused. REQ-F-04 is under review. Everything else has
 not been started. Encrypted files remain a later part of REQ-F-01.
 
 ## 1. Requirement Matrix
@@ -23,7 +23,7 @@ Use the matrix below to track requirements throughout the project lifecycle.
 | REQ-F-08 | Alerts for appointment and session changes go only to the assigned clinician and client. External referral requests go to an admin queue before anyone else is notified. Clinician and client alerts are still to do.             | In-progress     | 2026W           | #118 (open), broken down in #120–#127. `prisma/schema/notes.prisma` (`Notification`), `server/utils/notifications.ts`, `server/api/notifications/*`                                          |
 | REQ-F-09 | Patients book from the clinician's open times, synced with Google Workspace. A client can request a meeting today, but there is no smooth booking flow.                                                                            | In-progress     | 2026W           | #119 (open). Request flow already shipped: #66 (closed). `server/api/client/schedule-requests.post.ts`, `server/api/client/schedule-requests/[id].patch.ts`, `server/api/appointments/*` |
 | REQ-F-10 | Isolated cloud storage with strict access rules and encryption for sensitive medical documents and cancer-history proofs (HIPAA).                                                                                                  | Not started yet | 2026W           | —                                                                                                                                                                                             |
-| REQ-F-11 | Admin metrics (total clients, cumulative hours, month-over-month growth) and exportable per-clinician session-duration logs. Not yet: cumulative therapy hours, growth, or a per-clinician session-duration log.                  | Not started yet | 2026W           | #39 (closed) for the current dashboard. `server/api/clients/metrics.get.ts`, `server/api/admin/dashboard-stats.get.ts`, `server/api/clients/counts.get.ts`, `server/api/audits/index.get.ts` |
+| REQ-F-11 | Admin metrics (total clients, cumulative hours, month-over-month growth) and exportable per-clinician session-duration logs. Not yet: cumulative therapy hours, growth, or a per-clinician session-duration log.                  | In-progress     | 2026W           | #211 (open), broken down in #212–#219. Definitions: `docs/session-log-metrics.md`. Current dashboard: #39 (closed), `server/api/clients/metrics.get.ts`, `server/api/admin/dashboard-stats.get.ts` |
 
 ## 2. Change Log
 
@@ -43,3 +43,4 @@ Track major changes, additions, or deprecations to the project scope.
 | 2026-10-15 | REQ-F-08 | #126: one clinic timezone (America/Chicago, set by `CLINIC_TIME_ZONE`) for all appointment times, no per-user timezones. Booking and request times are read in clinic time so the server's own timezone no longer matters, and recurring sessions keep the same clock time across DST (In review) | Ankitha, Afreen | — |
 | 2026-10-21 | REQ-F-08 | #127: notification policy doc (unassigned rule, series behavior, quiet hours 11pm–6am, 24h reminder, channels) (In review) | Ankitha, Afreen | — |
 | 2026-10-21 | REQ-F-08 | #189: show notification panel on the client dashboard (In review) | Ankitha, Afreen | — |
+| 2026-11-17 | REQ-F-11 | In progress. #212: definitions for the session log and admin metrics (what counts as an hour, clinician of record, growth formula, immutability, export and access rules) in `docs/session-log-metrics.md` (In review) | Lokesh | — |
