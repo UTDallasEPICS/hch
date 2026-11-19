@@ -33,6 +33,7 @@ model User {
   client                                Client?
   assignedClients                       Client[]                               @relation("ClinicianClients")
   changeAudits                          ChangeAudit[]
+  calendarConnections                  CalendarConnection[]
   sessionNotesRequestsDecided           SessionNotesRequest[]
   appointmentsAsClient                  Appointment[]                          @relation("ClientAppointments")
   appointmentsAsAdmin                   Appointment[]                          @relation("AdminAppointments")

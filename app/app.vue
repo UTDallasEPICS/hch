@@ -56,6 +56,7 @@
     () => route.path === '/clients' || route.path.startsWith('/clients/')
   )
   const isCalendarPage = computed(() => route.path === '/calendar')
+  const isSettingsPage = computed(() => route.path === '/settings' || route.path.startsWith('/settings/'))
   /** Temporary: notes playground until session notes are wired in the app flow */
   const isNotesTestPage = computed(
     () => route.path === '/notes-test' || route.path.startsWith('/notes-test/')
@@ -188,6 +189,13 @@
                   class="shrink-0"
                   :variant="isStaffPage ? 'solid' : 'soft'"
                   @click="goTo('/staff')"
+                />
+                <UButton
+                  label="Settings"
+                  color="primary"
+                  class="shrink-0"
+                  :variant="isSettingsPage ? 'solid' : 'soft'"
+                  @click="goTo('/settings')"
                 />
               </div>
               <UButton

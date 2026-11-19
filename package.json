@@ -8,6 +8,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
+    "test": "tsx --test tests/**/*.test.ts",
     "prisma:reset": "prisma migrate reset -f && prisma db seed",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
