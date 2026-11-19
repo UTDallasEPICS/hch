@@ -43,3 +43,4 @@ Track major changes, additions, or deprecations to the project scope.
 | 2026-10-15 | REQ-F-08 | #126: one clinic timezone (America/Chicago, set by `CLINIC_TIME_ZONE`) for all appointment times, no per-user timezones. Booking and request times are read in clinic time so the server's own timezone no longer matters, and recurring sessions keep the same clock time across DST (In review) | Ankitha, Afreen | — |
 | 2026-10-21 | REQ-F-08 | #127: notification policy doc (unassigned rule, series behavior, quiet hours 11pm–6am, 24h reminder, channels) (In review) | Ankitha, Afreen | — |
 | 2026-10-21 | REQ-F-08 | #189: show notification panel on the client dashboard (In review) | Ankitha, Afreen | — |
+| 2026-10-21 | REQ-F-08 | #191: branded, role-specific appointment emails with HCH logo header (In review) | Ankitha, Afreen | — |
