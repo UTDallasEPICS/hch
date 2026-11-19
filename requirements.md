@@ -44,3 +44,4 @@ Track major changes, additions, or deprecations to the project scope.
 | 2026-10-21 | REQ-F-08 | #127: notification policy doc (unassigned rule, series behavior, quiet hours 11pm–6am, 24h reminder, channels) (In review) | Ankitha, Afreen | — |
 | 2026-10-21 | REQ-F-08 | #189: show notification panel on the client dashboard (In review) | Ankitha, Afreen | — |
 | 2026-11-17 | REQ-F-11 | In progress. #212: definitions for the session log and admin metrics (what counts as an hour, clinician of record, growth formula, immutability, export and access rules) in `docs/session-log-metrics.md` (In review) | Lokesh | — |
+| 2026-11-19 | REQ-F-11 | #213: append-only `session_log` and `session_log_export` tables. SQLite triggers reject update and delete, and keep each note's rows in one chain (In review) | Lokesh | — |
