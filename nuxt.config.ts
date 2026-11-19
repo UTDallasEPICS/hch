@@ -4,6 +4,18 @@ export default defineNuxtConfig({
   builder: 'vite',
   devtools: { enabled: true },
 
+  // ITS support widget. The script self-mounts an <its-widget> element.
+  app: {
+    head: {
+      script: [
+        {
+          src: 'https://support-stage.npts.tech/widget/v1/its-widget.js',
+          defer: true,
+        },
+      ],
+    },
+  },
+
   // Port for the dev server, set via PORT in .env (defaults to 3000).
   // The built production server (node server/index.mjs) reads PORT/NITRO_PORT
   // at runtime, so the same variable controls both dev and production.
