@@ -3,6 +3,7 @@ import { assertCanAccessClient } from '../../../../../utils/clinician-access'
 import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { prisma } from '../../../../../utils/prisma'
 import { notifyUser } from '../../../../../utils/notifications'
+import { recordSessionLog } from '../../../../../utils/session-log'
 
 /**
  * Admin-only final sign-off on a clinician-signed session note.
@@ -57,21 +58,26 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const updated = await prisma.sessionNote.update({
-    where: { id: note.id },
-    data: {
-      status: 'FULLY_APPROVED',
-      adminSignedAt: new Date(),
-      adminSignedById: user.id,
-      adminSignatureData: sig,
-      adminApprovalNote: body?.approvalNote?.trim() || null,
-    },
-    select: {
-      id: true,
-      status: true,
-      adminSignedAt: true,
-      attendanceStatus: true,
-    },
+  const updated = await prisma.$transaction(async (tx) => {
+    const saved = await tx.sessionNote.update({
+      where: { id: note.id },
+      data: {
+        status: 'FULLY_APPROVED',
+        adminSignedAt: new Date(),
+        adminSignedById: user.id,
+        adminSignatureData: sig,
+        adminApprovalNote: body?.approvalNote?.trim() || null,
+      },
+      select: {
+        id: true,
+        status: true,
+        adminSignedAt: true,
+        attendanceStatus: true,
+      },
+    })
+    // REQ-F-11: the log keeps the approval so the export shows admin-approved sessions.
+    await recordSessionLog(tx, { sessionNoteId: note.id, recordedById: user.id })
+    return saved
   })
 
   if (note.clinicianSignedById) {

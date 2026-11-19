@@ -4,6 +4,7 @@ import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { prisma } from '../../../../utils/prisma'
 import { notifyAdmins } from '../../../../utils/notifications'
 import { formatStoredUserNameForDisplay } from '../../../../utils/name'
+import { recordSessionLog } from '../../../../utils/session-log'
 
 function canEditOnOrAfterSessionDay(sessionStart: Date, now = new Date()) {
   const sessionDay = new Date(sessionStart)
@@ -87,19 +88,20 @@ export default defineEventHandler(async (event) => {
   const wasSignedOrApproved = note.status === 'CLINICIAN_SIGNED' || note.status === 'FULLY_APPROVED'
   const resignAndResetApproval = wasSignedOrApproved && (contentChanged || willUpdateAttendance)
 
-  const [, updated] = await prisma.$transaction([
-    prisma.sessionNoteEdit.create({
+  const reason = body.reason.trim()
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.sessionNoteEdit.create({
       data: {
         sessionNoteId: note.id,
         originalContent: note.content,
         editedContent: newContent,
         oldAttendanceStatus: note.attendanceStatus,
         newAttendanceStatus: body.attendanceStatus ?? note.attendanceStatus,
-        reason: body.reason.trim(),
+        reason,
         signature: signatureStored,
       },
-    }),
-    prisma.sessionNote.update({
+    })
+    const saved = await tx.sessionNote.update({
       where: { id: note.id },
       data: {
         content: newContent,
@@ -116,8 +118,11 @@ export default defineEventHandler(async (event) => {
           adminApprovalNote: null,
         }),
       },
-    }),
-  ])
+    })
+    // REQ-F-11: a changed attendance or a re-sign is a correction to the logged hours.
+    await recordSessionLog(tx, { sessionNoteId: note.id, recordedById: user.id, reason })
+    return saved
+  })
 
   if (resignAndResetApproval) {
     await notifyAdmins({

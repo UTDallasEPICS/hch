@@ -1,21 +1,12 @@
 import Database from 'better-sqlite3'
-import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { applyMigrations } from '../test-helpers/test-db'
 
 // Runs the real migrations on an in-memory SQLite DB, so these tests check the
 // triggers that actually ship, not a copy of them.
-const MIGRATIONS_DIR = fileURLToPath(new URL('../../prisma/migrations', import.meta.url))
-
 function migratedDb() {
   const db = new Database(':memory:')
-  const dirs = readdirSync(MIGRATIONS_DIR)
-    .filter((name) => /^\d+_/.test(name))
-    .sort()
-  for (const dir of dirs) {
-    db.exec(readFileSync(join(MIGRATIONS_DIR, dir, 'migration.sql'), 'utf8'))
-  }
+  applyMigrations(db)
   return db
 }
 
