@@ -1,0 +1,47 @@
+// REQ-F-02: patient-managed medication and trauma history (#221).
+// Keyed off Client.id (not User.id) to match ClientPermission/ClientPlan/
+// ClientTag. Clients own these records; assigned clinician + admin get
+// read-only access (enforced in the API layer, see #223).
+
+model MedicationHistory {
+  id         String    @id @default(cuid())
+  clientId   String
+  name       String
+  dosage     String
+  frequency  String
+  prescriber String?
+  startDate  DateTime
+  endDate    DateTime?
+  notes      String?
+
+  // Optional proof file (e.g. prescription or pharmacy label), same approach
+  // as ChangeAudit.documentationPath / documentationName (#225).
+  proofPath String? // Stored file path (random filename)
+  proofName String? // Original filename for display
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@map("medication_history")
+}
+
+model TraumaHistory {
+  id              String    @id @default(cuid())
+  clientId        String
+  // Free text for now; may become an enum once the category list is agreed
+  // (open question in #221).
+  category        String
+  description     String
+  approximateDate DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@map("trauma_history")
+}
