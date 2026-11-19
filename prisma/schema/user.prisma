@@ -36,6 +36,8 @@ model User {
   sessionNotesRequestsDecided           SessionNotesRequest[]
   appointmentsAsClient                  Appointment[]                          @relation("ClientAppointments")
   appointmentsAsAdmin                   Appointment[]                          @relation("AdminAppointments")
+  clinicianAvailabilitySlots            AvailabilitySlot[]                     @relation("ClinicianAvailabilitySlots")
+  availabilitySlotsCreated              AvailabilitySlot[]                     @relation("AvailabilitySlotsCreatedBy")
   clientScheduleRequests                AppointmentScheduleRequest[]           @relation("ClientScheduleRequests")
   staffScheduleRequestDecisions         AppointmentScheduleRequest[]           @relation("StaffScheduleRequestDecisions")
   physicianStatementForm                PhysicianStatementForm?
@@ -46,6 +48,13 @@ model User {
   clinicianSignedNotes SessionNote[] @relation("ClinicianSignedNotes")
   adminSignedNotes     SessionNote[] @relation("AdminSignedNotes")
   notifications        Notification[] @relation("UserNotifications")
+
+  // Weighted tags for clinician-client matching (REQ-F-05)
+  clinicianTags ClinicianTag[]
+
+  clientConversation Conversation?      @relation("ClientConversation")
+  sentMessages       Message[]          @relation("SentMessages")
+  messageAccessLogs  MessageAccessLog[] @relation("MessageAccessLogs")
 
   @@unique([email])
   @@map("user")

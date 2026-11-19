@@ -3,11 +3,16 @@ import { assertStaffCanAccessClient } from '../../utils/clinician-access'
 import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../utils/prisma'
-import { sendAppEmail } from '../../utils/mail'
+import {
+  formatAppointmentTimeRange,
+  sendAppEmail,
+  sendAppointmentConfirmationEmail,
+} from '../../utils/mail'
 import { formatStoredUserNameInitials } from '../../utils/name'
 import { createStaffAppointment } from '../../utils/create-staff-appointment'
 import { notifyUser, resolveAppointmentRecipients } from '../../utils/notifications'
 import { sendAppointmentEmails } from '../../utils/appointment-emails'
+import { formatClinicTime } from '../../utils/clinic-time'
 
 const bodySchema = z
   .object({
@@ -73,7 +78,7 @@ export default defineEventHandler(async (event) => {
   const greeting =
     clientInitials.length > 0 ? `<p>Hello ${escapeHtml(clientInitials)},</p>` : '<p>Hello,</p>'
 
-  const rangeHtml = `<p><strong>Requested time:</strong> ${escapeHtml(formatRange(start, end))}</p>`
+  const rangeHtml = `<p><strong>Requested time:</strong> ${escapeHtml(formatAppointmentTimeRange(start, end))}</p>`
 
   if (parsed.data.action === 'deny') {
     const note = String(parsed.data.staffResponseNote ?? '').trim()
@@ -130,11 +135,7 @@ export default defineEventHandler(async (event) => {
   // Notify client + assigned clinician (or admins if unassigned)
   try {
     const recipients = await resolveAppointmentRecipients(req.clientId)
-    const when = start.toLocaleString('en-US', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-      timeZone: 'America/Chicago',
-    })
+    const when = formatClinicTime(start)
     for (const userId of recipients) {
       await notifyUser({
         userId,
@@ -152,16 +153,16 @@ export default defineEventHandler(async (event) => {
     console.error('[schedule-requests] booking notification failed', err)
   }
 
-  await sendAppEmail({
-    to: req.client.email,
-    subject: '[HCH] Session time approved',
-    html: `
-      ${greeting}
-      <p>Your requested session time has been <strong>approved</strong> and added to the calendar.</p>
-      ${rangeHtml}
-      <p>Sign in to the client portal and open <strong>Calendar</strong> to see the confirmed appointment.</p>
-    `,
-  })
+  try {
+    await sendAppointmentConfirmationEmail({
+      to: req.client.email,
+      startTime: start,
+      endTime: end,
+      clientName: clientInitials,
+    })
+  } catch (err) {
+    console.error('[schedule-requests] confirmation email failed', err)
+  }
 
   return {
     id,
@@ -178,14 +179,3 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;')
 }
 
-function formatRange(start: Date, end: Date): string {
-  const d = new Intl.DateTimeFormat('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(start)
-  const t0 = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(start)
-  const t1 = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(end)
-  return `${d} · ${t0} – ${t1}`
-}

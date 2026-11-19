@@ -1,0 +1,59 @@
+enum TagCategory {
+  PERSONALITY
+  EXPERTISE
+}
+
+// A single tag in the taxonomy, e.g. "Trauma-informed" (EXPERTISE) or
+// "Direct communicator" (PERSONALITY). Shared across all clinicians/clients —
+// not per-user — so the matching algorithm (REQ-F-05b) compares against a
+// fixed, consistent vocabulary rather than free text.
+model Tag {
+  id        String      @id @default(cuid())
+  name      String
+  category  TagCategory
+  createdAt DateTime    @default(now())
+
+  clinicianTags ClinicianTag[]
+  clientTags    ClientTag[]
+
+  @@unique([name, category])
+  @@map("tag")
+}
+
+// How strongly a tag applies to a given clinician. Weight is 1-5 (not 0-1)
+// so it's easy for an admin to set via a star-rating-style control in the
+// tag management UI (REQ-F-05a.2); the matching algorithm normalizes as
+// needed when scoring.
+model ClinicianTag {
+  id        String   @id @default(cuid())
+  userId    String
+  tagId     String
+  weight    Int      @default(3) // 1 (slight) - 5 (strong)
+  createdAt DateTime @default(now())
+
+  clinician User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tag       Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tagId])
+  @@index([userId])
+  @@index([tagId])
+  @@map("clinician_tag")
+}
+
+// How strongly a tag applies to a given client. Keyed off Client.id (not
+// User.id) to match the existing pattern used by ClientPermission/ClientPlan.
+model ClientTag {
+  id        String   @id @default(cuid())
+  clientId  String
+  tagId     String
+  weight    Int      @default(3) // 1 (slight) - 5 (strong)
+  createdAt DateTime @default(now())
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, tagId])
+  @@index([clientId])
+  @@index([tagId])
+  @@map("client_tag")
+}
