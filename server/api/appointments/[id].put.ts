@@ -7,6 +7,7 @@ import type { VideoConferenceProvider } from '../../../prisma/generated/enums'
 import { MAX_RECURRING_OCCURRENCES } from '../../utils/appointment-constants'
 import { emailUsers, notifyUser, resolveAppointmentRecipients } from '../../utils/notifications'
 import { addClinicTime, clinicDateTime, formatClinicTime } from '../../utils/clinic-time'
+import { recordSessionLogForAppointments } from '../../utils/session-log'
 
 function sanitizeNamePart(part: string | null | undefined) {
   const normalized = (part ?? '').trim().replace(/\s+/g, '_')
@@ -55,7 +56,7 @@ function getOccurrencesUntilEndDate(
   return count
 }
 export default defineEventHandler(async (event) => {
-  requireStaff(event)
+  const user = requireStaff(event)
 
   try {
     const id = getRouterParam(event, 'id')
@@ -371,6 +372,23 @@ export default defineEventHandler(async (event) => {
         }
       }
     }
+    // REQ-F-11: moving a session whose note is already signed corrects the logged hours.
+    // Re-checking the whole series is safe: notes whose logged times match write nothing.
+    if (
+      existing.startTime.getTime() !== startTimeDate.getTime() ||
+      existing.endTime.getTime() !== endTimeDate.getTime()
+    ) {
+      const moved = await prisma.appointment.findMany({
+        where: seriesId ? { OR: [{ id }, { seriesId }] } : { id },
+        select: { id: true },
+      })
+      await recordSessionLogForAppointments(prisma, {
+        appointmentIds: moved.map((a) => a.id),
+        recordedById: user.id,
+        reason: 'Appointment time changed',
+      })
+    }
+
     // Notify only if the time actually changed (not description/video edits)
     try {
       const timeChanged =

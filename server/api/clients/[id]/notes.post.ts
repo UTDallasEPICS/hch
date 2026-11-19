@@ -4,6 +4,7 @@ import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { formatStoredUserNameForDisplay } from '../../../utils/name'
 import { notifyAdmins } from '../../../utils/notifications'
+import { recordSessionLog } from '../../../utils/session-log'
 import type { SessionNoteKind, SessionNoteStatus } from '../../../../prisma/generated/enums'
 
 function canEditOnOrAfterSessionDay(sessionStart: Date, now = new Date()) {
@@ -180,16 +181,16 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    const [, updated] = await prisma.$transaction([
-      prisma.sessionNoteEdit.create({
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.sessionNoteEdit.create({
         data: {
           sessionNoteId: existingNote.id,
           originalContent: existingNote.content,
           reason: body.reason?.trim() || (action === 'save-draft' ? 'Draft save' : 'Re-signed'),
           signature: clinicianSignature ?? null,
         },
-      }),
-      prisma.sessionNote.update({
+      })
+      const saved = await tx.sessionNote.update({
         where: { id: existingNote.id },
         data: {
           content,
@@ -203,8 +204,15 @@ export default defineEventHandler(async (event) => {
           adminSignatureData: null,
           adminApprovalNote: null,
         },
-      }),
-    ])
+      })
+      // REQ-F-11: signing, re-signing, or un-signing changes the clinician's logged hours.
+      await recordSessionLog(tx, {
+        sessionNoteId: existingNote.id,
+        recordedById: user.id,
+        reason: body.reason,
+      })
+      return saved
+    })
 
     if (action === 'clinician-sign') {
       await notifyAdmins({
@@ -218,18 +226,23 @@ export default defineEventHandler(async (event) => {
     return updated
   }
 
-  const created = await prisma.sessionNote.create({
-    data: {
-      clientId: client.id,
-      content,
-      attendanceStatus,
-      kind,
-      status: nextStatus,
-      appointmentId: appointment.id,
-      sessionName: appointment.sessionName,
-      sessionNumber: appointment.sessionNumber,
-      ...clinicianFields,
-    },
+  const clientRowId = client.id
+  const created = await prisma.$transaction(async (tx) => {
+    const note = await tx.sessionNote.create({
+      data: {
+        clientId: clientRowId,
+        content,
+        attendanceStatus,
+        kind,
+        status: nextStatus,
+        appointmentId: appointment.id,
+        sessionName: appointment.sessionName,
+        sessionNumber: appointment.sessionNumber,
+        ...clinicianFields,
+      },
+    })
+    await recordSessionLog(tx, { sessionNoteId: note.id, recordedById: user.id })
+    return note
   })
 
   if (action === 'clinician-sign') {
