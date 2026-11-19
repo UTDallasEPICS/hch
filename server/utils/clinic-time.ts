@@ -159,3 +159,15 @@ export function clinicMonthKey(instant: Date, timeZone = CLINIC_TIME_ZONE): stri
   const w = wallTimeOf(instant, timeZone)
   return `${w.year}-${String(w.month).padStart(2, '0')}`
 }
+
+/** "2026-10-20": the date on the clinic wall calendar at this instant. */
+export function formatClinicDate(instant: Date, timeZone = CLINIC_TIME_ZONE): string {
+  const w = wallTimeOf(instant, timeZone)
+  return `${w.year}-${String(w.month).padStart(2, '0')}-${String(w.day).padStart(2, '0')}`
+}
+
+/** "14:05": the 24-hour clinic wall-clock time at this instant. */
+export function formatClinicClock(instant: Date, timeZone = CLINIC_TIME_ZONE): string {
+  const w = wallTimeOf(instant, timeZone)
+  return `${String(w.hour).padStart(2, '0')}:${String(w.minute).padStart(2, '0')}`
+}

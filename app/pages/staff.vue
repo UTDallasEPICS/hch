@@ -176,7 +176,7 @@
             <th class="px-4 py-3 font-medium">Name</th>
             <th class="px-4 py-3 font-medium">Email</th>
             <th class="w-48 px-4 py-3 font-medium">Role</th>
-            <th class="w-16 px-4 py-3 text-right font-medium">Edit</th>
+            <th class="w-24 px-4 py-3 text-right font-medium">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
@@ -204,7 +204,16 @@
                 @update:model-value="(val: Role) => changeRole(user, val)"
               />
             </td>
-            <td class="px-4 py-3 text-right">
+            <td class="px-4 py-3 text-right whitespace-nowrap">
+              <UButton
+                v-if="user.role !== 'CLIENT'"
+                icon="i-heroicons-clock"
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                :to="`/session-log?clinician=${user.id}`"
+                :aria-label="`Session log for ${user.email}`"
+              />
               <UButton
                 icon="i-heroicons-pencil-square"
                 color="neutral"
