@@ -401,6 +401,14 @@
       </div>
       <div class="flex flex-wrap items-center gap-3">
         <NuxtLink
+          v-if="isAdminViewer"
+          to="/clients/metrics"
+          class="text-primary-600 hover:text-primary-700 dark:text-primary-400 inline-flex items-center gap-2 text-sm font-medium"
+        >
+          <UIcon name="i-heroicons-chart-bar" class="h-4 w-4" />
+          Metrics
+        </NuxtLink>
+        <NuxtLink
           to="/clients/session-notes-requests"
           class="text-primary-600 hover:text-primary-700 dark:text-primary-400 inline-flex items-center gap-2 text-sm font-medium"
         >

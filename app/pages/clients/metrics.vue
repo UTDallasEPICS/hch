@@ -32,6 +32,58 @@
     getCachedData: () => undefined,
   })
 
+  // REQ-F-11 session metrics: admin only (the API returns 403 for clinicians).
+  type OrgMonth = {
+    month: string
+    label: string
+    hours: number
+    clientsServed: number
+    partial: boolean
+  }
+
+  const { data: role } = await useFetch<{ isAdmin: boolean }>('/api/users/me/is-admin', {
+    key: 'metrics-role',
+  })
+  const isAdminViewer = computed(() => role.value?.isAdmin === true)
+
+  const {
+    data: org,
+    pending: orgPending,
+    error: orgError,
+  } = await useFetch<{
+    timeZone: string
+    totals: {
+      clientsServed: number
+      activeClients: number
+      cumulativeHours: number
+      sessions: number
+    }
+    months: OrgMonth[]
+    lastFullMonth: OrgMonth & {
+      hoursGrowthPct: number | null
+      clientsServedGrowthPct: number | null
+    }
+  }>('/api/admin/org-metrics', {
+    key: 'org-metrics',
+    immediate: isAdminViewer.value,
+    getCachedData: () => undefined,
+  })
+
+  function growthLabel(pct: number | null) {
+    if (pct === null) return '—'
+    return `${pct > 0 ? '+' : ''}${pct}%`
+  }
+
+  function growthColor(pct: number | null) {
+    if (pct === null || pct === 0) return 'neutral' as const
+    return pct > 0 ? ('success' as const) : ('error' as const)
+  }
+
+  function growthIcon(pct: number | null) {
+    if (pct === null || pct === 0) return undefined
+    return pct > 0 ? 'i-heroicons-arrow-trending-up' : 'i-heroicons-arrow-trending-down'
+  }
+
   const clientCount = computed(() => metrics.value?.totalClients ?? 0)
   const metricsYear = computed(() => metrics.value?.year ?? new Date().getFullYear())
   const monthlyProgramFlow = computed(() => metrics.value?.monthlyProgramFlow ?? [])
@@ -112,6 +164,83 @@
           </article>
         </div>
       </section>
+
+      <section
+        v-if="isAdminViewer"
+        class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+      >
+        <div class="mb-5 flex items-center gap-2">
+          <UIcon name="i-heroicons-clock" class="h-5 w-5 text-gray-500 dark:text-gray-400" />
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">Sessions and hours</h2>
+        </div>
+
+        <USkeleton v-if="orgPending" class="h-36 rounded-xl" />
+
+        <UAlert
+          v-else-if="orgError"
+          icon="i-heroicons-exclamation-triangle-20-solid"
+          color="error"
+          variant="subtle"
+          title="Error loading session metrics"
+          :description="orgError.message"
+        />
+
+        <template v-else-if="org">
+          <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricTile
+              label="Total clients served"
+              :value="org.totals.clientsServed"
+              unit="clients"
+              hint="At least one attended, signed session"
+            />
+            <MetricTile
+              label="Active clients"
+              :value="org.totals.activeClients"
+              unit="clients"
+              hint="Status is Active today"
+            />
+            <MetricTile
+              label="Cumulative hours"
+              :value="org.totals.cumulativeHours"
+              unit="hours"
+              :hint="`${org.totals.sessions} sessions`"
+            />
+            <MetricTile
+              :label="`Hours in ${org.lastFullMonth.label}`"
+              :value="org.lastFullMonth.hours"
+              unit="hours"
+            >
+              <template #badge>
+                <UBadge
+                  :color="growthColor(org.lastFullMonth.hoursGrowthPct)"
+                  :icon="growthIcon(org.lastFullMonth.hoursGrowthPct)"
+                  variant="subtle"
+                  size="sm"
+                  class="mb-1"
+                >
+                  {{ growthLabel(org.lastFullMonth.hoursGrowthPct) }}
+                </UBadge>
+              </template>
+              <template #hint>
+                {{ org.lastFullMonth.clientsServed }} clients served ({{
+                  growthLabel(org.lastFullMonth.clientsServedGrowthPct)
+                }}) vs the month before
+              </template>
+            </MetricTile>
+          </div>
+          <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
+            Counts signed session notes marked Show, by session date in clinic time ({{
+              org.timeZone
+            }}). Growth compares the last full month with the one before it.
+          </p>
+        </template>
+      </section>
+
+      <SessionHoursMonthlyChart
+        v-if="isAdminViewer && org && !orgPending && !orgError"
+        class="mt-6"
+        :months="org.months"
+      />
 
       <ApplicationMetricsMonthlyBarChart
         v-if="monthlyProgramFlow.length"
