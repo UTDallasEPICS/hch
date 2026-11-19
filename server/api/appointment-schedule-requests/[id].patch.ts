@@ -6,6 +6,7 @@ import { prisma } from '../../utils/prisma'
 import { sendAppEmail } from '../../utils/mail'
 import { formatStoredUserNameInitials } from '../../utils/name'
 import { createStaffAppointment } from '../../utils/create-staff-appointment'
+import { syncAppointmentUpsert, syncAppointmentDelete } from '../../utils/googleCalendarSync'
 
 const bodySchema = z
   .object({
@@ -85,6 +86,10 @@ export default defineEventHandler(async (event) => {
       },
     })
 
+    if (req.createdAppointmentId) {
+      await syncAppointmentDelete(req.createdAppointmentId)
+    }
+
     await sendAppEmail({
       to: req.client.email,
       subject: '[HCH] Session time request update',
@@ -125,6 +130,8 @@ export default defineEventHandler(async (event) => {
 
     return appt
   })
+
+  await syncAppointmentUpsert(appointment.id)
 
   await sendAppEmail({
     to: req.client.email,

@@ -1,6 +1,7 @@
 import { requireStaff } from '../../utils/guard'
 import { assertStaffCanAccessClient } from '../../utils/clinician-access'
 import { prisma } from '../../utils/prisma'
+import { syncAppointmentDelete } from '../../utils/googleCalendarSync'
 import { createError, defineEventHandler, getRouterParam, readBody } from 'h3'
 
 export default defineEventHandler(async (event) => {
@@ -14,7 +15,6 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // keep stage auth checks
   requireStaff(event)
 
   const existing = await prisma.appointment.findUnique({
@@ -34,24 +34,35 @@ export default defineEventHandler(async (event) => {
 
   await assertStaffCanAccessClient(event, existing.clientId)
 
-  // ONE event only
   if (type === 'ONE' || !seriesId) {
+    await syncAppointmentDelete(id)
     await prisma.appointment.delete({
       where: { id },
     })
-  }
-
-  // entire series
-  else if (type === 'ALL') {
+  } else if (type === 'ALL') {
+    const toDelete = await prisma.appointment.findMany({
+      where: { seriesId },
+      select: { id: true },
+    })
+    for (const appt of toDelete) {
+      await syncAppointmentDelete(appt.id)
+    }
     await prisma.appointment.deleteMany({
+      where: { seriesId },
+    })
+  } else if (type === 'FUTURE') {
+    const toDelete = await prisma.appointment.findMany({
       where: {
         seriesId,
+        startTime: {
+          gte: new Date(startTime),
+        },
       },
+      select: { id: true },
     })
-  }
-
-  // this and future
-  else if (type === 'FUTURE') {
+    for (const appt of toDelete) {
+      await syncAppointmentDelete(appt.id)
+    }
     await prisma.appointment.deleteMany({
       where: {
         seriesId,

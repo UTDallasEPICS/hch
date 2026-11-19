@@ -5,6 +5,7 @@ import { normalizeVideoJoinUrl, parseVideoProviderInput } from '../../utils/vide
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import type { VideoConferenceProvider } from '../../../prisma/generated/enums'
 import { MAX_RECURRING_OCCURRENCES } from '../../utils/appointment-constants'
+import { syncAppointmentUpsert, syncAppointmentDelete } from '../../utils/googleCalendarSync'
 
 function sanitizeNamePart(part: string | null | undefined) {
   const normalized = (part ?? '').trim().replace(/\s+/g, '_')
@@ -61,6 +62,7 @@ function getOccurrencesUntilEndDate(
   }
   return count
 }
+
 export default defineEventHandler(async (event) => {
   requireStaff(event)
 
@@ -234,6 +236,9 @@ export default defineEventHandler(async (event) => {
       )
 
       if (toDelete.length > 0) {
+        for (const appointment of toDelete) {
+          await syncAppointmentDelete(appointment.id)
+        }
         await prisma.appointment.deleteMany({
           where: {
             id: {
@@ -322,6 +327,9 @@ export default defineEventHandler(async (event) => {
       )
 
       if (toDelete.length > 0) {
+        for (const appointment of toDelete) {
+          await syncAppointmentDelete(appointment.id)
+        }
         await prisma.appointment.deleteMany({
           where: {
             id: {
@@ -369,6 +377,18 @@ export default defineEventHandler(async (event) => {
         if (createData.length > 0) {
           await prisma.appointment.createMany({ data: createData })
         }
+      }
+    }
+
+    if (type === 'ONE' || !seriesId) {
+      await syncAppointmentUpsert(id)
+    } else if (seriesId) {
+      const seriesList = await prisma.appointment.findMany({
+        where: { seriesId },
+        select: { id: true },
+      })
+      for (const appt of seriesList) {
+        await syncAppointmentUpsert(appt.id)
       }
     }
 

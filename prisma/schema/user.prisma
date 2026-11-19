@@ -5,6 +5,7 @@ enum Role {
 }
 
 model User {
+  appointmentCalendarEvents AppointmentCalendarEvent[]
   id            String    @id
   name          String
   email         String

@@ -1,3 +1,4 @@
+import { syncAppointmentUpsert } from '../../utils/googleCalendarSync'
 import { requireStaff } from '../../utils/guard'
 import { assertStaffCanAccessClient } from '../../utils/clinician-access'
 import { prisma } from '../../utils/prisma'
@@ -235,6 +236,9 @@ export default defineEventHandler(async (event) => {
 
       return created
     })
+    for (const created of createdAppointments) {
+   await syncAppointmentUpsert(created.id)
+ }
 
     return {
       success: true,
