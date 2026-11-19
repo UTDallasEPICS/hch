@@ -153,3 +153,9 @@ export function addClinicTime(
 export function formatClinicTime(d: Date, timeZone = CLINIC_TIME_ZONE): string {
   return d.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone })
 }
+
+/** "2026-10": the month on the clinic wall calendar at this instant (REQ-F-11 metrics). */
+export function clinicMonthKey(instant: Date, timeZone = CLINIC_TIME_ZONE): string {
+  const w = wallTimeOf(instant, timeZone)
+  return `${w.year}-${String(w.month).padStart(2, '0')}`
+}
