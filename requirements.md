@@ -48,3 +48,4 @@ Track major changes, additions, or deprecations to the project scope.
 | 2026-11-19 | REQ-F-11 | #214: signing, correcting, un-signing, or approving a session note (and moving a signed session) appends a `session_log` row in the same transaction (In review) | Lokesh | — |
 | 2026-11-19 | REQ-F-11 | #215: re-runnable admin backfill (`POST /api/admin/backfill-session-log`, `?dryRun=true` to preview) that logs notes signed before the session log existed (In review) | Lokesh | — |
 | 2026-11-19 | REQ-F-11 | #216: admin-only `GET /api/admin/org-metrics` (clients served, active clients, cumulative hours, 12-month series, month-over-month growth in clinic time) computed from the session log (In review) | Lokesh | — |
+| 2026-11-19 | REQ-F-11 | #217: admin metrics page shows clients served, active clients, cumulative hours, last month's hours with growth, and a 12-month hours chart. Admin-only Metrics link on the Clients page (In review) | Lokesh | — |
