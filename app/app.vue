@@ -62,6 +62,7 @@
   )
   const isStaffPage = computed(() => route.path === '/staff' || route.path.startsWith('/staff/'))
   const isAvailabilityPage = computed(() => route.path.startsWith('/availability'))
+  const isSessionLogPage = computed(() => route.path === '/session-log')
   const isMessagesPage = computed(
     () => route.path === '/messages' || route.path.startsWith('/messages/')
   )
@@ -183,6 +184,14 @@
                   class="shrink-0"
                   :variant="isAvailabilityPage ? 'solid' : 'soft'"
                   @click="goTo('/availability')"
+                />
+                <UButton
+                  v-if="isStaff"
+                  label="Session log"
+                  color="primary"
+                  class="shrink-0"
+                  :variant="isSessionLogPage ? 'solid' : 'soft'"
+                  @click="goTo('/session-log')"
                 />
                 <UButton
                   v-if="isAdmin"
