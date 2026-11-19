@@ -21,6 +21,8 @@ model Client {
   plan                 ClientPlan?
   sessionNotesRequests SessionNotesRequest[]
   tags                 ClientTag[] // REQ-F-05 weighted tags for matching
+  medicationHistory    MedicationHistory[] // REQ-F-02
+  traumaHistory        TraumaHistory[] // REQ-F-02
 
   @@index([status])
   @@index([clinicianUserId])
