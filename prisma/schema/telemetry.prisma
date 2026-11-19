@@ -1,0 +1,63 @@
+/// REQ-F-11. Rules live in docs/session-log-metrics.md.
+enum SessionLogEvent {
+  SIGNED
+  CORRECTED
+  UNSIGNED
+  APPROVED
+  BACKFILL
+}
+
+/// Append-only snapshot of one signed session at one moment, for credentialing hours.
+/// A session's current state is its latest row (the one no other row supersedes).
+///
+/// No relations on purpose: deleting a user, client, appointment, or note must never
+/// cascade into this table. The migration adds triggers that reject UPDATE and DELETE,
+/// and that keep each note's rows in a single chain.
+///
+/// If a future migration rebuilds this table (Prisma's "RedefineTables" step), SQLite
+/// drops its triggers with it. Copy them from 20261119203426_session_log into that migration.
+model SessionLog {
+  id               String            @id @default(cuid())
+  event            SessionLogEvent
+  sessionNoteId    String
+  appointmentId    String?
+  clinicianUserId  String
+  /// Display name when the row was written, so renames don't rewrite history.
+  clinicianName    String
+  /// Internal only, for "clients served" counts. Never exported.
+  clientUserId     String
+  sessionStart     DateTime
+  sessionEnd       DateTime
+  durationMinutes  Int
+  /// durationMinutes when the session counts (signed + `show`), otherwise 0. Totals sum this.
+  countedMinutes   Int
+  attendanceStatus String
+  noteStatus       SessionNoteStatus
+  noteKind         SessionNoteKind
+  /// The previous row for the same note. Null only on a note's first row.
+  supersedesId     String?           @unique
+  /// Why a correction or un-sign happened. Free text, so never exported.
+  reason           String?
+  recordedById     String
+  createdAt        DateTime          @default(now())
+
+  @@index([clinicianUserId, sessionStart])
+  @@index([sessionNoteId])
+  @@index([sessionStart])
+  @@map("session_log")
+}
+
+/// Append-only record of every session log export (who, whose log, which dates).
+model SessionLogExport {
+  id              String    @id @default(cuid())
+  exportedById    String
+  clinicianUserId String
+  rangeFrom       DateTime?
+  rangeTo         DateTime?
+  rowCount        Int
+  createdAt       DateTime  @default(now())
+
+  @@index([clinicianUserId, createdAt])
+  @@index([exportedById])
+  @@map("session_log_export")
+}
