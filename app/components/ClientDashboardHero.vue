@@ -72,6 +72,13 @@
           to="/my-messages"
         />
         <UButton
+          color="primary"
+          variant="soft"
+          icon="i-heroicons-heart"
+          label="Health history"
+          to="/my-history"
+        />
+        <UButton
           color="error"
           variant="soft"
           icon="i-heroicons-arrow-right-on-rectangle-20-solid"
