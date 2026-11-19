@@ -205,3 +205,76 @@ export async function recordSessionLogForAppointments(
     })
   }
 }
+
+export type SessionLogBackfillResult = {
+  dryRun: boolean
+  signedNotes: number
+  alreadyLogged: number
+  created: number
+  /** Signed notes that could not be logged. Note ids only, no client details. */
+  unresolved: { sessionNoteId: string; reason: SessionLogSkipReason }[]
+}
+
+class DryRunRollback extends Error {
+  constructor(readonly result: SessionLogBackfillResult) {
+    super('dry run')
+  }
+}
+
+/**
+ * One BACKFILL row for every signed note that has no log rows yet (#215).
+ * Safe to run again: notes that already have rows are skipped.
+ *
+ * Runs in one transaction, so it either logs every resolvable note or none.
+ * Rows can never be deleted, so `dryRun` does the same work and then rolls it back.
+ */
+export async function backfillSessionLog(
+  db: Pick<PrismaClient, '$transaction'>,
+  input: { recordedById: string; dryRun?: boolean }
+): Promise<SessionLogBackfillResult> {
+  const dryRun = input.dryRun ?? false
+  try {
+    return await db.$transaction(
+      async (tx) => {
+        const [signed, logged] = await Promise.all([
+          tx.sessionNote.findMany({
+            where: { status: { in: ['CLINICIAN_SIGNED', 'FULLY_APPROVED'] } },
+            select: { id: true },
+            orderBy: { createdAt: 'asc' },
+          }),
+          tx.sessionLog.findMany({ select: { sessionNoteId: true }, distinct: ['sessionNoteId'] }),
+        ])
+        const loggedIds = new Set(logged.map((row) => row.sessionNoteId))
+
+        const result: SessionLogBackfillResult = {
+          dryRun,
+          signedNotes: signed.length,
+          alreadyLogged: 0,
+          created: 0,
+          unresolved: [],
+        }
+        for (const note of signed) {
+          if (loggedIds.has(note.id)) {
+            result.alreadyLogged += 1
+            continue
+          }
+          const outcome = await recordSessionLog(tx, {
+            sessionNoteId: note.id,
+            recordedById: input.recordedById,
+            firstEvent: 'BACKFILL',
+          })
+          if (outcome.written) result.created += 1
+          else if (outcome.skipped)
+            result.unresolved.push({ sessionNoteId: note.id, reason: outcome.skipped })
+        }
+
+        if (dryRun) throw new DryRunRollback(result)
+        return result
+      },
+      { timeout: 60_000 }
+    )
+  } catch (err) {
+    if (err instanceof DryRunRollback) return err.result
+    throw err
+  }
+}

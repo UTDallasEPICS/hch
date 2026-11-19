@@ -46,3 +46,4 @@ Track major changes, additions, or deprecations to the project scope.
 | 2026-11-17 | REQ-F-11 | In progress. #212: definitions for the session log and admin metrics (what counts as an hour, clinician of record, growth formula, immutability, export and access rules) in `docs/session-log-metrics.md` (In review) | Lokesh | — |
 | 2026-11-19 | REQ-F-11 | #213: append-only `session_log` and `session_log_export` tables. SQLite triggers reject update and delete, and keep each note's rows in one chain (In review) | Lokesh | — |
 | 2026-11-19 | REQ-F-11 | #214: signing, correcting, un-signing, or approving a session note (and moving a signed session) appends a `session_log` row in the same transaction (In review) | Lokesh | — |
+| 2026-11-19 | REQ-F-11 | #215: re-runnable admin backfill (`POST /api/admin/backfill-session-log`, `?dryRun=true` to preview) that logs notes signed before the session log existed (In review) | Lokesh | — |
